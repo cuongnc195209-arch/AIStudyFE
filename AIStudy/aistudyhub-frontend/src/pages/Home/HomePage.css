@@ -223,6 +223,20 @@ a {
   background: linear-gradient(135deg, var(--accent), var(--accent-strong));
   color: white;
   box-shadow: 0 22px 50px rgba(79, 70, 229, 0.2);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.primary-btn:hover,
+.header-cta:hover,
+.cta-button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 26px 60px rgba(79, 70, 229, 0.24);
+}
+
+.primary-btn:active,
+.header-cta:active,
+.cta-button:active {
+  transform: translateY(-1px);
 }
 
 .secondary-btn {
@@ -402,19 +416,24 @@ a {
 .feature-section {
   width: 100%;
   padding: 72px 5vw;
-  text-align: left;
+  text-align: center;
 }
 
 .feature-section h2 {
-  margin: 0 0 18px;
-  font-size: clamp(2.25rem, 3vw, 3.6rem);
-  max-width: none;
+  margin: 0 auto 18px;
+  font-size: clamp(2rem, 2.5vw, 3.2rem);
+  max-width: 100%;
+  color: #111827;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .feature-section p {
-  margin: 0 0 40px;
-  max-width: none;
-  color: var(--muted);
+  margin: 0 auto 40px;
+  max-width: 760px;
+  color: #4b5563;
   line-height: 1.85;
 }
 
@@ -431,6 +450,18 @@ a {
   padding: 28px;
   box-shadow: 0 20px 40px rgba(15, 23, 42, 0.05);
   text-align: left;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, background-color 0.25s ease;
+}
+
+.feature-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 28px 60px rgba(15, 23, 42, 0.14);
+  border-color: rgba(79, 70, 229, 0.16);
+  background: #ffffff;
+}
+
+.feature-card:hover .feature-icon {
+  transform: scale(1.05);
 }
 
 .feature-icon {
@@ -463,18 +494,29 @@ a {
   display: grid;
   grid-template-columns: 1.1fr 0.9fr;
   gap: 32px;
-  padding: 0 5vw 72px;
+  padding: 0 4vw 72px 0;
   width: 100%;
+  align-items: start;
+  max-width: 100%;
+  margin: 0;
 }
 
 .problem-copy h2 {
-  margin: 0 0 20px;
-  font-size: clamp(2.2rem, 2.8vw, 3.4rem);
+  margin: 0 0 24px;
+  margin-left: -20px;
+  font-size: clamp(1.8rem, 2.2vw, 2.4rem);
+  line-height: 1.05;
+  font-weight: 800;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.problem-copy ul {
+.problem-copy ul,
+.problem-list {
   list-style: none;
-  padding: 0;
+  padding: 0 0 0 100px;
   margin: 0 0 32px;
   display: grid;
   gap: 16px;
@@ -485,43 +527,95 @@ a {
   align-items: flex-start;
   gap: 14px;
   color: var(--text);
+  font-size: 0.98rem;
+  line-height: 1.8;
+}
+
+.problem-copy .problem-cta {
+  margin-top: 14px;
+  width: fit-content;
+  padding: 16px 32px;
+  margin-left: 100px;
 }
 
 .problem-icon {
-  width: 24px;
-  height: 24px;
-  color: #16a34a;
-  margin-top: 4px;
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  color: white;
+  background: #10b981;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-top: 3px;
+}
+
+.problem-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.problem-cta {
+  margin-top: 14px;
+  width: fit-content;
+  padding: 16px 32px;
 }
 
 .problem-quote {
-  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
-  border-radius: 32px;
+  background: linear-gradient(135deg, #3b82f6, #7c3aed);
+  border-radius: 24px;
   color: white;
-  padding: 34px;
-  box-shadow: 0 30px 70px rgba(79, 70, 229, 0.18);
+  padding: 28px 28px;
+  box-shadow: 0 34px 80px rgba(79, 70, 229, 0.18);
+  max-width: 620px;
+  width: 100%;
+  margin-top: 72px;
+}
+
+.quote-icon {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.16);
+  color: white;
+  font-size: 1.2rem;
+  margin-bottom: 18px;
 }
 
 .quote-title {
-  margin: 0 0 16px;
-  font-size: 1.35rem;
+  margin: 0 0 14px;
+  font-size: 1.25rem;
+  line-height: 1.35;
+  font-weight: 700;
+  max-width: 90%;
 }
 
 .quote-text {
   margin: 0;
-  line-height: 1.8;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 0.9rem;
 }
 
 .cta-section {
-  padding: 0 5vw 80px;
+  padding: 0 0 80px;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
 }
 
 .cta-box {
   background: linear-gradient(90deg, var(--accent), var(--accent-strong));
-  border-radius: 40px;
+  border-radius: 0;
   padding: 56px 32px;
   text-align: center;
   color: white;
+  width: 100%;
+  max-width: none;
 }
 
 .cta-box h2 {

@@ -43,9 +43,6 @@ function HomePage() {
               <button className="primary-btn" type="button">
                 Thử Nghiệm Miễn Phí <span className="arrow">→</span>
               </button>
-              <button className="secondary-btn" type="button">
-                Xem Bản Demo
-              </button>
             </div>
           </div>
 
@@ -132,16 +129,32 @@ function HomePage() {
         <section className="problem-section">
           <div className="problem-copy">
             <h2>Giải từ nỗi lo thất lạc tài liệu giáo trình</h2>
-            <ul>
-              <li>Tài liệu nằm rải rác nhiều nơi (Drive, USB, Facebook...)</li>
-              <li>Thường xuyên bị mất tài liệu quan trọng</li>
-              <li>Tìm kiếm mất nhiều thời gian và công sức</li>
-              <li>Không có hệ thống quản lý tài liệu rõ ràng</li>
-              <li>Dung lượng lưu trữ máy cá nhân bị hạn chế</li>
+            <ul className="problem-list">
+              <li className="problem-item">
+                <span className="problem-icon">✓</span>
+                <span>Tài liệu nằm rải rác nhiều nơi (Drive, USB, Facebook...)</span>
+              </li>
+              <li className="problem-item">
+                <span className="problem-icon">✓</span>
+                <span>Thường xuyên bị mất tài liệu quan trọng</span>
+              </li>
+              <li className="problem-item">
+                <span className="problem-icon">✓</span>
+                <span>Tìm kiếm mất nhiều thời gian và công sức</span>
+              </li>
+              <li className="problem-item">
+                <span className="problem-icon">✓</span>
+                <span>Không có hệ thống quản lý tài liệu rõ ràng</span>
+              </li>
+              <li className="problem-item">
+                <span className="problem-icon">✓</span>
+                <span>Dung lượng lưu trữ máy cá nhân bị hạn chế</span>
+              </li>
             </ul>
-            <button className="primary-btn" type="button">Bắt đầu sử dụng ngay</button>
+            <button className="primary-btn problem-cta" type="button">Bắt đầu sử dụng ngay</button>
           </div>
           <div className="problem-quote">
+            <div className="quote-icon">⚡</div>
             <p className="quote-title">"Bạn không thể hỏi USB, nhưng bạn có thể hỏi AI Study Hub."</p>
             <p className="quote-text">
               Thay vì lưu tài liệu rải rác, tập trung mọi thứ vào một nơi. Hỏi AI bất cứ lúc nào, nhận câu trả lời ngay lập tức.
