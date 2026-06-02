@@ -1,6 +1,13 @@
+import { useNavigate } from 'react-router-dom'
 import './HomePage.css'
 
 function HomePage() {
+  const navigate = useNavigate()
+
+  const handleNavigateToLogin = () => {
+    navigate('/login')
+  }
+
   return (
     <div className="landing-page">
       <header className="header-bar">
@@ -16,7 +23,7 @@ function HomePage() {
             <button type="button">Về chúng tôi</button>
           </nav>
 
-          <button className="header-cta" type="button">
+          <button className="header-cta" type="button" onClick={handleNavigateToLogin}>
             Bắt đầu miễn phí
           </button>
         </div>
@@ -40,7 +47,7 @@ function HomePage() {
               Tất cả tài liệu học tập trong tầm tay của bạn. Lưu trữ Cloud, tìm kiếm thông minh và hỏi chatbot trợ lý với AI để giải đáp mọi thắc mắc.
             </p>
             <div className="hero-actions">
-              <button className="primary-btn" type="button">
+              <button className="primary-btn" type="button" onClick={handleNavigateToLogin}>
                 Thử Nghiệm Miễn Phí <span className="arrow">→</span>
               </button>
             </div>
@@ -151,7 +158,7 @@ function HomePage() {
                 <span>Dung lượng lưu trữ máy cá nhân bị hạn chế</span>
               </li>
             </ul>
-            <button className="primary-btn problem-cta" type="button">Bắt đầu sử dụng ngay</button>
+            <button className="primary-btn problem-cta" type="button" onClick={handleNavigateToLogin}>Bắt đầu sử dụng ngay</button>
           </div>
           <div className="problem-quote">
             <div className="quote-icon">⚡</div>
@@ -166,7 +173,7 @@ function HomePage() {
           <div className="cta-box">
             <h2>Sẵn sàng nâng tầm học tập của bạn?</h2>
             <p>Tham gia cùng hàng nghìn sinh viên đang sử dụng AI Study Hub</p>
-            <button className="cta-button" type="button">Bắt đầu miễn phí ngay</button>
+            <button className="cta-button" type="button" onClick={handleNavigateToLogin}>Bắt đầu miễn phí ngay</button>
           </div>
         </section>
       </main>
