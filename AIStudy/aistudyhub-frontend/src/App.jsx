@@ -7,6 +7,7 @@ import DocumentsPage from './pages/Documents/DocumentsPage'
 import ChatbotPage from './pages/Chatbot/ChatbotPage'
 import ForumPage from './pages/Forum/ForumPage'
 import CoursesPage from './pages/Courses/CoursesPage'
+import SettingsPage from './pages/Settings/SettingsPage'
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
         <Route path="/chatbot" element={<ChatbotPage />} />
         <Route path="/forum" element={<ForumPage />} />
         <Route path="/courses" element={<CoursesPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
       </Routes>
     </BrowserRouter>
   )
