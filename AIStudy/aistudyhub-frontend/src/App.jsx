@@ -8,6 +8,7 @@ import ChatbotPage from './pages/Chatbot/ChatbotPage'
 import ForumPage from './pages/Forum/ForumPage'
 import CoursesPage from './pages/Courses/CoursesPage'
 import SettingsPage from './pages/Settings/SettingsPage'
+import AdminDashboardPage from './pages/Admin/AdminDashboardPage'
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
         <Route path="/forum" element={<ForumPage />} />
         <Route path="/courses" element={<CoursesPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/admin" element={<AdminDashboardPage />} />
       </Routes>
     </BrowserRouter>
   )
