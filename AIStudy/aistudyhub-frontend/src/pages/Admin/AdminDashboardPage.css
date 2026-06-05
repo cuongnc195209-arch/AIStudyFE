@@ -257,7 +257,7 @@
 
 .admin-search-wrap:focus-within { border-color: #0066ff; box-shadow: 0 0 0 3px rgba(0,102,255,0.08); }
 .admin-search-icon { font-size: 0.9rem; color: #94a3b8; }
-.admin-search { border: none; outline: none; flex: 1; font-size: 0.87rem; background: transparent; }
+.admin-search { border: none; outline: none; flex: 1; font-size: 0.87rem; background: transparent; color: #0f172a; }
 .admin-search-clear { background: none; border: none; cursor: pointer; color: #94a3b8; font-size: 0.8rem; padding: 0; }
 
 .filter-tabs { display: flex; gap: 6px; }
