@@ -135,7 +135,7 @@ function HomePage() {
 
         <section className="problem-section">
           <div className="problem-copy">
-            <h2>Giải từ nỗi lo thất lạc tài liệu giáo trình</h2>
+            <h2>Giải trừ nỗi lo thất lạc tài liệu giáo trình</h2>
             <ul className="problem-list">
               <li className="problem-item">
                 <span className="problem-icon">✓</span>
