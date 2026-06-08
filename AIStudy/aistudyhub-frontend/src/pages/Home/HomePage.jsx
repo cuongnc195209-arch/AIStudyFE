@@ -8,6 +8,10 @@ function HomePage() {
     navigate('/login')
   }
 
+  const scrollToSection = (id) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
+  }
+
   return (
     <div className="landing-page">
       <header className="header-bar">
@@ -18,9 +22,8 @@ function HomePage() {
           </div>
 
           <nav className="nav-links">
-            <button type="button">Tính năng</button>
-            <button type="button">Lịch sử</button>
-            <button type="button">Về chúng tôi</button>
+            <button type="button" onClick={() => scrollToSection('feature-section')}>Tính năng</button>
+            <button type="button" onClick={() => scrollToSection('problem-section')}>Lịch sử</button>
           </nav>
 
           <button className="header-cta" type="button" onClick={handleNavigateToLogin}>
@@ -106,7 +109,7 @@ function HomePage() {
           </div>
         </section>
 
-        <section className="feature-section">
+        <section className="feature-section" id="feature-section">
           <h2>Mọi thứ bạn cần để bứt phá học tập</h2>
           <p>Đầy đủ tính năng giúp bạn quản lý tài liệu hiệu quả và học tập thông minh hơn</p>
           <div className="feature-grid">
@@ -133,9 +136,9 @@ function HomePage() {
           </div>
         </section>
 
-        <section className="problem-section">
+        <section className="problem-section" id="problem-section">
           <div className="problem-copy">
-            <h2>Giải từ nỗi lo thất lạc tài liệu giáo trình</h2>
+            <h2>Giải trừ nỗi lo thất lạc tài liệu giáo trình</h2>
             <ul className="problem-list">
               <li className="problem-item">
                 <span className="problem-icon">✓</span>

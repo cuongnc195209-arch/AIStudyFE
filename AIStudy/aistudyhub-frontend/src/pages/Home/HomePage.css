@@ -503,7 +503,7 @@ a {
 
 .problem-copy h2 {
   margin: 0 0 24px;
-  margin-left: -20px;
+  margin-left: 12px;
   font-size: clamp(1.8rem, 2.2vw, 2.4rem);
   line-height: 1.05;
   font-weight: 800;
