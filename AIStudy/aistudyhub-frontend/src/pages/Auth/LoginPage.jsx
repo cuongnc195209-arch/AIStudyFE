@@ -60,9 +60,15 @@ export default function LoginPage() {
         localStorage.setItem("refreshToken", refreshToken);
       }
 
-      localStorage.setItem("user", JSON.stringify(authData.user || authData));
+      const user = authData.user || authData;
+      localStorage.setItem("user", JSON.stringify(user));
 
-      navigate("/dashboard");
+      const role = user.role;
+      if (role === "ADMIN") {
+        navigate("/admin");
+      } else {
+        navigate("/dashboard");
+      }
     } catch (err) {
       console.error("Login error:", err);
 
