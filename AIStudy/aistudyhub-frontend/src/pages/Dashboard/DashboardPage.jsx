@@ -35,13 +35,19 @@ export default function DashboardPage() {
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Chào buổi sáng' : hour < 18 ? 'Chào buổi chiều' : 'Chào buổi tối'
 
+  const storedUser = JSON.parse(localStorage.getItem('user') || '{}')
+  const displayName = storedUser.fullName || storedUser.name || storedUser.email || 'Người dùng'
+  const initials = displayName.includes('@')
+    ? displayName[0].toUpperCase()
+    : displayName.split(' ').map(w => w[0]).slice(-2).join('').toUpperCase()
+
   return (
     <AppLayout>
       <div className="dashboard">
         {/* ── Top bar ── */}
         <div className="dash-topbar">
           <div className="dash-greeting">
-            <h1>{greeting}, Nguyễn Văn A 👋</h1>
+            <h1>{greeting}, {displayName} 👋</h1>
             <p>Hôm nay bạn muốn học gì?</p>
           </div>
           <div className="dash-topbar-right">
@@ -50,9 +56,9 @@ export default function DashboardPage() {
               <span className="notif-badge">3</span>
             </button>
             <div className="user-chip">
-              <div className="user-avatar">NA</div>
+              <div className="user-avatar">{initials}</div>
               <div className="user-info">
-                <span className="user-name">Nguyễn Văn A</span>
+                <span className="user-name">{displayName}</span>
                 <span className="user-plan">Gói miễn phí</span>
               </div>
             </div>
