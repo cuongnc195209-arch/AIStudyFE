@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { login } from "../../apis/authApi";
+import { login, getProfile } from "../../apis/authApi";
 import "./AuthPage.css";
 
 export default function LoginPage() {
@@ -60,20 +60,49 @@ export default function LoginPage() {
         localStorage.setItem("refreshToken", refreshToken);
       }
 
-      const user = authData.user || authData;
+      let profileData = {};
 
-      // Lấy role từ nhiều kiểu response khác nhau
+      try {
+        const profileResult = await getProfile();
+        console.log("Profile result:", profileResult);
+
+        profileData = profileResult.data || profileResult;
+      } catch (profileError) {
+        console.error("Get profile error:", profileError);
+      }
+
+      const rawUser =
+        profileData.user ||
+        profileData.profile ||
+        profileData.userProfile ||
+        profileData ||
+        {};
+
+      const fullName =
+        rawUser.fullName ||
+        rawUser.name ||
+        rawUser.full_name ||
+        rawUser.displayName ||
+        rawUser.username ||
+        loginData.email;
+
       const role =
-        user.role ||
-        user.userRole ||
+        rawUser.role ||
+        rawUser.userRole ||
         authData.role ||
         authData.userRole ||
         "CUSTOMER";
 
+      const user = {
+        ...rawUser,
+        email: rawUser.email || loginData.email,
+        fullName,
+        role,
+      };
+
       localStorage.setItem("user", JSON.stringify(user));
       localStorage.setItem("role", role);
 
-      // Điều hướng theo role
       if (role === "ADMIN") {
         navigate("/admin", { replace: true });
       } else if (role === "MODERATOR") {
