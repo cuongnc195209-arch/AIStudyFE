@@ -61,13 +61,25 @@ export default function LoginPage() {
       }
 
       const user = authData.user || authData;
-      localStorage.setItem("user", JSON.stringify(user));
 
-      const role = user.role;
+      // Lấy role từ nhiều kiểu response khác nhau
+      const role =
+        user.role ||
+        user.userRole ||
+        authData.role ||
+        authData.userRole ||
+        "CUSTOMER";
+
+      localStorage.setItem("user", JSON.stringify(user));
+      localStorage.setItem("role", role);
+
+      // Điều hướng theo role
       if (role === "ADMIN") {
-        navigate("/admin");
+        navigate("/admin", { replace: true });
+      } else if (role === "MODERATOR") {
+        navigate("/dashboard", { replace: true });
       } else {
-        navigate("/dashboard");
+        navigate("/dashboard", { replace: true });
       }
     } catch (err) {
       console.error("Login error:", err);

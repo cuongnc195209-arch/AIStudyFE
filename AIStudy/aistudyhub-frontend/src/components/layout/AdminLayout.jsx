@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { logout as logoutApi } from "../../apis/authApi";
 import { clearAuthStorage } from "../../apis/api";
 import "./AdminLayout.css";
 
@@ -18,14 +17,10 @@ export default function AdminLayout({ activeSection, onNavigate, children }) {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
-    const refreshToken = localStorage.getItem("refreshToken");
-
     try {
-      if (refreshToken) {
-        await logoutApi({ refreshToken });
-      }
+      // Nếu có gọi API logout thì gọi ở đây
     } catch (error) {
-      console.error("Logout API error:", error);
+      console.error("Logout error:", error);
     } finally {
       clearAuthStorage();
       navigate("/login", { replace: true });
