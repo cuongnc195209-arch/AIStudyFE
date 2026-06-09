@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import AppLayout from '../../components/layout/AppLayout'
-import { updateProfile } from '../../apis/authApi'
+import { updateProfile, changePassword } from '../../apis/authApi'
 import './SettingsPage.css'
 
 /* ── Nav sections ── */
@@ -141,6 +141,7 @@ function SecuritySection({ onSave }) {
   const [form, setForm] = useState({ current: '', newPw: '', confirm: '' })
   const [show, setShow] = useState({ current: false, newPw: false, confirm: false })
   const [errors, setErrors] = useState({})
+  const [saving, setSaving] = useState(false)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
   const toggleShow = (k) => setShow(s => ({ ...s, [k]: !s[k] }))
 
@@ -149,16 +150,24 @@ function SecuritySection({ onSave }) {
     { id: 2, device: 'Safari · iPhone', location: 'TP. HCM, VN', time: '2 giờ trước', current: false },
   ]
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
     const errs = {}
     if (!form.current) errs.current = 'Nhập mật khẩu hiện tại'
     if (form.newPw.length < 8) errs.newPw = 'Mật khẩu tối thiểu 8 ký tự'
     if (form.newPw !== form.confirm) errs.confirm = 'Mật khẩu không khớp'
     setErrors(errs)
-    if (Object.keys(errs).length === 0) {
+    if (Object.keys(errs).length > 0) return
+
+    setSaving(true)
+    try {
+      await changePassword({ currentPassword: form.current, newPassword: form.newPw })
       setForm({ current: '', newPw: '', confirm: '' })
       onSave('Đổi mật khẩu thành công!')
+    } catch (err) {
+      setErrors({ current: err?.message || 'Đổi mật khẩu thất bại. Kiểm tra lại mật khẩu hiện tại.' })
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -205,7 +214,9 @@ function SecuritySection({ onSave }) {
             </ul>
           </div>
           <div className="section-actions">
-            <button type="submit" className="btn-primary">🔒 Cập nhật mật khẩu</button>
+            <button type="submit" className="btn-primary" disabled={saving}>
+              {saving ? 'Đang cập nhật...' : '🔒 Cập nhật mật khẩu'}
+            </button>
           </div>
         </form>
       </div>

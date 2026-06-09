@@ -40,3 +40,10 @@ export function updateProfile(data) {
     body: JSON.stringify(data),
   });
 }
+
+export function changePassword(data) {
+  return request("/auth/change-password", {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}

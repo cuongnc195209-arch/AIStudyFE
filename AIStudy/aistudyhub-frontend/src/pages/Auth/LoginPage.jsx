@@ -113,11 +113,11 @@ export default function LoginPage() {
     } catch (err) {
       console.error("Login error:", err);
 
+      const msg = err?.message || err?.error || err?.data?.message || ''
       setError(
-        err?.message ||
-          err?.error ||
-          err?.data?.message ||
-          "Đăng nhập thất bại. Kiểm tra email hoặc mật khẩu.",
+        msg === 'API request failed'
+          ? 'Sai email hoặc mật khẩu. Vui lòng thử lại.'
+          : msg || 'Đăng nhập thất bại. Kiểm tra email hoặc mật khẩu.'
       );
     } finally {
       setLoading(false);
