@@ -1,46 +1,67 @@
-import { useState } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
-import './AppLayout.css'
+import { useState } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
+import { logout as logoutApi } from "../../apis/authApi";
+import { clearAuthStorage } from "../../apis/api";
+import "./AppLayout.css";
 
 const NAV_ITEMS = [
-  { to: '/dashboard', icon: '⊞', label: 'Tổng quan' },
-  { to: '/documents', icon: '📁', label: 'Tài liệu' },
-  { to: '/chatbot', icon: '💬', label: 'AI Chatbot' },
-  { to: '/forum', icon: '🗣️', label: 'Diễn đàn' },
-  { to: '/courses', icon: '🎓', label: 'Khóa học' },
-]
+  { to: "/dashboard", icon: "⊞", label: "Tổng quan" },
+  { to: "/documents", icon: "📁", label: "Tài liệu" },
+  { to: "/chatbot", icon: "💬", label: "AI Chatbot" },
+  { to: "/forum", icon: "🗣️", label: "Diễn đàn" },
+  { to: "/courses", icon: "🎓", label: "Khóa học" },
+];
 
 export default function AppLayout({ children }) {
-  const [collapsed, setCollapsed] = useState(false)
-  const navigate = useNavigate()
+  const [collapsed, setCollapsed] = useState(false);
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    const refreshToken = localStorage.getItem("refreshToken");
+
+    try {
+      if (refreshToken) {
+        await logoutApi({ refreshToken });
+      }
+    } catch (error) {
+      console.error("Logout API error:", error);
+    } finally {
+      clearAuthStorage();
+      navigate("/login", { replace: true });
+    }
+  };
 
   return (
-    <div className={`app-layout ${collapsed ? 'layout-collapsed' : ''}`}>
+    <div className={`app-layout ${collapsed ? "layout-collapsed" : ""}`}>
       <aside className="app-sidebar">
         <div className="sidebar-header">
           <div className="sidebar-logo-icon">📋</div>
-          {!collapsed && <span className="sidebar-logo-text">AI Study Hub</span>}
+          {!collapsed && (
+            <span className="sidebar-logo-text">AI Study Hub</span>
+          )}
           <button
             className="sidebar-toggle"
             onClick={() => setCollapsed(!collapsed)}
-            title={collapsed ? 'Mở rộng' : 'Thu gọn'}
+            title={collapsed ? "Mở rộng" : "Thu gọn"}
           >
-            {collapsed ? '›' : '‹'}
+            {collapsed ? "›" : "‹"}
           </button>
         </div>
 
         <nav className="sidebar-nav">
-          {NAV_ITEMS.map(item => (
+          {NAV_ITEMS.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
-                `sidebar-link${isActive ? ' sidebar-link--active' : ''}`
+                `sidebar-link${isActive ? " sidebar-link--active" : ""}`
               }
               title={collapsed ? item.label : undefined}
             >
               <span className="sidebar-link-icon">{item.icon}</span>
-              {!collapsed && <span className="sidebar-link-label">{item.label}</span>}
+              {!collapsed && (
+                <span className="sidebar-link-label">{item.label}</span>
+              )}
             </NavLink>
           ))}
         </nav>
@@ -53,7 +74,7 @@ export default function AppLayout({ children }) {
                 <span className="storage-value">2.4 / 5 GB</span>
               </div>
               <div className="storage-track">
-                <div className="storage-fill" style={{ width: '48%' }} />
+                <div className="storage-fill" style={{ width: "48%" }} />
               </div>
             </div>
           )}
@@ -61,9 +82,9 @@ export default function AppLayout({ children }) {
           <NavLink
             to="/settings"
             className={({ isActive }) =>
-              `sidebar-link${isActive ? ' sidebar-link--active' : ''}`
+              `sidebar-link${isActive ? " sidebar-link--active" : ""}`
             }
-            title={collapsed ? 'Cài đặt' : undefined}
+            title={collapsed ? "Cài đặt" : undefined}
           >
             <span className="sidebar-link-icon">⚙️</span>
             {!collapsed && <span className="sidebar-link-label">Cài đặt</span>}
@@ -71,16 +92,18 @@ export default function AppLayout({ children }) {
 
           <button
             className="sidebar-link sidebar-logout"
-            onClick={() => navigate('/login')}
-            title={collapsed ? 'Đăng xuất' : undefined}
+            onClick={handleLogout}
+            title={collapsed ? "Đăng xuất" : undefined}
           >
             <span className="sidebar-link-icon">🚪</span>
-            {!collapsed && <span className="sidebar-link-label">Đăng xuất</span>}
+            {!collapsed && (
+              <span className="sidebar-link-label">Đăng xuất</span>
+            )}
           </button>
         </div>
       </aside>
 
       <main className="app-main">{children}</main>
     </div>
-  )
+  );
 }
