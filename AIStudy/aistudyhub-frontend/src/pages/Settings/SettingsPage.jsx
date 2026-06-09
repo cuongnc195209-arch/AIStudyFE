@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import AppLayout from '../../components/layout/AppLayout'
+import { updateProfile } from '../../apis/authApi'
 import './SettingsPage.css'
 
 /* ── Nav sections ── */
@@ -24,15 +25,19 @@ function Toast({ message, onDone }) {
 /* ── Section: Profile ── */
 function ProfileSection({ onSave }) {
   const fileRef = useRef()
+  const storedUser = JSON.parse(localStorage.getItem('user') || '{}')
   const [form, setForm] = useState({
-    name: 'Nguyễn Văn A',
-    email: 'namvtse161878@fpt.edu.vn',
-    school: 'FPT University',
-    major: 'Software Engineering',
-    bio: 'Sinh viên năm 3 ngành Kỹ thuật phần mềm tại FPT University.',
+    name: storedUser.fullName || '',
+    email: storedUser.email || '',
+    studentCode: storedUser.studentCode || '',
+    schoolName: storedUser.schoolName || '',
+    department: storedUser.department || '',
+    assignedSubject: storedUser.assignedSubject || '',
     avatar: null,
   })
   const [preview, setPreview] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
   function handleAvatarChange(e) {
@@ -42,6 +47,32 @@ function ProfileSection({ onSave }) {
     setPreview(url)
     set('avatar', file)
   }
+
+  async function handleSave() {
+    setSaving(true)
+    setError('')
+    try {
+      const result = await updateProfile({
+        fullName: form.name,
+        studentCode: form.studentCode,
+        schoolName: form.schoolName,
+        department: form.department,
+        assignedSubject: form.assignedSubject,
+      })
+      const profileData = result?.data || {}
+      const updatedUser = { ...storedUser, ...profileData }
+      localStorage.setItem('user', JSON.stringify(updatedUser))
+      onSave('Cập nhật hồ sơ thành công!')
+    } catch (err) {
+      setError(err?.message || 'Cập nhật thất bại')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const initials = form.name
+    ? form.name.split(' ').map(w => w[0]).slice(-2).join('').toUpperCase()
+    : (form.email[0] || 'U').toUpperCase()
 
   return (
     <div className="section-content">
@@ -55,12 +86,12 @@ function ProfileSection({ onSave }) {
         <div className="avatar-preview">
           {preview
             ? <img src={preview} alt="avatar" className="avatar-img" />
-            : <div className="avatar-initials">NA</div>
+            : <div className="avatar-initials">{initials}</div>
           }
           <button className="avatar-edit-btn" onClick={() => fileRef.current.click()} title="Đổi ảnh">📷</button>
         </div>
         <div className="avatar-info">
-          <p className="avatar-name">{form.name}</p>
+          <p className="avatar-name">{form.name || form.email}</p>
           <p className="avatar-email">{form.email}</p>
           <button className="btn-outline" onClick={() => fileRef.current.click()}>Đổi ảnh đại diện</button>
           <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarChange} />
@@ -77,22 +108,28 @@ function ProfileSection({ onSave }) {
           <input value={form.email} disabled className="input-locked" />
         </div>
         <div>
-          <label>Trường đại học</label>
-          <input value={form.school} onChange={e => set('school', e.target.value)} placeholder="Tên trường" />
+          <label>Mã sinh viên</label>
+          <input value={form.studentCode} onChange={e => set('studentCode', e.target.value)} placeholder="Ví dụ: SE161878" />
         </div>
         <div>
-          <label>Ngành học</label>
-          <input value={form.major} onChange={e => set('major', e.target.value)} placeholder="Ngành học" />
+          <label>Trường đại học</label>
+          <input value={form.schoolName} onChange={e => set('schoolName', e.target.value)} placeholder="Tên trường" />
         </div>
-        <div className="fg-full">
-          <label>Giới thiệu bản thân</label>
-          <textarea value={form.bio} onChange={e => set('bio', e.target.value)} rows={3} placeholder="Vài dòng giới thiệu..." />
+        <div>
+          <label>Khoa / Ngành</label>
+          <input value={form.department} onChange={e => set('department', e.target.value)} placeholder="Ví dụ: Software Engineering" />
+        </div>
+        <div>
+          <label>Môn học phụ trách</label>
+          <input value={form.assignedSubject} onChange={e => set('assignedSubject', e.target.value)} placeholder="Ví dụ: Lập trình Web" />
         </div>
       </div>
 
+      {error && <p style={{ color: 'red', marginTop: '8px' }}>{error}</p>}
+
       <div className="section-actions">
-        <button className="btn-primary" onClick={() => onSave('Cập nhật hồ sơ thành công!')}>
-          💾 Lưu thay đổi
+        <button className="btn-primary" onClick={handleSave} disabled={saving}>
+          {saving ? 'Đang lưu...' : '💾 Lưu thay đổi'}
         </button>
       </div>
     </div>

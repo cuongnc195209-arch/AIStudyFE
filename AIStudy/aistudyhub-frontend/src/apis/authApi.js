@@ -33,3 +33,10 @@ export function getProfile() {
     method: "GET",
   });
 }
+
+export function updateProfile(data) {
+  return request("/auth/profile", {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
