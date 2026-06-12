@@ -33,10 +33,14 @@ export async function request(path, options = {}) {
 
   const result = await response.json().catch(() => null);
 
-  if ((response.status === 401 || response.status === 403) && !isPublicAuthApi) {
+  if (response.status === 401) {
     clearAuthStorage();
     window.location.href = "/login";
     return;
+  }
+
+  if (response.status === 403) {
+    throw result || { message: "Bạn không có quyền truy cập chức năng này." };
   }
 
   if (!response.ok) {
