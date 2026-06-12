@@ -3,27 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { login, getProfile } from "../../apis/authApi";
 import "./AuthPage.css";
 
-function decodeJwtPayload(token) {
-  try {
-    const payload = token.split(".")[1];
-    const decoded = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
-    return JSON.parse(decoded);
-    // eslint-disable-next-line no-unused-vars
-  } catch (error) {
-    return {};
-  }
-}
-
-function normalizeRole(role) {
-  if (!role) return "CUSTOMER";
-
-  if (Array.isArray(role)) {
-    role = role[0];
-  }
-
-  return String(role).replace("ROLE_", "").toUpperCase();
-}
-
 export default function LoginPage() {
   const navigate = useNavigate();
 
@@ -59,6 +38,8 @@ export default function LoginPage() {
 
       console.log("Login result:", result);
 
+      // Backend của bạn trả dạng ApiResponse<AuthResponse>
+      // Thường token sẽ nằm trong result.data
       const authData = result.data || result;
 
       const accessToken =
@@ -79,8 +60,6 @@ export default function LoginPage() {
         localStorage.setItem("refreshToken", refreshToken);
       }
 
-      const jwtData = decodeJwtPayload(accessToken);
-
       let profileData = {};
 
       try {
@@ -97,8 +76,6 @@ export default function LoginPage() {
         profileData.profile ||
         profileData.userProfile ||
         profileData ||
-        authData.user ||
-        authData ||
         {};
 
       const fullName =
@@ -107,38 +84,18 @@ export default function LoginPage() {
         rawUser.full_name ||
         rawUser.displayName ||
         rawUser.username ||
-        authData.user?.fullName ||
-        authData.fullName ||
-        jwtData.fullName ||
-        jwtData.name ||
-        jwtData.sub ||
         loginData.email;
 
-      const email =
-        rawUser.email ||
-        authData.user?.email ||
-        authData.email ||
-        jwtData.email ||
-        jwtData.sub ||
-        loginData.email;
-
-      const roleRaw =
+      const role =
         rawUser.role ||
         rawUser.userRole ||
-        authData.user?.role ||
         authData.role ||
         authData.userRole ||
-        jwtData.role ||
-        jwtData.authority ||
-        jwtData.authorities ||
-        jwtData.scope ||
         "CUSTOMER";
-
-      const role = normalizeRole(roleRaw);
 
       const user = {
         ...rawUser,
-        email,
+        email: rawUser.email || loginData.email,
         fullName,
         role,
       };
@@ -156,11 +113,11 @@ export default function LoginPage() {
     } catch (err) {
       console.error("Login error:", err);
 
+      const msg = err?.message || err?.error || err?.data?.message || ''
       setError(
-        err?.message ||
-          err?.error ||
-          err?.data?.message ||
-          "Đăng nhập thất bại. Kiểm tra email hoặc mật khẩu.",
+        msg === 'API request failed'
+          ? 'Sai email hoặc mật khẩu. Vui lòng thử lại.'
+          : msg || 'Đăng nhập thất bại. Kiểm tra email hoặc mật khẩu.'
       );
     } finally {
       setLoading(false);
@@ -211,7 +168,6 @@ export default function LoginPage() {
                     placeholder="••••••••"
                     required
                   />
-
                   <button
                     type="button"
                     className="password-toggle"
