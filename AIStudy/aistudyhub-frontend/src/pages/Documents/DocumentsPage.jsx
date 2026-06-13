@@ -1,5 +1,6 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import AppLayout from '../../components/layout/AppLayout'
+import { getDocuments, createDocument, updateDocument, deleteDocument } from '../../apis/documentApi'
 import './DocumentsPage.css'
 
 /* ── Hằng số ── */
@@ -14,14 +15,22 @@ const SORT_OPTIONS = [
 const ALLOWED_TYPES = { 'application/pdf': 'PDF', 'application/vnd.ms-powerpoint': 'PPT', 'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'PPT', 'application/msword': 'DOC', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'DOC', 'image/jpeg': 'IMG', 'image/png': 'IMG' }
 const EXT_COLOR = { PDF: '#ef4444', PPT: '#f97316', DOC: '#3b82f6', IMG: '#10b981' }
 
-const INITIAL_DOCS = [
-  { id: 1, name: 'Giáo trình Lập trình Web', ext: 'PDF', subject: 'Lập trình Web', sizeMB: 4.2, date: '2026-06-03', tags: ['lý thuyết', 'html', 'css'], privacy: 'private', downloads: 0 },
-  { id: 2, name: 'Slide CSDL Chương 5 - Index & Query', ext: 'PPT', subject: 'Cơ sở dữ liệu', sizeMB: 8.1, date: '2026-06-02', tags: ['slide', 'index'], privacy: 'public', downloads: 12 },
-  { id: 3, name: 'Bài tập Trí tuệ nhân tạo - A* Search', ext: 'DOC', subject: 'Trí tuệ nhân tạo', sizeMB: 1.3, date: '2026-05-31', tags: ['bài tập', 'thuật toán'], privacy: 'private', downloads: 0 },
-  { id: 4, name: 'Đề thi HK2 - Mạng máy tính', ext: 'PDF', subject: 'Mạng máy tính', sizeMB: 2.8, date: '2026-05-28', tags: ['đề thi', 'ôn tập'], privacy: 'public', downloads: 34 },
-  { id: 5, name: 'Tóm tắt Giải tích 1 - Công thức tích phân', ext: 'PDF', subject: 'Giải tích', sizeMB: 1.1, date: '2026-05-25', tags: ['tóm tắt', 'công thức'], privacy: 'private', downloads: 0 },
-  { id: 6, name: 'Lab Vật lý - Báo cáo thực hành', ext: 'DOC', subject: 'Vật lý đại cương', sizeMB: 0.9, date: '2026-05-20', tags: ['báo cáo', 'thực hành'], privacy: 'private', downloads: 0 },
-]
+function mapDoc(d) {
+  return {
+    id: d.id || d.documentId || d.document_id,
+    name: d.documentName || d.name || '',
+    ext: (d.fileType || 'PDF').toUpperCase(),
+    subject: d.subject || 'Khác',
+    sizeMB: d.fileSize ? parseFloat((d.fileSize / 1048576).toFixed(2)) : 0,
+    fileSize: d.fileSize || 0,
+    date: d.createdAt ? d.createdAt.slice(0, 10) : new Date().toISOString().slice(0, 10),
+    tags: Array.isArray(d.tags) ? d.tags : [],
+    privacy: d.privacy || 'private',
+    downloads: d.downloads || 0,
+    previewUrl: d.previewUrl || '',
+    downloadUrl: d.downloadUrl || '',
+  }
+}
 
 /* ── Helpers ── */
 function sizeLabel(mb) {
@@ -74,24 +83,39 @@ function UploadModal({ onClose, onSuccess }) {
     handleFilePick(e.dataTransfer.files[0])
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
     if (!meta.name.trim()) return
     setStep('uploading')
-    let p = 0
-    const iv = setInterval(() => {
-      p += Math.random() * 18 + 6
-      if (p >= 100) {
-        clearInterval(iv)
-        setProgress(100)
-        setStep('done')
-        setTimeout(() => {
-          onSuccess({ id: Date.now(), name: meta.name.trim(), ext: file.ext, subject: meta.subject, sizeMB: parseFloat(file.sizeMB), date: new Date().toISOString().slice(0, 10), tags: meta.tags.split(',').map(t => t.trim()).filter(Boolean), privacy: meta.privacy, downloads: 0 })
-        }, 600)
-      } else {
-        setProgress(Math.min(p, 95))
-      }
-    }, 180)
+    setProgress(40)
+    try {
+      const result = await createDocument({
+        documentName: meta.name.trim(),
+        fileType: file.ext,
+        previewUrl: '',
+        downloadUrl: '',
+        fileSize: Math.round(parseFloat(file.sizeMB) * 1048576),
+      })
+      setProgress(100)
+      setStep('done')
+      const saved = result?.data || result || {}
+      setTimeout(() => {
+        onSuccess(saved.id ? mapDoc(saved) : {
+          id: Date.now(),
+          name: meta.name.trim(),
+          ext: file.ext,
+          subject: meta.subject,
+          sizeMB: parseFloat(file.sizeMB),
+          date: new Date().toISOString().slice(0, 10),
+          tags: meta.tags.split(',').map(t => t.trim()).filter(Boolean),
+          privacy: meta.privacy,
+          downloads: 0,
+        })
+      }, 600)
+    } catch (err) {
+      setStep('form')
+      setError(err?.message || 'Upload thất bại. Vui lòng thử lại.')
+    }
   }
 
   return (
@@ -288,8 +312,8 @@ function DocCard({ doc, onEdit, onDelete }) {
         {doc.downloads > 0 && <span className="doc-card-dl">⬇️ {doc.downloads}</span>}
       </div>
       <div className="doc-card-actions">
-        <button className="card-action-btn" title="Xem trước">👁️ Xem</button>
-        <button className="card-action-btn" title="Tải xuống">⬇️</button>
+        <button className="card-action-btn" title="Xem trước" onClick={() => doc.previewUrl ? window.open(doc.previewUrl, '_blank') : alert('Tài liệu này chưa có link xem trước.')}>👁️ Xem</button>
+        <button className="card-action-btn" title="Tải xuống" onClick={() => doc.downloadUrl ? window.open(doc.downloadUrl, '_blank') : alert('Tài liệu này chưa có link tải xuống.')}>⬇️</button>
         <button className="card-action-btn" title="Chỉnh sửa" onClick={() => onEdit(doc)}>✏️</button>
         <button className="card-action-btn card-action-btn--del" title="Xóa" onClick={() => onDelete(doc)}>🗑️</button>
       </div>
@@ -315,8 +339,8 @@ function DocRow({ doc, onEdit, onDelete }) {
         {doc.privacy === 'public' ? <span className="badge-public">🌐</span> : <span className="badge-private">🔒</span>}
       </div>
       <div className="doc-list-actions">
-        <button className="row-action-btn" title="Xem trước">👁️</button>
-        <button className="row-action-btn" title="Tải xuống">⬇️</button>
+        <button className="row-action-btn" title="Xem trước" onClick={() => doc.previewUrl ? window.open(doc.previewUrl, '_blank') : alert('Tài liệu này chưa có link xem trước.')}>👁️</button>
+        <button className="row-action-btn" title="Tải xuống" onClick={() => doc.downloadUrl ? window.open(doc.downloadUrl, '_blank') : alert('Tài liệu này chưa có link tải xuống.')}>⬇️</button>
         <button className="row-action-btn" title="Chỉnh sửa" onClick={() => onEdit(doc)}>✏️</button>
         <button className="row-action-btn row-action-btn--del" title="Xóa" onClick={() => onDelete(doc)}>🗑️</button>
       </div>
@@ -326,7 +350,9 @@ function DocRow({ doc, onEdit, onDelete }) {
 
 /* ── Main Page ── */
 export default function DocumentsPage() {
-  const [docs, setDocs] = useState(INITIAL_DOCS)
+  const [docs, setDocs] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [subject, setSubject] = useState('Tất cả')
   const [fileType, setFileType] = useState('Tất cả')
@@ -335,6 +361,16 @@ export default function DocumentsPage() {
   const [showUpload, setShowUpload] = useState(false)
   const [editDoc, setEditDoc] = useState(null)
   const [deleteDoc, setDeleteDoc] = useState(null)
+
+  useEffect(() => {
+    getDocuments()
+      .then(res => {
+        const list = res?.data || res || []
+        setDocs(Array.isArray(list) ? list.map(mapDoc) : [])
+      })
+      .catch(() => setError('Không thể tải danh sách tài liệu.'))
+      .finally(() => setLoading(false))
+  }, [])
 
   const filtered = sortDocs(
     docs.filter(d => {
@@ -354,19 +390,33 @@ export default function DocumentsPage() {
     setShowUpload(false)
   }
 
-  function handleEditSave(updated) {
-    setDocs(prev => prev.map(d => d.id === updated.id ? updated : d))
-    setEditDoc(null)
+  async function handleEditSave(updated) {
+    try {
+      await updateDocument(updated.id, updated.name)
+      setDocs(prev => prev.map(d => d.id === updated.id ? updated : d))
+      setEditDoc(null)
+    } catch {
+      alert('Cập nhật thất bại. Vui lòng thử lại.')
+    }
   }
 
-  function handleDeleteConfirm(id) {
-    setDocs(prev => prev.filter(d => d.id !== id))
-    setDeleteDoc(null)
+  async function handleDeleteConfirm(id) {
+    const doc = docs.find(d => d.id === id)
+    try {
+      await deleteDocument(id, doc?.fileSize || 0)
+      setDocs(prev => prev.filter(d => d.id !== id))
+      setDeleteDoc(null)
+    } catch {
+      alert('Xóa thất bại. Vui lòng thử lại.')
+    }
   }
 
   return (
     <AppLayout>
       <div className="docs-page">
+        {loading && <div style={{ textAlign: 'center', padding: '60px', color: '#6b7280' }}>Đang tải tài liệu...</div>}
+        {error && <div style={{ textAlign: 'center', padding: '60px', color: '#ef4444' }}>{error}</div>}
+        {!loading && !error && <>
         {/* ── Header ── */}
         <div className="docs-header">
           <div>
@@ -455,6 +505,7 @@ export default function DocumentsPage() {
             )}
           </div>
         )}
+        </>}
       </div>
 
       {showUpload && <UploadModal onClose={() => setShowUpload(false)} onSuccess={handleUploadSuccess} />}
