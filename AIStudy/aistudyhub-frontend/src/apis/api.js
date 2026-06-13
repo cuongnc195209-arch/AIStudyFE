@@ -33,7 +33,7 @@ export async function request(path, options = {}) {
 
   const result = await response.json().catch(() => null);
 
-  if ((response.status === 401 || response.status === 403) && !isPublicAuthApi) {
+  if (response.status === 401 && !isPublicAuthApi) {
     clearAuthStorage();
     window.location.href = "/login";
     return;
