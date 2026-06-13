@@ -1,8 +1,13 @@
+<<<<<<< Updated upstream
 import { useEffect, useRef, useState } from "react";
+=======
+import { useState, useRef, useEffect } from "react";
+>>>>>>> Stashed changes
 import AppLayout from "../../components/layout/AppLayout";
 import {
   getDocuments,
   createDocument,
+<<<<<<< Updated upstream
   updateDocumentName,
   deleteDocument,
 } from "../../apis/documentApi";
@@ -27,6 +32,12 @@ function mapApiDoc(d) {
     downloadUrl: d.downloadUrl || "",
   };
 }
+=======
+  updateDocument,
+  deleteDocument,
+} from "../../apis/documentApi";
+import "./DocumentsPage.css";
+>>>>>>> Stashed changes
 
 /* ── Hằng số ── */
 const SUBJECTS = [
@@ -38,6 +49,7 @@ const SUBJECTS = [
   "Giải tích",
   "Vật lý đại cương",
 ];
+<<<<<<< Updated upstream
 
 const FILE_TYPES = ["Tất cả", "PDF", "PPT", "DOC", "IMG"];
 
@@ -66,6 +78,51 @@ const EXT_COLOR = {
   DOC: "#3b82f6",
   IMG: "#10b981",
 };
+=======
+const FILE_TYPES = ["Tất cả", "PDF", "PPT", "DOC", "IMG"];
+const SORT_OPTIONS = [
+  { value: "newest", label: "Mới nhất" },
+  { value: "oldest", label: "Cũ nhất" },
+  { value: "name", label: "Tên A→Z" },
+  { value: "size", label: "Dung lượng" },
+];
+const ALLOWED_TYPES = {
+  "application/pdf": "PDF",
+  "application/vnd.ms-powerpoint": "PPT",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+    "PPT",
+  "application/msword": "DOC",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+    "DOC",
+  "image/jpeg": "IMG",
+  "image/png": "IMG",
+};
+const EXT_COLOR = {
+  PDF: "#ef4444",
+  PPT: "#f97316",
+  DOC: "#3b82f6",
+  IMG: "#10b981",
+};
+
+function mapDoc(d) {
+  return {
+    id: d.id || d.documentId || d.document_id,
+    name: d.documentName || d.name || "Untitled Document",
+    ext: (d.fileType || d.ext || "PDF").toUpperCase(),
+    subject: d.subject || "Tài liệu",
+    sizeMB: d.fileSize ? Number((d.fileSize / 1048576).toFixed(2)) : 0,
+    fileSize: d.fileSize || 0,
+    date: d.createdAt
+      ? d.createdAt.slice(0, 10)
+      : new Date().toISOString().slice(0, 10),
+    tags: Array.isArray(d.tags) ? d.tags : [],
+    privacy: d.privacy || "private",
+    downloads: d.downloads || 0,
+    previewUrl: d.previewUrl || "",
+    downloadUrl: d.downloadUrl || "",
+  };
+}
+>>>>>>> Stashed changes
 
 /* ── Helpers ── */
 function sizeLabel(mb) {
@@ -93,7 +150,11 @@ function sortDocs(docs, sort) {
 
 /* ── Upload Modal ── */
 function UploadModal({ onClose, onSuccess }) {
+<<<<<<< Updated upstream
   const [step, setStep] = useState("drop");
+=======
+  const [step, setStep] = useState("drop"); // drop | form | uploading | done
+>>>>>>> Stashed changes
   const [file, setFile] = useState(null);
   const [error, setError] = useState("");
   const [dragOver, setDragOver] = useState(false);
@@ -105,25 +166,36 @@ function UploadModal({ onClose, onSuccess }) {
     tags: "",
     privacy: "private",
   });
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
   const inputRef = useRef();
 
   function handleFilePick(f) {
     if (!f) return;
+<<<<<<< Updated upstream
 
     const ext = ALLOWED_TYPES[f.type];
 
+=======
+    const ext = ALLOWED_TYPES[f.type];
+>>>>>>> Stashed changes
     if (!ext) {
       setError(
         "Định dạng không hỗ trợ. Chỉ chấp nhận PDF, DOCX, PPTX, JPG, PNG.",
       );
       return;
     }
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
     if (f.size > 50 * 1024 * 1024) {
       setError("File vượt quá 50 MB.");
       return;
     }
+<<<<<<< Updated upstream
 
     setError("");
     setFile({
@@ -137,6 +209,11 @@ function UploadModal({ onClose, onSuccess }) {
       name: f.name.replace(/\.[^.]+$/, ""),
     }));
 
+=======
+    setError("");
+    setFile({ raw: f, ext, sizeMB: (f.size / 1048576).toFixed(1) });
+    setMeta((m) => ({ ...m, name: f.name.replace(/\.[^.]+$/, "") }));
+>>>>>>> Stashed changes
     setStep("form");
   }
 
@@ -146,6 +223,7 @@ function UploadModal({ onClose, onSuccess }) {
     handleFilePick(e.dataTransfer.files[0]);
   }
 
+<<<<<<< Updated upstream
   function handleSubmit(e) {
     e.preventDefault();
 
@@ -184,6 +262,38 @@ function UploadModal({ onClose, onSuccess }) {
         setProgress(Math.min(p, 95));
       }
     }, 180);
+=======
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!meta.name.trim()) return;
+    setStep("uploading");
+    setProgress(40);
+    try {
+      const result = await createDocument({
+        documentName: meta.name.trim(),
+        fileType: file.ext,
+        previewUrl: "",
+        downloadUrl: "",
+        fileSize: Math.round(parseFloat(file.sizeMB) * 1048576),
+      });
+      setProgress(100);
+      setStep("done");
+      const saved = result?.data || result || {};
+
+      const savedId = saved.id || saved.documentId || saved.document_id;
+
+      if (!savedId) {
+        throw new Error("Backend chưa trả về documentId sau khi tạo tài liệu.");
+      }
+
+      setTimeout(() => {
+        onSuccess(mapDoc(saved));
+      }, 600);
+    } catch (err) {
+      setStep("form");
+      setError(err?.message || "Upload thất bại. Vui lòng thử lại.");
+    }
+>>>>>>> Stashed changes
   }
 
   return (
@@ -199,6 +309,10 @@ function UploadModal({ onClose, onSuccess }) {
           </button>
         </div>
 
+<<<<<<< Updated upstream
+=======
+        {/* Step: drop zone */}
+>>>>>>> Stashed changes
         {step === "drop" && (
           <div className="modal-body">
             <div
@@ -219,7 +333,10 @@ function UploadModal({ onClose, onSuccess }) {
               <p className="drop-hint">
                 PDF, DOCX, PPTX, JPG, PNG · Tối đa 50 MB
               </p>
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
               <input
                 ref={inputRef}
                 type="file"
@@ -233,6 +350,10 @@ function UploadModal({ onClose, onSuccess }) {
           </div>
         )}
 
+<<<<<<< Updated upstream
+=======
+        {/* Step: metadata form */}
+>>>>>>> Stashed changes
         {step === "form" && (
           <form className="modal-body" onSubmit={handleSubmit}>
             <div className="selected-file">
@@ -242,12 +363,18 @@ function UploadModal({ onClose, onSuccess }) {
               >
                 {file.ext}
               </div>
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
               <div>
                 <p className="sf-name">{file.raw.name}</p>
                 <p className="sf-size">{file.sizeMB} MB</p>
               </div>
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
               <button
                 type="button"
                 className="sf-change"
@@ -302,7 +429,11 @@ function UploadModal({ onClose, onSuccess }) {
               </div>
 
               <div className="fg-full">
+<<<<<<< Updated upstream
                 <label>Tag, cách nhau bằng dấu phẩy</label>
+=======
+                <label>Tag (cách bằng dấu phẩy)</label>
+>>>>>>> Stashed changes
                 <input
                   value={meta.tags}
                   onChange={(e) =>
@@ -336,6 +467,10 @@ function UploadModal({ onClose, onSuccess }) {
           </form>
         )}
 
+<<<<<<< Updated upstream
+=======
+        {/* Step: uploading */}
+>>>>>>> Stashed changes
         {step === "uploading" && (
           <div className="modal-body upload-progress-wrap">
             <div className="upload-progress-icon">📤</div>
@@ -350,11 +485,21 @@ function UploadModal({ onClose, onSuccess }) {
           </div>
         )}
 
+<<<<<<< Updated upstream
+=======
+        {/* Step: done */}
+>>>>>>> Stashed changes
         {step === "done" && (
           <div className="modal-body upload-done-wrap">
             <div className="done-icon">✅</div>
             <p className="done-title">Upload thành công!</p>
+<<<<<<< Updated upstream
             <p className="done-sub">Tài liệu đã được lưu vào hệ thống.</p>
+=======
+            <p className="done-sub">
+              Tài liệu đã được lưu và đang được AI xử lý để hỗ trợ chatbot.
+            </p>
+>>>>>>> Stashed changes
           </div>
         )}
       </div>
@@ -373,7 +518,10 @@ function EditModal({ doc, onClose, onSave }) {
 
   function handleSubmit(e) {
     e.preventDefault();
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
     onSave({
       ...doc,
       name: meta.name.trim(),
@@ -488,7 +636,12 @@ function DeleteConfirm({ doc, onClose, onConfirm }) {
             Bạn có chắc muốn xóa tài liệu <strong>"{doc.name}"</strong>?
           </p>
           <p className="delete-confirm-sub">
+<<<<<<< Updated upstream
             Tài liệu sẽ bị xóa vĩnh viễn và không thể khôi phục.
+=======
+            Tài liệu sẽ bị xóa vĩnh viễn khỏi Cloud Storage và không thể khôi
+            phục.
+>>>>>>> Stashed changes
           </p>
         </div>
 
@@ -512,11 +665,18 @@ function DocCard({ doc, onEdit, onDelete }) {
       <div className="doc-card-top">
         <div
           className="doc-card-ext"
+<<<<<<< Updated upstream
           style={{ background: EXT_COLOR[doc.ext] || "#6b7280" }}
         >
           {doc.ext}
         </div>
 
+=======
+          style={{ background: EXT_COLOR[doc.ext] }}
+        >
+          {doc.ext}
+        </div>
+>>>>>>> Stashed changes
         <div className="doc-card-privacy">
           {doc.privacy === "public" ? (
             <span className="badge-public">🌐 Công khai</span>
@@ -544,13 +704,17 @@ function DocCard({ doc, onEdit, onDelete }) {
         <span className="doc-card-meta">
           {sizeLabel(doc.sizeMB)} · {relativeDate(doc.date)}
         </span>
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
         {doc.downloads > 0 && (
           <span className="doc-card-dl">⬇️ {doc.downloads}</span>
         )}
       </div>
 
       <div className="doc-card-actions">
+<<<<<<< Updated upstream
         <button className="card-action-btn" title="Xem trước">
           👁️ Xem
         </button>
@@ -559,6 +723,30 @@ function DocCard({ doc, onEdit, onDelete }) {
           ⬇️
         </button>
 
+=======
+        <button
+          className="card-action-btn"
+          title="Xem trước"
+          onClick={() =>
+            doc.previewUrl
+              ? window.open(doc.previewUrl, "_blank")
+              : alert("Tài liệu này chưa có link xem trước.")
+          }
+        >
+          👁️ Xem
+        </button>
+        <button
+          className="card-action-btn"
+          title="Tải xuống"
+          onClick={() =>
+            doc.downloadUrl
+              ? window.open(doc.downloadUrl, "_blank")
+              : alert("Tài liệu này chưa có link tải xuống.")
+          }
+        >
+          ⬇️
+        </button>
+>>>>>>> Stashed changes
         <button
           className="card-action-btn"
           title="Chỉnh sửa"
@@ -566,7 +754,10 @@ function DocCard({ doc, onEdit, onDelete }) {
         >
           ✏️
         </button>
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
         <button
           className="card-action-btn card-action-btn--del"
           title="Xóa"
@@ -583,6 +774,7 @@ function DocCard({ doc, onEdit, onDelete }) {
 function DocRow({ doc, onEdit, onDelete }) {
   return (
     <div className="doc-list-row">
+<<<<<<< Updated upstream
       <div
         className="doc-ext-sm"
         style={{ background: EXT_COLOR[doc.ext] || "#6b7280" }}
@@ -590,6 +782,11 @@ function DocRow({ doc, onEdit, onDelete }) {
         {doc.ext}
       </div>
 
+=======
+      <div className="doc-ext-sm" style={{ background: EXT_COLOR[doc.ext] }}>
+        {doc.ext}
+      </div>
+>>>>>>> Stashed changes
       <div className="doc-list-info">
         <p className="doc-list-name">{doc.name}</p>
         <p className="doc-list-sub">{doc.subject}</p>
@@ -615,6 +812,7 @@ function DocRow({ doc, onEdit, onDelete }) {
       </div>
 
       <div className="doc-list-actions">
+<<<<<<< Updated upstream
         <button className="row-action-btn" title="Xem trước">
           👁️
         </button>
@@ -623,6 +821,30 @@ function DocRow({ doc, onEdit, onDelete }) {
           ⬇️
         </button>
 
+=======
+        <button
+          className="row-action-btn"
+          title="Xem trước"
+          onClick={() =>
+            doc.previewUrl
+              ? window.open(doc.previewUrl, "_blank")
+              : alert("Tài liệu này chưa có link xem trước.")
+          }
+        >
+          👁️
+        </button>
+        <button
+          className="row-action-btn"
+          title="Tải xuống"
+          onClick={() =>
+            doc.downloadUrl
+              ? window.open(doc.downloadUrl, "_blank")
+              : alert("Tài liệu này chưa có link tải xuống.")
+          }
+        >
+          ⬇️
+        </button>
+>>>>>>> Stashed changes
         <button
           className="row-action-btn"
           title="Chỉnh sửa"
@@ -630,7 +852,10 @@ function DocRow({ doc, onEdit, onDelete }) {
         >
           ✏️
         </button>
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
         <button
           className="row-action-btn row-action-btn--del"
           title="Xóa"
@@ -646,7 +871,12 @@ function DocRow({ doc, onEdit, onDelete }) {
 /* ── Main Page ── */
 export default function DocumentsPage() {
   const [docs, setDocs] = useState([]);
+<<<<<<< Updated upstream
   const [loadingDocs, setLoadingDocs] = useState(false);
+=======
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+>>>>>>> Stashed changes
   const [search, setSearch] = useState("");
   const [subject, setSubject] = useState("Tất cả");
   const [fileType, setFileType] = useState("Tất cả");
@@ -657,6 +887,7 @@ export default function DocumentsPage() {
   const [deleteDoc, setDeleteDoc] = useState(null);
 
   useEffect(() => {
+<<<<<<< Updated upstream
     async function loadDocuments() {
       try {
         setLoadingDocs(true);
@@ -674,21 +905,38 @@ export default function DocumentsPage() {
     }
 
     loadDocuments();
+=======
+    getDocuments()
+      .then((res) => {
+        const list = res?.data || res || [];
+        setDocs(Array.isArray(list) ? list.map(mapDoc) : []);
+      })
+      .catch(() => setError("Không thể tải danh sách tài liệu."))
+      .finally(() => setLoading(false));
+>>>>>>> Stashed changes
   }, []);
 
   const filtered = sortDocs(
     docs.filter((d) => {
       const q = search.toLowerCase();
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
       const matchSearch =
         !q ||
         d.name.toLowerCase().includes(q) ||
         d.subject.toLowerCase().includes(q) ||
         d.tags.some((t) => t.toLowerCase().includes(q));
+<<<<<<< Updated upstream
 
       const matchSubject = subject === "Tất cả" || d.subject === subject;
       const matchType = fileType === "Tất cả" || d.ext === fileType;
 
+=======
+      const matchSubject = subject === "Tất cả" || d.subject === subject;
+      const matchType = fileType === "Tất cả" || d.ext === fileType;
+>>>>>>> Stashed changes
       return matchSearch && matchSubject && matchType;
     }),
     sort,
@@ -696,6 +944,7 @@ export default function DocumentsPage() {
 
   const totalSize = docs.reduce((s, d) => s + d.sizeMB, 0).toFixed(1);
 
+<<<<<<< Updated upstream
   async function handleUploadSuccess(newDoc) {
     try {
       const result = await createDocument({
@@ -715,10 +964,16 @@ export default function DocumentsPage() {
       console.error("Create document error:", error);
       alert("Upload tài liệu thất bại");
     }
+=======
+  function handleUploadSuccess(newDoc) {
+    setDocs((prev) => [newDoc, ...prev]);
+    setShowUpload(false);
+>>>>>>> Stashed changes
   }
 
   async function handleEditSave(updated) {
     try {
+<<<<<<< Updated upstream
       const result = await updateDocumentName(updated.id, updated.name);
       const data = result.data || result;
 
@@ -730,10 +985,18 @@ export default function DocumentsPage() {
     } catch (error) {
       console.error("Update document error:", error);
       alert("Cập nhật tài liệu thất bại");
+=======
+      await updateDocument(updated.id, updated.name);
+      setDocs((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
+      setEditDoc(null);
+    } catch {
+      alert("Cập nhật thất bại. Vui lòng thử lại.");
+>>>>>>> Stashed changes
     }
   }
 
   async function handleDeleteConfirm(id) {
+<<<<<<< Updated upstream
     try {
       await deleteDocument(id);
 
@@ -742,12 +1005,22 @@ export default function DocumentsPage() {
     } catch (error) {
       console.error("Delete document error:", error);
       alert("Xóa tài liệu thất bại");
+=======
+    const doc = docs.find((d) => d.id === id);
+    try {
+      await deleteDocument(id, doc?.fileSize || 0);
+      setDocs((prev) => prev.filter((d) => d.id !== id));
+      setDeleteDoc(null);
+    } catch {
+      alert("Xóa thất bại. Vui lòng thử lại.");
+>>>>>>> Stashed changes
     }
   }
 
   return (
     <AppLayout>
       <div className="docs-page">
+<<<<<<< Updated upstream
         <div className="docs-header">
           <div>
             <h1 className="docs-title">Tài liệu của tôi</h1>
@@ -919,8 +1192,191 @@ export default function DocumentsPage() {
               >
                 ⬆️ Upload ngay
               </button>
-            )}
+=======
+        {loading && (
+          <div
+            style={{ textAlign: "center", padding: "60px", color: "#6b7280" }}
+          >
+            Đang tải tài liệu...
           </div>
+        )}
+        {error && (
+          <div
+            style={{ textAlign: "center", padding: "60px", color: "#ef4444" }}
+          >
+            {error}
+          </div>
+        )}
+        {!loading && !error && (
+          <>
+            {/* ── Header ── */}
+            <div className="docs-header">
+              <div>
+                <h1 className="docs-title">Tài liệu của tôi</h1>
+                <p className="docs-sub">
+                  {docs.length} tài liệu · {totalSize} MB đã dùng
+                </p>
+              </div>
+              <button
+                className="btn-primary btn-upload"
+                onClick={() => setShowUpload(true)}
+              >
+                ⬆️ Upload tài liệu
+              </button>
+            </div>
+
+            {/* ── Search & Filter bar ── */}
+            <div className="docs-toolbar">
+              <div className="search-wrap">
+                <span className="search-icon">🔍</span>
+                <input
+                  className="search-input"
+                  type="text"
+                  placeholder="Tìm theo tên, môn học, tag..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+                {search && (
+                  <button
+                    className="search-clear"
+                    onClick={() => setSearch("")}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              <div className="filter-group">
+                <select
+                  className="filter-select"
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                >
+                  {SUBJECTS.map((s) => (
+                    <option key={s}>{s}</option>
+                  ))}
+                </select>
+                <select
+                  className="filter-select"
+                  value={fileType}
+                  onChange={(e) => setFileType(e.target.value)}
+                >
+                  {FILE_TYPES.map((t) => (
+                    <option key={t}>{t}</option>
+                  ))}
+                </select>
+                <select
+                  className="filter-select"
+                  value={sort}
+                  onChange={(e) => setSort(e.target.value)}
+                >
+                  {SORT_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="view-toggle">
+                <button
+                  className={`view-btn${view === "grid" ? " view-btn--active" : ""}`}
+                  onClick={() => setView("grid")}
+                  title="Dạng lưới"
+                >
+                  ⊞
+                </button>
+                <button
+                  className={`view-btn${view === "list" ? " view-btn--active" : ""}`}
+                  onClick={() => setView("list")}
+                  title="Dạng danh sách"
+                >
+                  ☰
+                </button>
+              </div>
+            </div>
+
+            {/* ── Results count ── */}
+            {(search || subject !== "Tất cả" || fileType !== "Tất cả") && (
+              <p className="results-label">
+                Tìm thấy <strong>{filtered.length}</strong> tài liệu
+                {search && (
+                  <>
+                    {" "}
+                    cho "<em>{search}</em>"
+                  </>
+                )}{" "}
+                <button
+                  className="clear-filters"
+                  onClick={() => {
+                    setSearch("");
+                    setSubject("Tất cả");
+                    setFileType("Tất cả");
+                  }}
+                >
+                  Xóa bộ lọc
+                </button>
+              </p>
+>>>>>>> Stashed changes
+            )}
+
+            {/* ── Document grid ── */}
+            {filtered.length > 0 ? (
+              view === "grid" ? (
+                <div className="docs-grid">
+                  {filtered.map((doc) => (
+                    <DocCard
+                      key={doc.id}
+                      doc={doc}
+                      onEdit={setEditDoc}
+                      onDelete={setDeleteDoc}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="docs-list">
+                  <div className="docs-list-header">
+                    <span style={{ gridColumn: "1 / 3" }}>Tài liệu</span>
+                    <span>Tag</span>
+                    <span>Kích thước</span>
+                    <span>Ngày</span>
+                    <span>Quyền</span>
+                    <span>Thao tác</span>
+                  </div>
+                  {filtered.map((doc) => (
+                    <DocRow
+                      key={doc.id}
+                      doc={doc}
+                      onEdit={setEditDoc}
+                      onDelete={setDeleteDoc}
+                    />
+                  ))}
+                </div>
+              )
+            ) : (
+              <div className="docs-empty">
+                <div className="empty-icon">📭</div>
+                <p className="empty-title">
+                  {docs.length === 0
+                    ? "Chưa có tài liệu nào"
+                    : "Không tìm thấy tài liệu phù hợp"}
+                </p>
+                <p className="empty-sub">
+                  {docs.length === 0
+                    ? "Bắt đầu bằng cách upload tài liệu đầu tiên của bạn"
+                    : "Thử thay đổi từ khóa hoặc bộ lọc"}
+                </p>
+                {docs.length === 0 && (
+                  <button
+                    className="btn-primary"
+                    onClick={() => setShowUpload(true)}
+                  >
+                    ⬆️ Upload ngay
+                  </button>
+                )}
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -930,7 +1386,10 @@ export default function DocumentsPage() {
           onSuccess={handleUploadSuccess}
         />
       )}
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
       {editDoc && (
         <EditModal
           doc={editDoc}
@@ -938,7 +1397,10 @@ export default function DocumentsPage() {
           onSave={handleEditSave}
         />
       )}
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
       {deleteDoc && (
         <DeleteConfirm
           doc={deleteDoc}

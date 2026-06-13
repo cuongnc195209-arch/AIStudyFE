@@ -6,6 +6,15 @@ export function getDocuments() {
   });
 }
 
+<<<<<<< Updated upstream
+=======
+export function getDocumentById(id) {
+  return request(`/v1/documents/${id}`, {
+    method: "GET",
+  });
+}
+
+>>>>>>> Stashed changes
 export function createDocument(data) {
   return request("/v1/documents", {
     method: "POST",
@@ -13,6 +22,7 @@ export function createDocument(data) {
   });
 }
 
+<<<<<<< Updated upstream
 export function updateDocumentName(documentId, newName) {
   return request(
     `/v1/documents/${documentId}?newName=${encodeURIComponent(newName)}`,
@@ -24,6 +34,16 @@ export function updateDocumentName(documentId, newName) {
 
 export function deleteDocument(documentId) {
   return request(`/v1/documents/${documentId}`, {
+=======
+export function updateDocument(id, newName) {
+  return request(`/v1/documents/${id}?newName=${encodeURIComponent(newName)}`, {
+    method: "PUT",
+  });
+}
+
+export function deleteDocument(id) {
+  return request(`/v1/documents/${id}`, {
+>>>>>>> Stashed changes
     method: "DELETE",
   });
 }
