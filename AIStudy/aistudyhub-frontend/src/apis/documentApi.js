@@ -6,15 +6,12 @@ export function getDocuments() {
   });
 }
 
-<<<<<<< Updated upstream
-=======
 export function getDocumentById(id) {
   return request(`/v1/documents/${id}`, {
     method: "GET",
   });
 }
 
->>>>>>> Stashed changes
 export function createDocument(data) {
   return request("/v1/documents", {
     method: "POST",
@@ -22,28 +19,19 @@ export function createDocument(data) {
   });
 }
 
-<<<<<<< Updated upstream
-export function updateDocumentName(documentId, newName) {
-  return request(
-    `/v1/documents/${documentId}?newName=${encodeURIComponent(newName)}`,
-    {
-      method: "PUT",
-    },
-  );
-}
-
-export function deleteDocument(documentId) {
-  return request(`/v1/documents/${documentId}`, {
-=======
 export function updateDocument(id, newName) {
   return request(`/v1/documents/${id}?newName=${encodeURIComponent(newName)}`, {
     method: "PUT",
   });
 }
 
+// Giữ thêm hàm này để nếu file khác còn gọi updateDocumentName thì không bị lỗi
+export function updateDocumentName(documentId, newName) {
+  return updateDocument(documentId, newName);
+}
+
 export function deleteDocument(id) {
   return request(`/v1/documents/${id}`, {
->>>>>>> Stashed changes
     method: "DELETE",
   });
 }
