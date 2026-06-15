@@ -25,6 +25,12 @@ export function getDocumentById(id) {
   })
 }
 
+export function getDocumentById(id) {
+  return request(`/v1/documents/${id}`, {
+    method: "GET",
+  });
+}
+
 // POST /api/v1/documents — body: { documentName, fileType, previewUrl, downloadUrl, fileSize }
 export function createDocument(data) {
   return request('/v1/documents', {
@@ -34,18 +40,17 @@ export function createDocument(data) {
   })
 }
 
-// PUT /api/v1/documents/{id}?newName=...
-export function updateDocument(id, newName) {
-  return request(`/v1/documents/${id}?newName=${encodeURIComponent(newName)}`, {
-    method: 'PUT',
-    headers: xHeader(),
-  })
+export function updateDocumentName(documentId, newName) {
+  return request(
+    `/v1/documents/${documentId}?newName=${encodeURIComponent(newName)}`,
+    {
+      method: "PUT",
+    },
+  );
 }
 
-// DELETE /api/v1/documents/{id}?fileSize=...
-export function deleteDocument(id, fileSize) {
-  return request(`/v1/documents/${id}?fileSize=${fileSize}`, {
-    method: 'DELETE',
-    headers: xHeader(),
-  })
+export function deleteDocument(documentId) {
+  return request(`/v1/documents/${documentId}`, {
+    method: "DELETE",
+  });
 }
