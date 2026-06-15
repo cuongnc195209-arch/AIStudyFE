@@ -1,28 +1,9 @@
-import { request } from './api'
+import { request } from "./api";
 
-function getUserId() {
-  return JSON.parse(localStorage.getItem('user') || '{}').id || ''
-}
-
-function xHeader() {
-  return { 'X-User-Id': getUserId() }
-}
-
-// GET /api/v1/documents/all/{userId}
 export function getDocuments() {
-  const uid = getUserId()
-  return request(`/v1/documents/all/${uid}`, {
-    method: 'GET',
-    headers: xHeader(),
-  })
-}
-
-// GET /api/v1/documents/{id}
-export function getDocumentById(id) {
-  return request(`/v1/documents/${id}`, {
-    method: 'GET',
-    headers: xHeader(),
-  })
+  return request("/v1/documents", {
+    method: "GET",
+  });
 }
 
 export function getDocumentById(id) {
@@ -31,26 +12,26 @@ export function getDocumentById(id) {
   });
 }
 
-// POST /api/v1/documents — body: { documentName, fileType, previewUrl, downloadUrl, fileSize }
 export function createDocument(data) {
-  return request('/v1/documents', {
-    method: 'POST',
-    headers: xHeader(),
+  return request("/v1/documents", {
+    method: "POST",
     body: JSON.stringify(data),
-  })
+  });
 }
 
+export function updateDocument(id, newName) {
+  return request(`/v1/documents/${id}?newName=${encodeURIComponent(newName)}`, {
+    method: "PUT",
+  });
+}
+
+// Giữ thêm hàm này để nếu file khác còn gọi updateDocumentName thì không bị lỗi
 export function updateDocumentName(documentId, newName) {
-  return request(
-    `/v1/documents/${documentId}?newName=${encodeURIComponent(newName)}`,
-    {
-      method: "PUT",
-    },
-  );
+  return updateDocument(documentId, newName);
 }
 
-export function deleteDocument(documentId) {
-  return request(`/v1/documents/${documentId}`, {
+export function deleteDocument(id) {
+  return request(`/v1/documents/${id}`, {
     method: "DELETE",
   });
 }
