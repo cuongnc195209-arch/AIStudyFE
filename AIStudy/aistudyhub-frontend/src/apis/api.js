@@ -1,5 +1,5 @@
 export const BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "/api";
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
 
 export function clearAuthStorage() {
   localStorage.removeItem("accessToken");
@@ -40,7 +40,6 @@ export async function request(path, options = {}) {
   }
 
   if (!response.ok) {
-    console.error(`[API ${response.status}] ${options.method || 'GET'} ${path}`, result)
     throw result || { message: "API request failed" };
   }
 

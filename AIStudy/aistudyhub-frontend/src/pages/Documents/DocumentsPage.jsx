@@ -2,50 +2,21 @@ import { useEffect, useRef, useState } from "react";
 import AppLayout from "../../components/layout/AppLayout";
 import {
   getDocuments,
-  getDocumentById,
   createDocument,
-  updateDocument,
+  updateDocumentName,
   deleteDocument,
 } from "../../apis/documentApi";
 import "./DocumentsPage.css";
 
-const SUBJECTS = ['Tất cả', 'Toán', 'Lý', 'Hóa', 'Văn', 'Anh', 'CNTT', 'Kinh tế', 'Khác']
-const FILE_TYPES = ['Tất cả', 'PDF', 'DOCX', 'PPTX', 'XLSX', 'TXT', 'PNG', 'JPG']
-const SORT_OPTIONS = [
-  { value: 'newest', label: 'Mới nhất' },
-  { value: 'oldest', label: 'Cũ nhất' },
-  { value: 'name', label: 'Tên A-Z' },
-  { value: 'size', label: 'Kích thước' },
-]
-const EXT_COLOR = {
-  PDF: '#e53e3e',
-  DOCX: '#3182ce',
-  PPTX: '#dd6b20',
-  XLSX: '#38a169',
-  TXT: '#718096',
-  PNG: '#805ad5',
-  JPG: '#d53f8c',
-}
-
-const ALLOWED_TYPES = {
-  'application/pdf': 'PDF',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'DOCX',
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'PPTX',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'XLSX',
-  'text/plain': 'TXT',
-  'image/jpeg': 'JPG',
-  'image/png': 'PNG',
-}
-
 function mapApiDoc(d) {
-  const rawSize = d.fileSize || 0
   return {
     id: d.documentId || d.id,
     name: d.documentName || d.name || "Untitled Document",
-    ext: (d.fileType || d.ext || "PDF").toUpperCase(),
+    ext: d.fileType || d.ext || "PDF",
     subject: d.subject || "Tài liệu",
-    sizeMB: rawSize ? Number((rawSize / 1024 / 1024).toFixed(1)) : 0,
-    fileSize: rawSize,
+    sizeMB: d.fileSize
+      ? Number((d.fileSize / 1024 / 1024).toFixed(1))
+      : d.sizeMB || 0,
     date: d.createdAt
       ? d.createdAt.slice(0, 10)
       : d.date || new Date().toISOString().slice(0, 10),
@@ -451,7 +422,7 @@ export default function DocumentsPage() {
 
         const result = await getDocuments();
         const data = result.data || result;
-        if (Array.isArray(data) && data.length > 0) console.log('[GET docs] first item:', data[0])
+
         setDocs(Array.isArray(data) ? data.map(mapApiDoc) : []);
       } catch (error) {
         console.error("Load documents error:", error);
@@ -484,13 +455,13 @@ export default function DocumentsPage() {
         fileType: newDoc.ext,
         previewUrl: newDoc.previewUrl || "",
         downloadUrl: newDoc.downloadUrl || "",
-        fileSize: newDoc.fileSize || Math.round((newDoc.sizeMB || 0) * 1024 * 1024),
+        fileSize:
+          newDoc.fileSize || Math.round((newDoc.sizeMB || 0) * 1024 * 1024),
       });
 
       const created = result.data || result;
-      const actualFileSize = newDoc.fileSize || Math.round((newDoc.sizeMB || 0) * 1024 * 1024)
 
-      setDocs((prev) => [mapApiDoc({ ...created, fileSize: actualFileSize }), ...prev]);
+      setDocs((prev) => [mapApiDoc(created), ...prev]);
       setShowUpload(false);
     } catch (error) {
       console.error("Create document error:", error);
@@ -500,7 +471,7 @@ export default function DocumentsPage() {
 
   async function handleEditSave(updated) {
     try {
-      const result = await updateDocument(updated.id, updated.name);
+      const result = await updateDocumentName(updated.id, updated.name);
       const data = result.data || result;
 
       setDocs((prev) =>
@@ -515,19 +486,15 @@ export default function DocumentsPage() {
   }
 
   async function handleDeleteConfirm(id) {
+    const doc = docs.find(d => d.id === id)
     try {
-      let fileSize = docs.find(d => d.id === id)?.fileSize || 0
-      if (!fileSize) {
-        const detail = await getDocumentById(id)
-        const d = detail?.data || detail
-        fileSize = d?.fileSize || 0
-      }
-      await deleteDocument(id, fileSize)
-      setDocs((prev) => prev.filter((d) => d.id !== id))
-      setDeleteDoc(null)
+      await deleteDocument(id);
+
+      setDocs((prev) => prev.filter((d) => d.id !== id));
+      setDeleteDoc(null);
     } catch (error) {
-      console.error("Delete document error:", error)
-      alert("Xóa tài liệu thất bại")
+      console.error("Delete document error:", error);
+      alert("Xóa tài liệu thất bại");
     }
   }
 
@@ -708,6 +675,7 @@ export default function DocumentsPage() {
             )}
           </div>
         )}
+        </>}
       </div>
 
       {showUpload && <UploadModal onClose={() => setShowUpload(false)} onSuccess={handleUploadSuccess} />}
