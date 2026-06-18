@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getProfile } from "../../apis/authApi";
+import { getUsers } from "../../apis/adminApi";
 import AdminLayout from "../../components/layout/AdminLayout";
 import "./AdminDashboardPage.css";
 
@@ -323,7 +324,16 @@ function OverviewSection() {
     },
   ];
 
-  const RECENT = MOCK_USERS.slice(0, 5);
+  const [recentUsers, setRecentUsers] = useState([]);
+  useEffect(() => {
+    getUsers()
+      .then((res) => {
+        const list = res?.data || res || [];
+        const mapped = Array.isArray(list) ? list.map(mapUser) : [];
+        setRecentUsers(mapped.filter((u) => u.role !== "ADMIN").slice(0, 5));
+      })
+      .catch(() => {});
+  }, []);
 
   const ALERTS = [
     {
@@ -377,10 +387,10 @@ function OverviewSection() {
         <div className="admin-card">
           <div className="admin-card-head">
             <h3>Đăng ký gần đây</h3>
-            <span className="card-meta">{RECENT.length} người dùng mới</span>
+            <span className="card-meta">{recentUsers.length} người dùng mới</span>
           </div>
           <div className="mini-table">
-            {RECENT.map((u) => (
+            {recentUsers.map((u) => (
               <div key={u.id} className="mini-row">
                 <div className="mini-avatar">
                   {u.name
@@ -393,14 +403,11 @@ function OverviewSection() {
                   <p className="mini-name">{u.name}</p>
                   <p className="mini-email">{u.email}</p>
                 </div>
-                <span
-                  className="plan-badge"
-                  style={{
-                    background: PLAN_COLOR[u.plan] + "20",
-                    color: PLAN_COLOR[u.plan],
-                  }}
-                >
-                  {PLAN_LABEL[u.plan]}
+                <span className="plan-badge" style={{
+                  background: u.role === "ADMIN" ? "#7c3aed20" : "#6b728020",
+                  color: u.role === "ADMIN" ? "#7c3aed" : "#6b7280",
+                }}>
+                  {u.role === "ADMIN" ? "Admin" : "User"}
                 </span>
               </div>
             ))}
@@ -432,11 +439,36 @@ function OverviewSection() {
 /* ════════════════════════════════
    SECTION: USERS
 ════════════════════════════════ */
+function mapUser(u) {
+  const status = (u.accountStatus || "").toLowerCase() === "locked" ? "locked" : "active";
+  const emailName = (u.email || "").split("@")[0];
+  return {
+    id: u.id,
+    name: u.fullName || emailName,
+    email: u.email || "",
+    joined: u.createdAt ? u.createdAt.slice(0, 10) : "",
+    role: u.role || "USER",
+    status,
+  };
+}
+
 function UsersSection({ onToast }) {
-  const [users, setUsers] = useState(MOCK_USERS);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
-  const [confirm, setConfirm] = useState(null); // { action, user }
+  const [confirm, setConfirm] = useState(null);
+
+  useEffect(() => {
+    getUsers()
+      .then((res) => {
+        const list = res?.data || res || [];
+        const all = Array.isArray(list) ? list.map(mapUser) : [];
+        setUsers(all.filter((u) => u.role !== "ADMIN"));
+      })
+      .catch((err) => console.error("Load users error:", err))
+      .finally(() => setLoading(false));
+  }, []);
 
   const filtered = users.filter((u) => {
     const q = search.toLowerCase();
@@ -521,9 +553,7 @@ function UsersSection({ onToast }) {
             <tr>
               <th>Người dùng</th>
               <th>Tham gia</th>
-              <th>Gói</th>
-              <th>Tài liệu</th>
-              <th>Dung lượng</th>
+              <th>Vai trò</th>
               <th>Trạng thái</th>
               <th>Thao tác</th>
             </tr>
@@ -547,21 +577,16 @@ function UsersSection({ onToast }) {
                   </div>
                 </td>
                 <td className="td-secondary">
-                  {new Date(u.joined).toLocaleDateString("vi-VN")}
+                  {u.joined ? new Date(u.joined).toLocaleDateString("vi-VN") : "—"}
                 </td>
                 <td>
-                  <span
-                    className="plan-badge"
-                    style={{
-                      background: PLAN_COLOR[u.plan] + "18",
-                      color: PLAN_COLOR[u.plan],
-                    }}
-                  >
-                    {PLAN_LABEL[u.plan]}
+                  <span className="plan-badge" style={{
+                    background: u.role === "ADMIN" ? "#7c3aed18" : "#6b728018",
+                    color: u.role === "ADMIN" ? "#7c3aed" : "#6b7280",
+                  }}>
+                    {u.role === "ADMIN" ? "Admin" : "User"}
                   </span>
                 </td>
-                <td className="td-center">{u.docs}</td>
-                <td className="td-secondary">{u.storage} GB</td>
                 <td>
                   <span className={`status-badge status-${u.status}`}>
                     {u.status === "active" ? "● Hoạt động" : "● Đã khóa"}
@@ -598,7 +623,8 @@ function UsersSection({ onToast }) {
             ))}
           </tbody>
         </table>
-        {filtered.length === 0 && (
+        {loading && <div className="table-empty">Đang tải...</div>}
+        {!loading && filtered.length === 0 && (
           <div className="table-empty">Không tìm thấy người dùng</div>
         )}
       </div>
