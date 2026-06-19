@@ -11,8 +11,17 @@ export function clearAuthStorage() {
 
 function getUserId() {
   try {
-    const user = JSON.parse(localStorage.getItem("user"));
-    return user?.id || user?.userId || user?.user_id || null;
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+
+    return (
+      user?.id ||
+      user?.userId ||
+      user?.user_id ||
+      user?.data?.id ||
+      user?.data?.userId ||
+      user?.data?.user_id ||
+      null
+    );
   } catch {
     return null;
   }
@@ -34,9 +43,7 @@ export async function request(path, options = {}) {
 
   const headers = {
     ...(isFormData ? {} : { "Content-Type": "application/json" }),
-    ...(!isPublicAuthApi && token
-      ? { Authorization: `Bearer ${token}` }
-      : {}),
+    ...(!isPublicAuthApi && token ? { Authorization: `Bearer ${token}` } : {}),
     ...(!isPublicAuthApi && userId ? { "X-User-Id": userId } : {}),
     ...(options.headers || {}),
   };

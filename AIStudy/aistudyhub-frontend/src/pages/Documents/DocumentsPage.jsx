@@ -159,11 +159,15 @@ function UploadModal({ onClose, onSuccess }) {
 
     try {
       const result = await createDocument({
-        documentName: meta.name.trim(),
-        fileType: file.ext,
-        previewUrl: "",
-        downloadUrl: "",
-        fileSize: file.raw.size,
+        file: file.raw,
+        data: {
+          documentName: meta.name.trim(),
+          fileType: file.ext,
+          previewUrl: "",
+          downloadUrl: "",
+          fileSize: file.raw.size,
+          textContent: meta.description || "test content",
+        },
       });
 
       const saved = result?.data || result || {};

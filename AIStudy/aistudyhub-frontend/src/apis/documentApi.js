@@ -12,10 +12,14 @@ export function getDocumentById(id) {
   });
 }
 
-export function createDocument(file, metadata = {}) {
+export function createDocument({ file, data }) {
   const formData = new FormData();
+
   formData.append("file", file);
-  if (metadata.documentName) formData.append("documentName", metadata.documentName);
+
+  if (data) {
+    formData.append("data", JSON.stringify(data));
+  }
 
   return request("/v1/documents", {
     method: "POST",
@@ -27,10 +31,6 @@ export function updateDocument(id, newName) {
   return request(`/v1/documents/${id}?newName=${encodeURIComponent(newName)}`, {
     method: "PUT",
   });
-}
-
-export function updateDocumentName(documentId, newName) {
-  return updateDocument(documentId, newName);
 }
 
 export function deleteDocument(id) {
