@@ -634,6 +634,8 @@
   outline: none;
   margin-bottom: 12px;
   transition: border-color 0.15s;
+  background: #ffffff;
+  color: #1a1a1a;
 }
 
 .picker-search:focus { border-color: #0066ff; }
