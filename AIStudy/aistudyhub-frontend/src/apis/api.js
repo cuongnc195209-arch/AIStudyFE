@@ -46,7 +46,13 @@ export async function request(path, options = {}) {
     headers,
   });
 
-  const result = await response.json().catch(() => null);
+  const raw = await response.text().catch(() => null);
+  let result;
+  try {
+    result = JSON.parse(raw);
+  } catch {
+    result = raw;
+  }
 
   if (response.status === 401 && !isPublicAuthApi) {
     clearAuthStorage();

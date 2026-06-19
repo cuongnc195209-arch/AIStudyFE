@@ -184,6 +184,15 @@ export default function ChatbotPage() {
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
+  function extractSessionId(result) {
+    if (typeof result === "string") {
+      const match = result.match(/Session ID:\s*([a-f0-9-]+)/i);
+      if (match) return match[1];
+    }
+    const session = result?.data || result || {};
+    return session.sessionId || session.id || null;
+  }
+
   const activeSession = sessions.find((s) => s.id === activeId);
 
   useEffect(() => {
@@ -212,9 +221,9 @@ export default function ChatbotPage() {
   async function handleNewSession() {
     try {
       const result = await startChatSession([]);
-      const session = result?.data || result || {};
+      const sessionId = extractSessionId(result);
       const newSess = {
-        id: session.sessionId || session.id || Date.now(),
+        id: sessionId || Date.now(),
         name: `Chat ${sessions.length + 1}`,
         docs: [],
         messages: [],
@@ -258,9 +267,9 @@ export default function ChatbotPage() {
 
     try {
       const result = await startChatSession(docs.map((d) => d.id));
-      const session = result?.data || result || {};
+      const sessionId = extractSessionId(result);
       const newSess = {
-        id: session.sessionId || session.id,
+        id: sessionId || Date.now(),
         name: `Chat ${sessions.length + 1}`,
         docs,
         messages: [],
@@ -295,9 +304,10 @@ export default function ChatbotPage() {
 
     try {
       const result = await sendChatMessage(activeId, text);
-      const data = result?.data || result || {};
       const aiContent =
-        data.reply || data.message || data.content || data.answer || "...";
+        typeof result === "string"
+          ? result
+          : result?.reply || result?.message || result?.content || result?.answer || "...";
       const aiMsg = { id: Date.now() + 1, role: "ai", content: aiContent };
       setSessions((prev) =>
         prev.map((s) =>
