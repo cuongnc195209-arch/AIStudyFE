@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import AppLayout from "../../components/layout/AppLayout";
 import "./DashboardPage.css";
@@ -72,26 +73,36 @@ const RECENT_DOCS = [
   },
 ];
 
-const RECENT_CHATS = [
-  {
-    id: 1,
-    question: "Giải thích khái niệm OOP trong lập trình?",
-    doc: "Giáo trình Lập trình Web",
-    time: "2 giờ trước",
-  },
-  {
-    id: 2,
-    question: "Cách tối ưu hóa câu lệnh SQL JOIN?",
-    doc: "Slide CSDL Chương 5",
-    time: "Hôm qua",
-  },
-  {
-    id: 3,
-    question: "Thuật toán A* hoạt động như thế nào?",
-    doc: "Bài tập Trí tuệ nhân tạo",
-    time: "2 ngày trước",
-  },
-];
+function timeAgo(iso) {
+  const diff = Math.floor((Date.now() - new Date(iso)) / 60000);
+  if (diff < 1) return "Vừa xong";
+  if (diff < 60) return `${diff} phút trước`;
+  if (diff < 1440) return `${Math.floor(diff / 60)} giờ trước`;
+  const days = Math.floor(diff / 1440);
+  if (days === 1) return "Hôm qua";
+  return `${days} ngày trước`;
+}
+
+function getRecentChats() {
+  try {
+    const sessions = JSON.parse(localStorage.getItem("chatSessions")) || [];
+    return sessions
+      .filter((s) => s.messages && s.messages.length > 0)
+      .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+      .slice(0, 3)
+      .map((s) => {
+        const firstUserMsg = s.messages.find((m) => m.role === "user");
+        return {
+          id: s.id,
+          question: firstUserMsg?.content || s.name,
+          doc: s.docs?.length > 0 ? s.docs[0].name : null,
+          time: timeAgo(s.updatedAt),
+        };
+      });
+  } catch {
+    return [];
+  }
+}
 
 const FORUM_ACTIVITY = [
   {
@@ -124,6 +135,11 @@ const ACTIVITY_ICON = { comment: "💬", post: "📝", download: "⬇️" };
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const [recentChats, setRecentChats] = useState([]);
+
+  useEffect(() => {
+    setRecentChats(getRecentChats());
+  }, []);
   const hour = new Date().getHours();
   const greeting =
     hour < 12
@@ -288,16 +304,22 @@ export default function DashboardPage() {
                 </button>
               </div>
               <div className="chat-list">
-                {RECENT_CHATS.map((chat) => (
-                  <div key={chat.id} className="chat-row">
-                    <div className="chat-ai-dot">AI</div>
-                    <div className="chat-meta">
-                      <p className="chat-question">{chat.question}</p>
-                      <p className="chat-doc">📄 {chat.doc}</p>
+                {recentChats.length > 0 ? (
+                  recentChats.map((chat) => (
+                    <div key={chat.id} className="chat-row" onClick={() => navigate("/chatbot")} style={{ cursor: "pointer" }}>
+                      <div className="chat-ai-dot">AI</div>
+                      <div className="chat-meta">
+                        <p className="chat-question">{chat.question}</p>
+                        {chat.doc && <p className="chat-doc">📄 {chat.doc}</p>}
+                      </div>
+                      <span className="chat-time">{chat.time}</span>
                     </div>
-                    <span className="chat-time">{chat.time}</span>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p style={{ textAlign: "center", color: "#888", padding: 16 }}>
+                    Chưa có cuộc trò chuyện nào
+                  </p>
+                )}
               </div>
               <button
                 className="new-chat-btn"
