@@ -441,10 +441,15 @@ function OverviewSection() {
 ════════════════════════════════ */
 function mapUser(u) {
   const status = (u.accountStatus || "").toLowerCase() === "locked" ? "locked" : "active";
-  const emailName = (u.email || "").split("@")[0];
+  const fullName =
+    u.fullName ||
+    u.customerProfile?.fullName ||
+    (u.email || "").split("@")[0] ||
+    "Unknown";
+  const id = u.id || u.customerProfile?.id;
   return {
-    id: u.id,
-    name: u.fullName || emailName,
+    id,
+    name: fullName,
     email: u.email || "",
     joined: u.createdAt ? u.createdAt.slice(0, 10) : "",
     role: u.role || "USER",

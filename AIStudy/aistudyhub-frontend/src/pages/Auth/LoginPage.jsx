@@ -93,12 +93,23 @@ export default function LoginPage() {
         authData.userRole ||
         "CUSTOMER";
 
+      const userId =
+        rawUser.id ||
+        rawUser.userId ||
+        rawUser.user_id ||
+        authData.id ||
+        authData.userId ||
+        authData.user_id;
+
       const user = {
         ...rawUser,
+        id: userId,
         email: rawUser.email || loginData.email,
         fullName,
         role,
       };
+
+      console.log("Saved user object:", user);
 
       localStorage.setItem("user", JSON.stringify(user));
       localStorage.setItem("role", role);

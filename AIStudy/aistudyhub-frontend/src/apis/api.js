@@ -9,8 +9,18 @@ export function clearAuthStorage() {
   sessionStorage.clear();
 }
 
+function getUserId() {
+  try {
+    const user = JSON.parse(localStorage.getItem("user"));
+    return user?.id || user?.userId || user?.user_id || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function request(path, options = {}) {
   const token = localStorage.getItem("accessToken");
+  const userId = getUserId();
 
   const isPublicAuthApi =
     path === "/auth/login" ||
@@ -20,15 +30,20 @@ export async function request(path, options = {}) {
     path === "/auth/refresh" ||
     path === "/auth/logout";
 
+  const isFormData = options.body instanceof FormData;
+
+  const headers = {
+    ...(isFormData ? {} : { "Content-Type": "application/json" }),
+    ...(!isPublicAuthApi && token
+      ? { Authorization: `Bearer ${token}` }
+      : {}),
+    ...(!isPublicAuthApi && userId ? { "X-User-Id": userId } : {}),
+    ...(options.headers || {}),
+  };
+
   const response = await fetch(`${BASE_URL}${path}`, {
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(!isPublicAuthApi && token
-        ? { Authorization: `Bearer ${token}` }
-        : {}),
-      ...(options.headers || {}),
-    },
+    headers,
   });
 
   const result = await response.json().catch(() => null);
