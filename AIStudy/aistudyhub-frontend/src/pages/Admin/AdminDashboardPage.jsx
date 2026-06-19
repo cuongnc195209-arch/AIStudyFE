@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { getProfile } from "../../apis/authApi";
 import { getUsers } from "../../apis/adminApi";
 import AdminLayout from "../../components/layout/AdminLayout";
@@ -1225,7 +1226,17 @@ function ConfigSection({ onToast }) {
    MAIN PAGE
 ════════════════════════════════ */
 export default function AdminDashboardPage() {
-  const [section, setSection] = useState("overview");
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const sectionFromUrl = location.pathname.split("/admin/")[1] || "overview";
+  const [section, setSection] = useState(sectionFromUrl);
+
+  function handleNavigate(s) {
+    setSection(s);
+    navigate(s === "overview" ? "/admin" : `/admin/${s}`, { replace: true });
+  }
+
   const [toast, setToast] = useState(null);
 
   const [currentUser, setCurrentUser] = useState(() => {
@@ -1318,7 +1329,7 @@ export default function AdminDashboardPage() {
   };
 
   return (
-    <AdminLayout activeSection={section} onNavigate={setSection}>
+    <AdminLayout activeSection={section} onNavigate={handleNavigate}>
       <div className="admin-page">
         {/* Top bar */}
         <div className="admin-topbar">
