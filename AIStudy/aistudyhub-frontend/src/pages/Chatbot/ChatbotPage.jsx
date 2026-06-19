@@ -210,7 +210,31 @@ export default function ChatbotPage() {
   }
 
   async function handleNewSession() {
-    setShowDocPicker(true);
+    try {
+      const result = await startChatSession([]);
+      const session = result?.data || result || {};
+      const newSess = {
+        id: session.sessionId || session.id || Date.now(),
+        name: `Chat ${sessions.length + 1}`,
+        docs: [],
+        messages: [],
+        updatedAt: new Date().toISOString(),
+      };
+      setSessions((prev) => [newSess, ...prev]);
+      setActiveId(newSess.id);
+    } catch (err) {
+      console.error("Start session error:", err);
+      const newSess = {
+        id: Date.now(),
+        name: `Chat ${sessions.length + 1}`,
+        docs: [],
+        messages: [],
+        updatedAt: new Date().toISOString(),
+      };
+      setSessions((prev) => [newSess, ...prev]);
+      setActiveId(newSess.id);
+    }
+    inputRef.current?.focus();
   }
 
   async function handleDocConfirm(docs) {
@@ -253,10 +277,6 @@ export default function ChatbotPage() {
   async function handleSend() {
     const text = input.trim();
     if (!text || loading) return;
-    if (!activeSession?.docs.length) {
-      setShowDocPicker(true);
-      return;
-    }
 
     const userMsg = { id: Date.now(), role: "user", content: text };
     setSessions((prev) =>
@@ -490,27 +510,25 @@ export default function ChatbotPage() {
                     <p>
                       {activeSession.docs.length > 0
                         ? `Tôi đã sẵn sàng trả lời câu hỏi về ${activeSession.docs.map((d) => d.name).join(", ")}.`
-                        : "Hãy chọn tài liệu trước, sau đó đặt câu hỏi để tôi hỗ trợ bạn học tập."}
+                        : "Hãy đặt câu hỏi để tôi hỗ trợ bạn học tập. Bạn cũng có thể chọn tài liệu để hỏi đáp chính xác hơn."}
                     </p>
-                    {activeSession.docs.length > 0 && (
-                      <div className="suggestions">
-                        <p className="suggestions-label">Gợi ý câu hỏi:</p>
-                        <div className="suggestion-list">
-                          {SUGGESTIONS.map((s) => (
-                            <button
-                              key={s}
-                              className="suggestion-btn"
-                              onClick={() => {
-                                setInput(s);
-                                inputRef.current?.focus();
-                              }}
-                            >
-                              {s}
-                            </button>
-                          ))}
-                        </div>
+                    <div className="suggestions">
+                      <p className="suggestions-label">Gợi ý câu hỏi:</p>
+                      <div className="suggestion-list">
+                        {SUGGESTIONS.map((s) => (
+                          <button
+                            key={s}
+                            className="suggestion-btn"
+                            onClick={() => {
+                              setInput(s);
+                              inputRef.current?.focus();
+                            }}
+                          >
+                            {s}
+                          </button>
+                        ))}
                       </div>
-                    )}
+                    </div>
                   </div>
                 )}
                 {activeSession.messages.map((msg) => (
@@ -522,27 +540,12 @@ export default function ChatbotPage() {
 
               {/* Input area */}
               <div className="chat-input-area">
-                {activeSession.docs.length === 0 && (
-                  <div className="no-doc-warning">
-                    ⚠️ Chưa chọn tài liệu —{" "}
-                    <button
-                      className="warning-link"
-                      onClick={() => setShowDocPicker(true)}
-                    >
-                      chọn tài liệu ngay
-                    </button>
-                  </div>
-                )}
                 <div className="input-row">
                   <textarea
                     ref={inputRef}
                     className="chat-textarea"
                     rows={1}
-                    placeholder={
-                      activeSession.docs.length > 0
-                        ? "Hỏi về nội dung tài liệu... (Enter để gửi, Shift+Enter xuống dòng)"
-                        : "Chọn tài liệu trước khi đặt câu hỏi"
-                    }
+                    placeholder="Đặt câu hỏi... (Enter để gửi, Shift+Enter xuống dòng)"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
