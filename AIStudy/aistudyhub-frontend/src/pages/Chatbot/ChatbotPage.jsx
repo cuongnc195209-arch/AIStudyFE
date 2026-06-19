@@ -171,8 +171,20 @@ function TypingIndicator() {
 }
 
 /* ── Main Page ── */
+function loadSessionsFromStorage() {
+  try {
+    return JSON.parse(localStorage.getItem("chatSessions")) || [];
+  } catch {
+    return [];
+  }
+}
+
+function saveSessionsToStorage(sessions) {
+  localStorage.setItem("chatSessions", JSON.stringify(sessions));
+}
+
 export default function ChatbotPage() {
-  const [sessions, setSessions] = useState([]);
+  const [sessions, setSessions] = useState(loadSessionsFromStorage);
   const [activeId, setActiveId] = useState(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -200,6 +212,18 @@ export default function ChatbotPage() {
   }, []);
 
   useEffect(() => {
+    saveSessionsToStorage(sessions);
+  }, [sessions]);
+
+  useEffect(() => {
+    if (!activeId) return;
+    const session = sessions.find((s) => s.id === activeId);
+    if (session && session.messages.length === 0) {
+      loadChatHistory(activeId);
+    }
+  }, [activeId]);
+
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [activeSession?.messages, loading]);
 
@@ -215,6 +239,27 @@ export default function ChatbotPage() {
       setAllDocs(docs);
     } catch (err) {
       console.error("Load docs error:", err);
+    }
+  }
+
+  async function loadChatHistory(sessionId) {
+    try {
+      const result = await getChatHistory(sessionId);
+      const messages = (result?.data?.content || result?.data || result?.content || result || []);
+      if (Array.isArray(messages) && messages.length > 0) {
+        const mapped = messages.map((m) => ({
+          id: m.id || Date.now() + Math.random(),
+          role: m.senderType === "USER" || m.senderType === "user" ? "user" : "ai",
+          content: m.messageContent || m.content || "",
+        }));
+        setSessions((prev) =>
+          prev.map((s) =>
+            s.id === sessionId ? { ...s, messages: mapped } : s
+          )
+        );
+      }
+    } catch (err) {
+      console.error("Load chat history error:", err);
     }
   }
 
