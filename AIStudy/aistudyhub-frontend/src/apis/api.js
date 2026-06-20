@@ -68,7 +68,9 @@ export async function request(path, options = {}) {
   }
 
   if (!response.ok) {
-    throw result || { message: "API request failed" };
+    const error = typeof result === "object" && result ? result : { message: result || "API request failed" };
+    error.status = response.status;
+    throw error;
   }
 
   return result;
