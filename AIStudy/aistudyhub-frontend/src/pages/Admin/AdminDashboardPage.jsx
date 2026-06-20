@@ -441,8 +441,7 @@ function OverviewSection() {
    SECTION: USERS
 ════════════════════════════════ */
 function mapUser(u) {
-  const rawStatus = (u.accountStatus || "").toUpperCase();
-  const status = rawStatus === "BANNED" || rawStatus === "LOCKED" ? "locked" : "active";
+  const status = (u.accountStatus || "").toLowerCase() === "locked" ? "locked" : "active";
   const fullName =
     u.fullName ||
     u.customerProfile?.fullName ||
