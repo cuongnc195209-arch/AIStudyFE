@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { getProfile } from "../../apis/authApi";
-import { getUsers } from "../../apis/adminApi";
+import { getUsers, updateUserStatus } from "../../apis/adminApi";
 import AdminLayout from "../../components/layout/AdminLayout";
 import "./AdminDashboardPage.css";
 
@@ -329,7 +329,7 @@ function OverviewSection() {
   useEffect(() => {
     getUsers()
       .then((res) => {
-        const list = res?.data || res || [];
+        const list = res?.content || res?.data || res || [];
         const mapped = Array.isArray(list) ? list.map(mapUser) : [];
         setRecentUsers(mapped.filter((u) => u.role !== "ADMIN").slice(0, 5));
       })
@@ -441,7 +441,8 @@ function OverviewSection() {
    SECTION: USERS
 ════════════════════════════════ */
 function mapUser(u) {
-  const status = (u.accountStatus || "").toLowerCase() === "locked" ? "locked" : "active";
+  const rawStatus = (u.accountStatus || "").toUpperCase();
+  const status = rawStatus === "BANNED" || rawStatus === "LOCKED" ? "locked" : "active";
   const fullName =
     u.fullName ||
     u.customerProfile?.fullName ||
@@ -468,7 +469,8 @@ function UsersSection({ onToast }) {
   useEffect(() => {
     getUsers()
       .then((res) => {
-        const list = res?.data || res || [];
+        console.log("getUsers response:", res);
+        const list = res?.content || res?.data || res || [];
         const all = Array.isArray(list) ? list.map(mapUser) : [];
         setUsers(all.filter((u) => u.role !== "ADMIN"));
       })
@@ -486,25 +488,33 @@ function UsersSection({ onToast }) {
     return matchSearch && matchFilter;
   });
 
-  function doAction() {
+  async function doAction() {
     const { action, user } = confirm;
-    if (action === "lock")
-      setUsers((us) =>
-        us.map((u) => (u.id === user.id ? { ...u, status: "locked" } : u)),
+    try {
+      if (action === "lock") {
+        await updateUserStatus(user.id, "BANNED");
+        setUsers((us) =>
+          us.map((u) => (u.id === user.id ? { ...u, status: "locked" } : u)),
+        );
+      }
+      if (action === "unlock") {
+        await updateUserStatus(user.id, "ACTIVE");
+        setUsers((us) =>
+          us.map((u) => (u.id === user.id ? { ...u, status: "active" } : u)),
+        );
+      }
+      if (action === "delete")
+        setUsers((us) => us.filter((u) => u.id !== user.id));
+      onToast(
+        action === "lock"
+          ? `Đã khóa tài khoản ${user.name}`
+          : action === "unlock"
+            ? `Đã mở khóa ${user.name}`
+            : `Đã xóa ${user.name}`,
       );
-    if (action === "unlock")
-      setUsers((us) =>
-        us.map((u) => (u.id === user.id ? { ...u, status: "active" } : u)),
-      );
-    if (action === "delete")
-      setUsers((us) => us.filter((u) => u.id !== user.id));
-    onToast(
-      action === "lock"
-        ? `Đã khóa tài khoản ${user.name}`
-        : action === "unlock"
-          ? `Đã mở khóa ${user.name}`
-          : `Đã xóa ${user.name}`,
-    );
+    } catch (err) {
+      onToast(`Lỗi: ${err?.message || "Không thể thực hiện thao tác"}`);
+    }
     setConfirm(null);
   }
 
