@@ -124,10 +124,11 @@ export default function LoginPage() {
     } catch (err) {
       console.error("Login error:", err);
 
-      if (err?.status === 403) {
+      const msg = err?.message || err?.error || err?.data?.message || "";
+      const isLocked = msg.toLowerCase().includes("locked") || msg.toLowerCase().includes("banned") || msg.toLowerCase().includes("khóa");
+      if (err?.status === 403 && isLocked) {
         setError("Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.");
       } else {
-        const msg = err?.message || err?.error || err?.data?.message || "";
         setError(msg && msg !== "API request failed" ? msg : "Sai email hoặc mật khẩu. Vui lòng thử lại.");
       }
     } finally {
