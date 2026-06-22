@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import AppLayout from "../../components/layout/AppLayout";
 import {
   getDocuments,
+  getDocumentById,
   createDocument,
   updateDocument,
   deleteDocument,
+  downloadDocumentFile,
 } from "../../apis/documentApi";
 import "./DocumentsPage.css";
 
@@ -25,6 +27,7 @@ function mapDoc(d) {
     downloads: d.downloads || 0,
     previewUrl: d.previewUrl || "",
     downloadUrl: d.downloadUrl || "",
+    textContent: d.textContent || "",
   };
 }
 
@@ -95,7 +98,7 @@ function sortDocs(docs, sort) {
 
 /* ── Upload Modal ── */
 function UploadModal({ onClose, onSuccess }) {
-  const [step, setStep] = useState("drop"); // drop | form | uploading | done
+  const [step, setStep] = useState("drop");
   const [file, setFile] = useState(null);
   const [error, setError] = useState("");
   const [dragOver, setDragOver] = useState(false);
@@ -159,11 +162,16 @@ function UploadModal({ onClose, onSuccess }) {
 
     try {
       const result = await createDocument({
-        documentName: meta.name.trim(),
-        fileType: file.ext,
-        previewUrl: "",
-        downloadUrl: "",
-        fileSize: file.raw.size,
+        file: file.raw,
+        data: {
+          documentName: meta.name.trim(),
+          fileType: file.ext,
+          previewUrl: "",
+          downloadUrl: "",
+          fileSize: file.raw.size,
+          textContent:
+            meta.description || "Nội dung trích xuất tự động từ file.",
+        },
       });
 
       const saved = result?.data || result || {};
@@ -507,8 +515,66 @@ function DeleteConfirm({ doc, onClose, onConfirm }) {
   );
 }
 
+/* ── Preview Modal: chỉ xem một phần nội dung ── */
+function PreviewModal({ doc, content, onClose }) {
+  return (
+    <div
+      className="modal-overlay"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="modal">
+        <div className="modal-header">
+          <h2>Xem trước tài liệu</h2>
+          <button className="modal-close" onClick={onClose}>
+            ✕
+          </button>
+        </div>
+
+        <div className="modal-body">
+          <div className="selected-file">
+            <div
+              className="doc-ext"
+              style={{ background: EXT_COLOR[doc.ext] || "#6b7280" }}
+            >
+              {doc.ext}
+            </div>
+
+            <div>
+              <p className="sf-name">{doc.name}</p>
+              <p className="sf-size">Chỉ hiển thị một phần nội dung tài liệu</p>
+            </div>
+          </div>
+
+          <div
+            style={{
+              marginTop: "16px",
+              padding: "16px",
+              border: "1px solid #e5e7eb",
+              borderRadius: "12px",
+              background: "#f9fafb",
+              maxHeight: "360px",
+              overflowY: "auto",
+              whiteSpace: "pre-wrap",
+              lineHeight: "1.6",
+              color: "#111827",
+            }}
+          >
+            {content || "Không có nội dung xem trước cho tài liệu này."}
+          </div>
+        </div>
+
+        <div className="modal-footer">
+          <button className="btn-cancel" onClick={onClose}>
+            Đóng
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Document Card ── */
-function DocCard({ doc, onEdit, onDelete }) {
+function DocCard({ doc, onEdit, onDelete, onPreview, onDownload }) {
   return (
     <div className="doc-card">
       <div className="doc-card-top">
@@ -556,11 +622,7 @@ function DocCard({ doc, onEdit, onDelete }) {
         <button
           className="card-action-btn"
           title="Xem trước"
-          onClick={() =>
-            doc.previewUrl
-              ? window.open(doc.previewUrl, "_blank")
-              : alert("Tài liệu này chưa có link xem trước.")
-          }
+          onClick={() => onPreview(doc)}
         >
           👁️ Xem
         </button>
@@ -568,11 +630,7 @@ function DocCard({ doc, onEdit, onDelete }) {
         <button
           className="card-action-btn"
           title="Tải xuống"
-          onClick={() =>
-            doc.downloadUrl
-              ? window.open(doc.downloadUrl, "_blank")
-              : alert("Tài liệu này chưa có link tải xuống.")
-          }
+          onClick={() => onDownload(doc)}
         >
           ⬇️
         </button>
@@ -598,7 +656,7 @@ function DocCard({ doc, onEdit, onDelete }) {
 }
 
 /* ── Document Row ── */
-function DocRow({ doc, onEdit, onDelete }) {
+function DocRow({ doc, onEdit, onDelete, onPreview, onDownload }) {
   return (
     <div className="doc-list-row">
       <div
@@ -636,11 +694,7 @@ function DocRow({ doc, onEdit, onDelete }) {
         <button
           className="row-action-btn"
           title="Xem trước"
-          onClick={() =>
-            doc.previewUrl
-              ? window.open(doc.previewUrl, "_blank")
-              : alert("Tài liệu này chưa có link xem trước.")
-          }
+          onClick={() => onPreview(doc)}
         >
           👁️
         </button>
@@ -648,11 +702,7 @@ function DocRow({ doc, onEdit, onDelete }) {
         <button
           className="row-action-btn"
           title="Tải xuống"
-          onClick={() =>
-            doc.downloadUrl
-              ? window.open(doc.downloadUrl, "_blank")
-              : alert("Tài liệu này chưa có link tải xuống.")
-          }
+          onClick={() => onDownload(doc)}
         >
           ⬇️
         </button>
@@ -690,6 +740,9 @@ export default function DocumentsPage() {
   const [showUpload, setShowUpload] = useState(false);
   const [editDoc, setEditDoc] = useState(null);
   const [deleteDoc, setDeleteDoc] = useState(null);
+
+  const [previewDoc, setPreviewDoc] = useState(null);
+  const [previewContent, setPreviewContent] = useState("");
 
   useEffect(() => {
     async function loadDocuments() {
@@ -762,6 +815,56 @@ export default function DocumentsPage() {
     } catch (err) {
       console.error("Delete document error:", err);
       alert("Xóa thất bại. Vui lòng thử lại.");
+    }
+  }
+
+  async function handlePreview(doc) {
+    try {
+      const result = await getDocumentById(doc.id);
+      const data = result?.data || result || {};
+
+      const rawContent =
+        data.textContent ||
+        data.previewText ||
+        data.content ||
+        data.description ||
+        doc.textContent ||
+        "";
+
+      const shortContent =
+        rawContent && rawContent.length > 1000
+          ? rawContent.slice(0, 1000) + "\n\n..."
+          : rawContent;
+
+      setPreviewDoc(doc);
+      setPreviewContent(
+        shortContent || "Tài liệu này chưa có nội dung xem trước.",
+      );
+    } catch (err) {
+      console.error("Preview document error:", err);
+      setPreviewDoc(doc);
+      setPreviewContent("Không thể tải nội dung xem trước.");
+    }
+  }
+
+  async function handleDownload(doc) {
+    try {
+      const blob = await downloadDocumentFile(doc.id);
+      const fileURL = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = fileURL;
+      a.download = `${doc.name || "document"}.${doc.ext || "file"}`;
+      document.body.appendChild(a);
+      a.click();
+
+      a.remove();
+      URL.revokeObjectURL(fileURL);
+    } catch (err) {
+      console.error("Download document error:", err);
+      alert(
+        "Không thể tải tài liệu. Hãy kiểm tra file có tồn tại trên Supabase Storage không.",
+      );
     }
   }
 
@@ -912,6 +1015,8 @@ export default function DocumentsPage() {
                       doc={doc}
                       onEdit={setEditDoc}
                       onDelete={setDeleteDoc}
+                      onPreview={handlePreview}
+                      onDownload={handleDownload}
                     />
                   ))}
                 </div>
@@ -932,6 +1037,8 @@ export default function DocumentsPage() {
                       doc={doc}
                       onEdit={setEditDoc}
                       onDelete={setDeleteDoc}
+                      onPreview={handlePreview}
+                      onDownload={handleDownload}
                     />
                   ))}
                 </div>
@@ -986,6 +1093,17 @@ export default function DocumentsPage() {
           doc={deleteDoc}
           onClose={() => setDeleteDoc(null)}
           onConfirm={handleDeleteConfirm}
+        />
+      )}
+
+      {previewDoc && (
+        <PreviewModal
+          doc={previewDoc}
+          content={previewContent}
+          onClose={() => {
+            setPreviewDoc(null);
+            setPreviewContent("");
+          }}
         />
       )}
     </AppLayout>
