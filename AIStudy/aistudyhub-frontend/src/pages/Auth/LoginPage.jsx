@@ -125,11 +125,11 @@ export default function LoginPage() {
       console.error("Login error:", err);
 
       const msg = err?.message || err?.error || err?.data?.message || "";
-      const isLocked = msg.toLowerCase().includes("locked") || msg.toLowerCase().includes("banned") || msg.toLowerCase().includes("khóa");
-      if (err?.status === 403 && isLocked) {
+      const msgLower = msg.toLowerCase();
+      if (msgLower.includes("banned") || msgLower.includes("locked") || msgLower.includes("disabled")) {
         setError("Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.");
       } else {
-        setError(msg && msg !== "API request failed" ? msg : "Sai email hoặc mật khẩu. Vui lòng thử lại.");
+        setError("Sai email hoặc mật khẩu. Vui lòng thử lại.");
       }
     } finally {
       setLoading(false);
