@@ -54,7 +54,26 @@ export function createDocument({ file, data }) {
   const formData = new FormData();
 
   formData.append("file", file);
-  if (metadata.documentName) formData.append("documentName", metadata.documentName);
+
+  const description =
+    data?.description ||
+    data?.textContent ||
+    "Nội dung trích xuất tự động từ file.";
+
+  formData.append("description", description);
+  formData.append("textContent", description);
+
+  if (data?.documentName) {
+    formData.append("documentName", data.documentName);
+  }
+
+  if (data?.fileType) {
+    formData.append("fileType", data.fileType);
+  }
+
+  if (data?.fileSize) {
+    formData.append("fileSize", data.fileSize);
+  }
 
   return request("/v1/documents", {
     method: "POST",

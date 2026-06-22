@@ -156,17 +156,27 @@ function UploadModal({ onClose, onSuccess }) {
 
     if (!meta.name.trim() || !file) return;
 
+    const description = meta.description.trim();
+
+    if (!description) {
+      setError("Vui lòng nhập mô tả tài liệu trước khi upload.");
+      return;
+    }
+
     setError("");
     setStep("uploading");
     setProgress(40);
 
     try {
       const result = await createDocument({
-        documentName: meta.name.trim(),
-        fileType: file.ext,
-        previewUrl: "",
-        downloadUrl: "",
-        fileSize: file.raw.size,
+        file: file.raw,
+        data: {
+          documentName: meta.name.trim(),
+          fileType: file.ext,
+          fileSize: file.raw.size,
+          description: description,
+          textContent: description,
+        },
       });
 
       const saved = result?.data || result || {};
@@ -820,10 +830,11 @@ export default function DocumentsPage() {
 
       const rawContent =
         data.textContent ||
+        data.description ||
         data.previewText ||
         data.content ||
-        data.description ||
         doc.textContent ||
+        doc.description ||
         "";
 
       const shortContent =
