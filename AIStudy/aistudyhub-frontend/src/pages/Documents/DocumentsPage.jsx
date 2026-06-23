@@ -27,7 +27,8 @@ function mapDoc(d) {
     downloads: d.downloads || 0,
     previewUrl: d.previewUrl || "",
     downloadUrl: d.downloadUrl || "",
-    textContent: d.textContent || "",
+    description: d.description || "",
+    textContent: d.textContent || d.description || "",
   };
 }
 
@@ -829,12 +830,12 @@ export default function DocumentsPage() {
       const data = result?.data || result || {};
 
       const rawContent =
-        data.textContent ||
         data.description ||
+        data.textContent ||
         data.previewText ||
         data.content ||
-        doc.textContent ||
         doc.description ||
+        doc.textContent ||
         "";
 
       const shortContent =

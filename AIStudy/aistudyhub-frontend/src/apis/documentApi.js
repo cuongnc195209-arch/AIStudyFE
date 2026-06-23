@@ -56,24 +56,10 @@ export function createDocument({ file, data }) {
   formData.append("file", file);
 
   const description =
-    data?.description ||
-    data?.textContent ||
-    "Nội dung trích xuất tự động từ file.";
+    data?.description || data?.textContent || "Không có mô tả.";
 
   formData.append("description", description);
   formData.append("textContent", description);
-
-  if (data?.documentName) {
-    formData.append("documentName", data.documentName);
-  }
-
-  if (data?.fileType) {
-    formData.append("fileType", data.fileType);
-  }
-
-  if (data?.fileSize) {
-    formData.append("fileSize", data.fileSize);
-  }
 
   return request("/v1/documents", {
     method: "POST",
