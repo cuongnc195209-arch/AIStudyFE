@@ -7,6 +7,7 @@ import {
   updateDocument,
   deleteDocument,
   downloadDocumentFile,
+  previewDocumentFile,
 } from "../../apis/documentApi";
 import "./DocumentsPage.css";
 
@@ -521,14 +522,17 @@ function DeleteConfirm({ doc, onClose, onConfirm }) {
   );
 }
 
-/* ── Preview Modal: chỉ xem một phần nội dung ── */
-function PreviewModal({ doc, content, onClose }) {
+/* ── Preview Modal: hiển thị nội dung file thật ── */
+function PreviewModal({ doc, previewUrl, previewError, onClose }) {
+  const isImage = doc.ext === "IMG";
+  const isPdf = doc.ext === "PDF";
+
   return (
     <div
       className="modal-overlay"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="modal">
+      <div className="modal" style={{ maxWidth: "800px", width: "90vw" }}>
         <div className="modal-header">
           <h2>Xem trước tài liệu</h2>
           <button className="modal-close" onClick={onClose}>
@@ -547,25 +551,46 @@ function PreviewModal({ doc, content, onClose }) {
 
             <div>
               <p className="sf-name">{doc.name}</p>
-              <p className="sf-size">Chỉ hiển thị một phần nội dung tài liệu</p>
+              <p className="sf-size">{sizeLabel(doc.sizeMB)}</p>
             </div>
           </div>
 
           <div
             style={{
               marginTop: "16px",
-              padding: "16px",
               border: "1px solid #e5e7eb",
               borderRadius: "12px",
               background: "#f9fafb",
-              maxHeight: "360px",
-              overflowY: "auto",
-              whiteSpace: "pre-wrap",
-              lineHeight: "1.6",
-              color: "#111827",
+              overflow: "hidden",
+              minHeight: "200px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
             }}
           >
-            {content || "Không có nội dung xem trước cho tài liệu này."}
+            {previewError ? (
+              <p style={{ color: "#ef4444", padding: "32px" }}>{previewError}</p>
+            ) : !previewUrl ? (
+              <p style={{ color: "#6b7280", padding: "32px" }}>Đang tải xem trước...</p>
+            ) : isImage ? (
+              <img
+                src={previewUrl}
+                alt={doc.name}
+                style={{ maxWidth: "100%", maxHeight: "70vh", objectFit: "contain" }}
+              />
+            ) : isPdf ? (
+              <iframe
+                src={previewUrl}
+                title={doc.name}
+                style={{ width: "100%", height: "70vh", border: "none" }}
+              />
+            ) : (
+              <iframe
+                src={previewUrl}
+                title={doc.name}
+                style={{ width: "100%", height: "70vh", border: "none" }}
+              />
+            )}
           </div>
         </div>
 
@@ -748,7 +773,8 @@ export default function DocumentsPage() {
   const [deleteDoc, setDeleteDoc] = useState(null);
 
   const [previewDoc, setPreviewDoc] = useState(null);
-  const [previewContent, setPreviewContent] = useState("");
+  const [previewUrl, setPreviewUrl] = useState("");
+  const [previewError, setPreviewError] = useState("");
 
   useEffect(() => {
     async function loadDocuments() {
@@ -825,32 +851,17 @@ export default function DocumentsPage() {
   }
 
   async function handlePreview(doc) {
+    setPreviewDoc(doc);
+    setPreviewUrl("");
+    setPreviewError("");
+
     try {
-      const result = await getDocumentById(doc.id);
-      const data = result?.data || result || {};
-
-      const rawContent =
-        data.description ||
-        data.textContent ||
-        data.previewText ||
-        data.content ||
-        doc.description ||
-        doc.textContent ||
-        "";
-
-      const shortContent =
-        rawContent && rawContent.length > 1000
-          ? rawContent.slice(0, 1000) + "\n\n..."
-          : rawContent;
-
-      setPreviewDoc(doc);
-      setPreviewContent(
-        shortContent || "Tài liệu này chưa có nội dung xem trước.",
-      );
+      const blob = await previewDocumentFile(doc.id);
+      const url = URL.createObjectURL(blob);
+      setPreviewUrl(url);
     } catch (err) {
       console.error("Preview document error:", err);
-      setPreviewDoc(doc);
-      setPreviewContent("Không thể tải nội dung xem trước.");
+      setPreviewError("Không thể tải nội dung xem trước.");
     }
   }
 
@@ -1106,10 +1117,13 @@ export default function DocumentsPage() {
       {previewDoc && (
         <PreviewModal
           doc={previewDoc}
-          content={previewContent}
+          previewUrl={previewUrl}
+          previewError={previewError}
           onClose={() => {
+            if (previewUrl) URL.revokeObjectURL(previewUrl);
             setPreviewDoc(null);
-            setPreviewContent("");
+            setPreviewUrl("");
+            setPreviewError("");
           }}
         />
       )}
