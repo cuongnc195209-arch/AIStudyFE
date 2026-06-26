@@ -3,7 +3,6 @@ import HomePage from "./pages/Home/HomePage";
 import LoginPage from "./pages/Auth/LoginPage";
 import RegisterPage from "./pages/Auth/RegisterPage";
 import DashboardPage from "./pages/Dashboard/DashboardPage";
-import DocumentsPage from "./pages/Documents/DocumentsPage";
 import ChatbotPage from "./pages/Chatbot/ChatbotPage";
 import ForumPage from "./pages/Forum/ForumPage";
 import CoursesPage from "./pages/Courses/CoursesPage";
@@ -28,16 +27,7 @@ function App() {
           }
         />
 
-        <Route
-          path="/documents"
-          element={
-            <PrivateRoute>
-              <DocumentsPage />
-            </PrivateRoute>
-          }
-        />
-
-        <Route
+<Route
           path="/chatbot"
           element={
             <PrivateRoute>
