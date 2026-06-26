@@ -114,23 +114,28 @@ function ReportModal({ doc, onClose, onSubmit }) {
 }
 
 function DocDetailModal({ doc, onClose, onRate, onReport }) {
+  const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+  const userName = storedUser.fullName || storedUser.name || storedUser.email || "Bạn";
+  const storedUserId = storedUser.id || storedUser.userId || storedUser.email || "anonymous";
+
   const [comments, setComments] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem(`doc-comments-${doc.id}`)) || [];
     } catch { return []; }
   });
   const [commentInput, setCommentInput] = useState("");
-  const [myRating, setMyRating] = useState(() => {
+  const [ratings, setRatings] = useState(() => {
     try {
-      return Number(localStorage.getItem(`doc-rating-${doc.id}`)) || 0;
-    } catch { return 0; }
+      return JSON.parse(localStorage.getItem(`doc-ratings-${doc.id}`)) || [];
+    } catch { return []; }
   });
   const [previewUrl, setPreviewUrl] = useState("");
   const [previewError, setPreviewError] = useState("");
   const [showPreview, setShowPreview] = useState(false);
 
-  const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
-  const userName = storedUser.fullName || storedUser.name || storedUser.email || "Bạn";
+  const myRatingEntry = ratings.find((r) => r.userId === storedUserId);
+  const myRating = myRatingEntry?.stars || 0;
+  const avgRating = ratings.length > 0 ? ratings.reduce((s, r) => s + r.stars, 0) / ratings.length : 0;
 
   function handleAddComment() {
     const text = commentInput.trim();
@@ -157,8 +162,12 @@ function DocDetailModal({ doc, onClose, onRate, onReport }) {
   }
 
   function handleRate(stars) {
-    setMyRating(stars);
-    localStorage.setItem(`doc-rating-${doc.id}`, stars);
+    const newEntry = { userId: storedUserId, author: userName, avatar: getInitials(userName), stars, time: "Vừa xong" };
+    const updated = myRatingEntry
+      ? ratings.map((r) => r.userId === storedUserId ? newEntry : r)
+      : [...ratings, newEntry];
+    setRatings(updated);
+    localStorage.setItem(`doc-ratings-${doc.id}`, JSON.stringify(updated));
     onRate?.(doc.id, stars);
   }
 
@@ -254,15 +263,35 @@ function DocDetailModal({ doc, onClose, onRate, onReport }) {
           </div>
 
           <div className="rating-section">
-            <h3 className="comments-title">Đánh giá tài liệu</h3>
+            <h3 className="comments-title">Đánh giá tài liệu ({ratings.length})</h3>
+            {ratings.length > 0 && (
+              <div className="rating-summary">
+                <StarRating value={Math.round(avgRating)} readonly size={20} />
+                <span className="rating-avg-text">{avgRating.toFixed(1)}/5 · {ratings.length} đánh giá</span>
+              </div>
+            )}
             <div className="rating-row">
-              <StarRating value={myRating} onChange={handleRate} size={24} />
+              <span className="rating-your-label">Đánh giá của bạn:</span>
+              <StarRating value={myRating} onChange={handleRate} size={22} />
               <span className="rating-label">
-                {myRating > 0 ? `Bạn đã đánh giá ${myRating}/5 sao` : "Nhấn để đánh giá"}
+                {myRating > 0 ? `${myRating}/5 sao` : "Nhấn để đánh giá"}
               </span>
             </div>
-            {doc.ratingCount > 0 && (
-              <p className="rating-avg">Trung bình: {doc.rating.toFixed(1)}/5 ({doc.ratingCount} đánh giá)</p>
+            {ratings.length > 0 && (
+              <div className="ratings-list">
+                {ratings.map((r) => (
+                  <div key={r.userId} className="rating-item">
+                    <div className="comment-avatar" style={{ background: r.userId === storedUserId ? "linear-gradient(135deg, #0066ff, #0052cc)" : "linear-gradient(135deg, #7c3aed, #a855f7)" }}>{r.avatar}</div>
+                    <div className="rating-item-body">
+                      <div className="rating-item-header">
+                        <span className="comment-author">{r.author}{r.userId === storedUserId ? " (Bạn)" : ""}</span>
+                        <StarRating value={r.stars} readonly size={14} />
+                        <span className="comment-time">{r.time}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
 
