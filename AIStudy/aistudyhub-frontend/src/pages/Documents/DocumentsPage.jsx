@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import AppLayout from "../../components/layout/AppLayout";
 import {
   getDocuments,
-  getDocumentById,
   createDocument,
   updateDocument,
   deleteDocument,
@@ -569,14 +568,22 @@ function PreviewModal({ doc, previewUrl, previewError, onClose }) {
             }}
           >
             {previewError ? (
-              <p style={{ color: "#ef4444", padding: "32px" }}>{previewError}</p>
+              <p style={{ color: "#ef4444", padding: "32px" }}>
+                {previewError}
+              </p>
             ) : !previewUrl ? (
-              <p style={{ color: "#6b7280", padding: "32px" }}>Đang tải xem trước...</p>
+              <p style={{ color: "#6b7280", padding: "32px" }}>
+                Đang tải xem trước...
+              </p>
             ) : isImage ? (
               <img
                 src={previewUrl}
                 alt={doc.name}
-                style={{ maxWidth: "100%", maxHeight: "70vh", objectFit: "contain" }}
+                style={{
+                  maxWidth: "100%",
+                  maxHeight: "70vh",
+                  objectFit: "contain",
+                }}
               />
             ) : isPdf ? (
               <iframe
