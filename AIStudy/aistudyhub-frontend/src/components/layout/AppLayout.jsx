@@ -6,7 +6,7 @@ import "./AppLayout.css";
 const NAV_ITEMS = [
   { to: "/dashboard", icon: "⊞", label: "Tổng quan" },
   { to: "/chatbot", icon: "💬", label: "AI Chatbot" },
-  { to: "/forum", icon: "🗣️", label: "Diễn đàn" },
+  { to: "/forum", icon: "📚", label: "Cộng đồng" },
   { to: "/courses", icon: "🎓", label: "Khóa học" },
 ];
 

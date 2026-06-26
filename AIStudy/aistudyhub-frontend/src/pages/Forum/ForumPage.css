@@ -869,6 +869,7 @@
   font-size: 0.87rem;
   font-family: inherit;
   color: #111827;
+  background: white;
   resize: none;
   outline: none;
   transition: border-color 0.15s;
@@ -892,6 +893,87 @@
 
 .comment-send-btn:hover:not(:disabled) { opacity: 0.88; }
 .comment-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Star Rating ── */
+.star-rating {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.star {
+  color: #d1d5db;
+  cursor: pointer;
+  transition: color 0.12s, transform 0.1s;
+  line-height: 1;
+}
+
+.star:hover { transform: scale(1.15); }
+.star--filled { color: #f59e0b; }
+.star--readonly { cursor: default; }
+.star--readonly:hover { transform: none; }
+
+.doc-card-rating-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.rating-count {
+  font-size: 0.72rem;
+  color: #9ca3af;
+}
+
+.rating-section {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.rating-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.rating-label {
+  font-size: 0.84rem;
+  color: #6b7280;
+}
+
+.rating-avg {
+  margin: 8px 0 0;
+  font-size: 0.82rem;
+  color: #9ca3af;
+}
+
+/* ── Doc ext badge ── */
+.doc-ext-badge {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: white;
+  border-radius: 6px;
+  padding: 3px 8px;
+  letter-spacing: 0.03em;
+}
+
+/* ── Report / Danger button ── */
+.btn-danger {
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 0.87rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.btn-danger:hover { opacity: 0.9; }
+
+.modal--sm { max-width: 440px; }
 
 /* ── Responsive ── */
 @media (max-width: 1100px) {

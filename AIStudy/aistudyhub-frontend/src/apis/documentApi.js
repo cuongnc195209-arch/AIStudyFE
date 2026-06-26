@@ -44,6 +44,12 @@ export function getDocuments() {
   });
 }
 
+export function getPublicDocuments() {
+  return request("/v1/documents/public", {
+    method: "GET",
+  });
+}
+
 export function getDocumentById(id) {
   return request(`/v1/documents/${id}`, {
     method: "GET",
