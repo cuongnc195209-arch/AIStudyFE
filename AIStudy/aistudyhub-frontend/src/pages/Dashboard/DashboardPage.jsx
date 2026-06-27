@@ -1,37 +1,16 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AppLayout from "../../components/layout/AppLayout";
 import {
   getDocuments,
+  getDocumentById,
   createDocument,
   updateDocument,
   deleteDocument,
   downloadDocumentFile,
-  previewDocumentFile,
 } from "../../apis/documentApi";
 import "./DashboardPage.css";
 import "../Documents/DocumentsPage.css";
-
-function mapDoc(d) {
-  return {
-    id: d.id || d.documentId || d.document_id,
-    name: d.documentName || d.name || "Untitled Document",
-    ext: (d.fileType || d.ext || "PDF").toUpperCase(),
-    subject: d.subject || "Tài liệu",
-    sizeMB: d.fileSize ? Number((d.fileSize / 1048576).toFixed(2)) : 0,
-    fileSize: d.fileSize || 0,
-    date: d.createdAt
-      ? d.createdAt.slice(0, 10)
-      : d.date || new Date().toISOString().slice(0, 10),
-    tags: Array.isArray(d.tags) ? d.tags : [],
-    privacy: d.privacy || "private",
-    downloads: d.downloads || 0,
-    previewUrl: d.previewUrl || "",
-    downloadUrl: d.downloadUrl || "",
-    description: d.description || "",
-    textContent: d.textContent || d.description || "",
-  };
-}
 
 const SUBJECTS = [
   "Tất cả",
@@ -55,9 +34,11 @@ const SORT_OPTIONS = [
 const ALLOWED_TYPES = {
   "application/pdf": "PDF",
   "application/vnd.ms-powerpoint": "PPT",
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation": "PPT",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+    "PPT",
   "application/msword": "DOC",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "DOC",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+    "DOC",
   "image/jpeg": "IMG",
   "image/png": "IMG",
 };
@@ -69,10 +50,44 @@ const EXT_COLOR = {
   IMG: "#10b981",
 };
 
+function normalizeExt(value) {
+  const ext = String(value || "PDF").toUpperCase();
+
+  if (ext === "DOCX" || ext === "DOC") return "DOC";
+  if (ext === "PPTX" || ext === "PPT") return "PPT";
+  if (ext === "JPG" || ext === "JPEG" || ext === "PNG" || ext === "IMG") {
+    return "IMG";
+  }
+
+  return ext;
+}
+
+function mapDoc(d) {
+  return {
+    id: d.id || d.documentId || d.document_id,
+    name: d.documentName || d.name || "Untitled Document",
+    ext: normalizeExt(d.fileType || d.ext || "PDF"),
+    subject: d.subject || "Tài liệu",
+    sizeMB: d.fileSize ? Number((d.fileSize / 1048576).toFixed(2)) : 0,
+    fileSize: d.fileSize || 0,
+    date: d.createdAt
+      ? d.createdAt.slice(0, 10)
+      : d.date || new Date().toISOString().slice(0, 10),
+    tags: Array.isArray(d.tags) ? d.tags : [],
+    privacy: d.privacy || "private",
+    downloads: d.downloads || 0,
+    previewUrl: d.previewUrl || "",
+    downloadUrl: d.downloadUrl || "",
+    description: d.description || "",
+    textContent: d.textContent || d.description || "",
+  };
+}
+
 function formatSize(bytes) {
   if (bytes >= 1073741824) return `${(bytes / 1073741824).toFixed(1)} GB`;
   if (bytes >= 1048576) return `${(bytes / 1048576).toFixed(1)} MB`;
   if (bytes >= 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+
   return `${bytes} B`;
 }
 
@@ -80,12 +95,15 @@ function sizeLabel(mb) {
   return mb >= 1 ? `${mb} MB` : `${(mb * 1024).toFixed(0)} KB`;
 }
 
-function relativeDate(dateStr) {
-  const diff = Math.floor((Date.now() - new Date(dateStr)) / 86400000);
+function relativeDate(dateStr, nowTime) {
+  const docTime = new Date(dateStr).getTime();
+  const diff = Math.floor((nowTime - docTime) / 86400000);
+
   if (diff === 0) return "Hôm nay";
   if (diff === 1) return "Hôm qua";
   if (diff < 7) return `${diff} ngày trước`;
   if (diff < 30) return `${Math.floor(diff / 7)} tuần trước`;
+
   return new Date(dateStr).toLocaleDateString("vi-VN");
 }
 
@@ -95,6 +113,7 @@ function sortDocs(docs, sort) {
     if (sort === "oldest") return new Date(a.date) - new Date(b.date);
     if (sort === "name") return a.name.localeCompare(b.name);
     if (sort === "size") return b.sizeMB - a.sizeMB;
+
     return 0;
   });
 }
@@ -108,12 +127,21 @@ function getChatSessionCount() {
   }
 }
 
+function getStoredUser() {
+  try {
+    return JSON.parse(localStorage.getItem("user") || "{}");
+  } catch {
+    return {};
+  }
+}
+
 function UploadModal({ onClose, onSuccess }) {
   const [step, setStep] = useState("drop");
   const [file, setFile] = useState(null);
   const [error, setError] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const [progress, setProgress] = useState(0);
+
   const [meta, setMeta] = useState({
     name: "",
     subject: SUBJECTS[1],
@@ -121,22 +149,39 @@ function UploadModal({ onClose, onSuccess }) {
     tags: "",
     privacy: "private",
   });
-  const inputRef = useRef();
+
+  const inputRef = useRef(null);
 
   function handleFilePick(f) {
     if (!f) return;
+
     const ext = ALLOWED_TYPES[f.type];
+
     if (!ext) {
-      setError("Định dạng không hỗ trợ. Chỉ chấp nhận PDF, DOCX, PPTX, JPG, PNG.");
+      setError(
+        "Định dạng không hỗ trợ. Chỉ chấp nhận PDF, DOCX, PPTX, JPG, PNG.",
+      );
       return;
     }
+
     if (f.size > 50 * 1024 * 1024) {
       setError("File vượt quá 50 MB.");
       return;
     }
+
     setError("");
-    setFile({ raw: f, ext, sizeMB: Number((f.size / 1048576).toFixed(1)) });
-    setMeta((m) => ({ ...m, name: f.name.replace(/\.[^.]+$/, "") }));
+
+    setFile({
+      raw: f,
+      ext,
+      sizeMB: Number((f.size / 1048576).toFixed(1)),
+    });
+
+    setMeta((m) => ({
+      ...m,
+      name: f.name.replace(/\.[^.]+$/, ""),
+    }));
+
     setStep("form");
   }
 
@@ -148,15 +193,20 @@ function UploadModal({ onClose, onSuccess }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
+
     if (!meta.name.trim() || !file) return;
+
     const description = meta.description.trim();
+
     if (!description) {
       setError("Vui lòng nhập mô tả tài liệu trước khi upload.");
       return;
     }
+
     setError("");
     setStep("uploading");
     setProgress(40);
+
     try {
       const result = await createDocument({
         file: file.raw,
@@ -168,12 +218,20 @@ function UploadModal({ onClose, onSuccess }) {
           textContent: description,
         },
       });
+
       const saved = result?.data || result || {};
       const savedId = saved.id || saved.documentId || saved.document_id;
-      if (!savedId) throw new Error("Backend chưa trả về documentId sau khi tạo tài liệu.");
+
+      if (!savedId) {
+        throw new Error("Backend chưa trả về documentId sau khi tạo tài liệu.");
+      }
+
       setProgress(100);
       setStep("done");
-      setTimeout(() => onSuccess(mapDoc(saved)), 600);
+
+      setTimeout(() => {
+        onSuccess(mapDoc(saved));
+      }, 600);
     } catch (err) {
       console.error("Upload failed:", err);
       setStep("form");
@@ -182,84 +240,171 @@ function UploadModal({ onClose, onSuccess }) {
   }
 
   return (
-    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div
+      className="modal-overlay"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
       <div className="modal">
         <div className="modal-header">
           <h2>{step === "done" ? "Upload thành công!" : "Upload Tài liệu"}</h2>
-          <button className="modal-close" onClick={onClose}>✕</button>
+          <button className="modal-close" onClick={onClose}>
+            ✕
+          </button>
         </div>
+
         {step === "drop" && (
           <div className="modal-body">
             <div
               className={`drop-zone${dragOver ? " drop-zone--over" : ""}`}
-              onClick={() => inputRef.current.click()}
-              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onClick={() => inputRef.current?.click()}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragOver(true);
+              }}
               onDragLeave={() => setDragOver(false)}
               onDrop={handleDrop}
             >
               <div className="drop-icon">📂</div>
               <p className="drop-title">Kéo thả file vào đây</p>
-              <p className="drop-sub">hoặc <span className="drop-link">chọn từ máy tính</span></p>
-              <p className="drop-hint">PDF, DOCX, PPTX, JPG, PNG · Tối đa 50 MB</p>
-              <input ref={inputRef} type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png" style={{ display: "none" }} onChange={(e) => handleFilePick(e.target.files[0])} />
+              <p className="drop-sub">
+                hoặc <span className="drop-link">chọn từ máy tính</span>
+              </p>
+              <p className="drop-hint">
+                PDF, DOCX, PPTX, JPG, PNG · Tối đa 50 MB
+              </p>
+
+              <input
+                ref={inputRef}
+                type="file"
+                accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png"
+                style={{ display: "none" }}
+                onChange={(e) => handleFilePick(e.target.files[0])}
+              />
             </div>
+
             {error && <p className="upload-error">⚠️ {error}</p>}
           </div>
         )}
+
         {step === "form" && (
           <form className="modal-body" onSubmit={handleSubmit}>
             <div className="selected-file">
-              <div className="doc-ext" style={{ background: EXT_COLOR[file.ext] || "#6b7280" }}>{file.ext}</div>
+              <div
+                className="doc-ext"
+                style={{ background: EXT_COLOR[file.ext] || "#6b7280" }}
+              >
+                {file.ext}
+              </div>
+
               <div>
                 <p className="sf-name">{file.raw.name}</p>
                 <p className="sf-size">{file.sizeMB} MB</p>
               </div>
-              <button type="button" className="sf-change" onClick={() => setStep("drop")}>Đổi file</button>
+
+              <button
+                type="button"
+                className="sf-change"
+                onClick={() => setStep("drop")}
+              >
+                Đổi file
+              </button>
             </div>
+
             <div className="form-grid">
               <div className="fg-full">
-                <label>Tên tài liệu <span className="required">*</span></label>
-                <input value={meta.name} onChange={(e) => setMeta((m) => ({ ...m, name: e.target.value }))} placeholder="Nhập tên tài liệu" required />
+                <label>
+                  Tên tài liệu <span className="required">*</span>
+                </label>
+                <input
+                  value={meta.name}
+                  onChange={(e) =>
+                    setMeta((m) => ({ ...m, name: e.target.value }))
+                  }
+                  placeholder="Nhập tên tài liệu"
+                  required
+                />
               </div>
+
               <div>
-                <label>Môn học <span className="required">*</span></label>
-                <select value={meta.subject} onChange={(e) => setMeta((m) => ({ ...m, subject: e.target.value }))}>
-                  {SUBJECTS.slice(1).map((s) => <option key={s}>{s}</option>)}
+                <label>
+                  Môn học <span className="required">*</span>
+                </label>
+                <select
+                  value={meta.subject}
+                  onChange={(e) =>
+                    setMeta((m) => ({ ...m, subject: e.target.value }))
+                  }
+                >
+                  {SUBJECTS.slice(1).map((s) => (
+                    <option key={s}>{s}</option>
+                  ))}
                 </select>
               </div>
+
               <div>
                 <label>Quyền riêng tư</label>
-                <select value={meta.privacy} onChange={(e) => setMeta((m) => ({ ...m, privacy: e.target.value }))}>
+                <select
+                  value={meta.privacy}
+                  onChange={(e) =>
+                    setMeta((m) => ({ ...m, privacy: e.target.value }))
+                  }
+                >
                   <option value="private">🔒 Riêng tư</option>
                   <option value="public">🌐 Công khai</option>
                 </select>
               </div>
+
               <div className="fg-full">
                 <label>Tag, cách nhau bằng dấu phẩy</label>
-                <input value={meta.tags} onChange={(e) => setMeta((m) => ({ ...m, tags: e.target.value }))} placeholder="ví dụ: lý thuyết, ôn tập, chương 1" />
+                <input
+                  value={meta.tags}
+                  onChange={(e) =>
+                    setMeta((m) => ({ ...m, tags: e.target.value }))
+                  }
+                  placeholder="ví dụ: lý thuyết, ôn tập, chương 1"
+                />
               </div>
+
               <div className="fg-full">
                 <label>Mô tả</label>
-                <textarea value={meta.description} onChange={(e) => setMeta((m) => ({ ...m, description: e.target.value }))} placeholder="Mô tả ngắn về tài liệu..." rows={3} />
+                <textarea
+                  value={meta.description}
+                  onChange={(e) =>
+                    setMeta((m) => ({ ...m, description: e.target.value }))
+                  }
+                  placeholder="Mô tả ngắn về tài liệu..."
+                  rows={3}
+                />
               </div>
             </div>
+
             {error && <p className="upload-error">⚠️ {error}</p>}
+
             <div className="modal-footer">
-              <button type="button" className="btn-cancel" onClick={onClose}>Hủy</button>
-              <button type="submit" className="btn-primary">⬆️ Xác nhận Upload</button>
+              <button type="button" className="btn-cancel" onClick={onClose}>
+                Hủy
+              </button>
+              <button type="submit" className="btn-primary">
+                ⬆️ Xác nhận Upload
+              </button>
             </div>
           </form>
         )}
+
         {step === "uploading" && (
           <div className="modal-body upload-progress-wrap">
             <div className="upload-progress-icon">📤</div>
             <p className="up-title">Đang upload tài liệu...</p>
             <div className="progress-track">
-              <div className="progress-fill" style={{ width: `${progress}%` }} />
+              <div
+                className="progress-fill"
+                style={{ width: `${progress}%` }}
+              />
             </div>
             <p className="up-percent">{Math.round(progress)}%</p>
           </div>
         )}
+
         {step === "done" && (
           <div className="modal-body upload-done-wrap">
             <div className="done-icon">✅</div>
@@ -282,49 +427,93 @@ function EditModal({ doc, onClose, onSave }) {
 
   function handleSubmit(e) {
     e.preventDefault();
+
     onSave({
       ...doc,
       name: meta.name.trim(),
       subject: meta.subject,
-      tags: meta.tags.split(",").map((t) => t.trim()).filter(Boolean),
+      tags: meta.tags
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean),
       privacy: meta.privacy,
     });
   }
 
   return (
-    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div
+      className="modal-overlay"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
       <div className="modal">
         <div className="modal-header">
           <h2>Chỉnh sửa tài liệu</h2>
-          <button className="modal-close" onClick={onClose}>✕</button>
+          <button className="modal-close" onClick={onClose}>
+            ✕
+          </button>
         </div>
+
         <form className="modal-body" onSubmit={handleSubmit}>
           <div className="form-grid">
             <div className="fg-full">
-              <label>Tên tài liệu <span className="required">*</span></label>
-              <input value={meta.name} onChange={(e) => setMeta((m) => ({ ...m, name: e.target.value }))} required />
+              <label>
+                Tên tài liệu <span className="required">*</span>
+              </label>
+              <input
+                value={meta.name}
+                onChange={(e) =>
+                  setMeta((m) => ({ ...m, name: e.target.value }))
+                }
+                required
+              />
             </div>
+
             <div>
               <label>Môn học</label>
-              <select value={meta.subject} onChange={(e) => setMeta((m) => ({ ...m, subject: e.target.value }))}>
-                {SUBJECTS.slice(1).map((s) => <option key={s}>{s}</option>)}
+              <select
+                value={meta.subject}
+                onChange={(e) =>
+                  setMeta((m) => ({ ...m, subject: e.target.value }))
+                }
+              >
+                {SUBJECTS.slice(1).map((s) => (
+                  <option key={s}>{s}</option>
+                ))}
               </select>
             </div>
+
             <div>
               <label>Quyền riêng tư</label>
-              <select value={meta.privacy} onChange={(e) => setMeta((m) => ({ ...m, privacy: e.target.value }))}>
+              <select
+                value={meta.privacy}
+                onChange={(e) =>
+                  setMeta((m) => ({ ...m, privacy: e.target.value }))
+                }
+              >
                 <option value="private">🔒 Riêng tư</option>
                 <option value="public">🌐 Công khai</option>
               </select>
             </div>
+
             <div className="fg-full">
               <label>Tag</label>
-              <input value={meta.tags} onChange={(e) => setMeta((m) => ({ ...m, tags: e.target.value }))} placeholder="tag1, tag2, tag3" />
+              <input
+                value={meta.tags}
+                onChange={(e) =>
+                  setMeta((m) => ({ ...m, tags: e.target.value }))
+                }
+                placeholder="tag1, tag2, tag3"
+              />
             </div>
           </div>
+
           <div className="modal-footer">
-            <button type="button" className="btn-cancel" onClick={onClose}>Hủy</button>
-            <button type="submit" className="btn-primary">💾 Lưu thay đổi</button>
+            <button type="button" className="btn-cancel" onClick={onClose}>
+              Hủy
+            </button>
+            <button type="submit" className="btn-primary">
+              💾 Lưu thay đổi
+            </button>
           </div>
         </form>
       </div>
@@ -334,113 +523,251 @@ function EditModal({ doc, onClose, onSave }) {
 
 function DeleteConfirm({ doc, onClose, onConfirm }) {
   return (
-    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div
+      className="modal-overlay"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
       <div className="modal modal--sm">
         <div className="modal-header">
           <h2>Xóa tài liệu</h2>
-          <button className="modal-close" onClick={onClose}>✕</button>
+          <button className="modal-close" onClick={onClose}>
+            ✕
+          </button>
         </div>
+
         <div className="modal-body">
           <div className="delete-confirm-icon">🗑️</div>
-          <p className="delete-confirm-text">Bạn có chắc muốn xóa tài liệu <strong>"{doc.name}"</strong>?</p>
-          <p className="delete-confirm-sub">Tài liệu sẽ bị xóa vĩnh viễn và không thể khôi phục.</p>
+          <p className="delete-confirm-text">
+            Bạn có chắc muốn xóa tài liệu <strong>"{doc.name}"</strong>?
+          </p>
+          <p className="delete-confirm-sub">
+            Tài liệu sẽ bị xóa vĩnh viễn và không thể khôi phục.
+          </p>
         </div>
+
         <div className="modal-footer">
-          <button className="btn-cancel" onClick={onClose}>Hủy</button>
-          <button className="btn-danger" onClick={() => onConfirm(doc.id)}>Xóa tài liệu</button>
+          <button className="btn-cancel" onClick={onClose}>
+            Hủy
+          </button>
+          <button className="btn-danger" onClick={() => onConfirm(doc.id)}>
+            Xóa tài liệu
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
-function PreviewModal({ doc, previewUrl, previewError, onClose }) {
-  const isImage = doc.ext === "IMG";
+function PreviewModal({ doc, previewContent, previewError, onClose }) {
   return (
-    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div
+      className="modal-overlay"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
       <div className="modal" style={{ maxWidth: "800px", width: "90vw" }}>
         <div className="modal-header">
           <h2>Xem trước tài liệu</h2>
-          <button className="modal-close" onClick={onClose}>✕</button>
+          <button className="modal-close" onClick={onClose}>
+            ✕
+          </button>
         </div>
+
         <div className="modal-body">
           <div className="selected-file">
-            <div className="doc-ext" style={{ background: EXT_COLOR[doc.ext] || "#6b7280" }}>{doc.ext}</div>
+            <div
+              className="doc-ext"
+              style={{ background: EXT_COLOR[doc.ext] || "#6b7280" }}
+            >
+              {doc.ext}
+            </div>
+
             <div>
               <p className="sf-name">{doc.name}</p>
               <p className="sf-size">{sizeLabel(doc.sizeMB)}</p>
             </div>
           </div>
-          <div style={{ marginTop: "16px", border: "1px solid #e5e7eb", borderRadius: "12px", background: "#f9fafb", overflow: "hidden", minHeight: "200px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+
+          <div
+            style={{
+              marginTop: "16px",
+              border: "1px solid #e5e7eb",
+              borderRadius: "12px",
+              background: "#f9fafb",
+              minHeight: "200px",
+              padding: "24px",
+              whiteSpace: "pre-wrap",
+              lineHeight: "1.6",
+              color: "#374151",
+            }}
+          >
             {previewError ? (
-              <p style={{ color: "#ef4444", padding: "32px" }}>{previewError}</p>
-            ) : !previewUrl ? (
-              <p style={{ color: "#6b7280", padding: "32px" }}>Đang tải xem trước...</p>
-            ) : isImage ? (
-              <img src={previewUrl} alt={doc.name} style={{ maxWidth: "100%", maxHeight: "70vh", objectFit: "contain" }} />
+              <p style={{ color: "#ef4444" }}>{previewError}</p>
+            ) : !previewContent ? (
+              <p style={{ color: "#6b7280" }}>Đang tải xem trước...</p>
             ) : (
-              <iframe src={previewUrl} title={doc.name} style={{ width: "100%", height: "70vh", border: "none" }} />
+              <p>{previewContent}</p>
             )}
           </div>
         </div>
+
         <div className="modal-footer">
-          <button className="btn-cancel" onClick={onClose}>Đóng</button>
+          <button className="btn-cancel" onClick={onClose}>
+            Đóng
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
-function DocCard({ doc, onEdit, onDelete, onPreview, onDownload }) {
+function DocCard({ doc, nowTime, onEdit, onDelete, onPreview, onDownload }) {
   return (
     <div className="doc-card">
       <div className="doc-card-top">
-        <div className="doc-card-ext" style={{ background: EXT_COLOR[doc.ext] || "#6b7280" }}>{doc.ext}</div>
+        <div
+          className="doc-card-ext"
+          style={{ background: EXT_COLOR[doc.ext] || "#6b7280" }}
+        >
+          {doc.ext}
+        </div>
+
         <div className="doc-card-privacy">
-          {doc.privacy === "public" ? <span className="badge-public">🌐 Công khai</span> : <span className="badge-private">🔒 Riêng tư</span>}
+          {doc.privacy === "public" ? (
+            <span className="badge-public">🌐 Công khai</span>
+          ) : (
+            <span className="badge-private">🔒 Riêng tư</span>
+          )}
         </div>
       </div>
+
       <p className="doc-card-name">{doc.name}</p>
       <p className="doc-card-subject">{doc.subject}</p>
+
       <div className="doc-card-tags">
-        {doc.tags.slice(0, 2).map((t) => <span key={t} className="tag">{t}</span>)}
-        {doc.tags.length > 2 && <span className="tag tag--more">+{doc.tags.length - 2}</span>}
+        {doc.tags.slice(0, 2).map((t) => (
+          <span key={t} className="tag">
+            {t}
+          </span>
+        ))}
+
+        {doc.tags.length > 2 && (
+          <span className="tag tag--more">+{doc.tags.length - 2}</span>
+        )}
       </div>
+
       <div className="doc-card-footer">
-        <span className="doc-card-meta">{sizeLabel(doc.sizeMB)} · {relativeDate(doc.date)}</span>
-        {doc.downloads > 0 && <span className="doc-card-dl">⬇️ {doc.downloads}</span>}
+        <span className="doc-card-meta">
+          {sizeLabel(doc.sizeMB)} · {relativeDate(doc.date, nowTime)}
+        </span>
+
+        {doc.downloads > 0 && (
+          <span className="doc-card-dl">⬇️ {doc.downloads}</span>
+        )}
       </div>
+
       <div className="doc-card-actions">
-        <button className="card-action-btn" title="Xem trước" onClick={() => onPreview(doc)}>👁️ Xem</button>
-        <button className="card-action-btn" title="Tải xuống" onClick={() => onDownload(doc)}>⬇️</button>
-        <button className="card-action-btn" title="Chỉnh sửa" onClick={() => onEdit(doc)}>✏️</button>
-        <button className="card-action-btn card-action-btn--del" title="Xóa" onClick={() => onDelete(doc)}>🗑️</button>
+        <button
+          className="card-action-btn"
+          title="Xem trước"
+          onClick={() => onPreview(doc)}
+        >
+          👁️ Xem
+        </button>
+
+        <button
+          className="card-action-btn"
+          title="Tải xuống"
+          onClick={() => onDownload(doc)}
+        >
+          ⬇️
+        </button>
+
+        <button
+          className="card-action-btn"
+          title="Chỉnh sửa"
+          onClick={() => onEdit(doc)}
+        >
+          ✏️
+        </button>
+
+        <button
+          className="card-action-btn card-action-btn--del"
+          title="Xóa"
+          onClick={() => onDelete(doc)}
+        >
+          🗑️
+        </button>
       </div>
     </div>
   );
 }
 
-function DocRow({ doc, onEdit, onDelete, onPreview, onDownload }) {
+function DocRow({ doc, nowTime, onEdit, onDelete, onPreview, onDownload }) {
   return (
     <div className="doc-list-row">
-      <div className="doc-ext-sm" style={{ background: EXT_COLOR[doc.ext] || "#6b7280" }}>{doc.ext}</div>
+      <div
+        className="doc-ext-sm"
+        style={{ background: EXT_COLOR[doc.ext] || "#6b7280" }}
+      >
+        {doc.ext}
+      </div>
+
       <div className="doc-list-info">
         <p className="doc-list-name">{doc.name}</p>
         <p className="doc-list-sub">{doc.subject}</p>
       </div>
+
       <div className="doc-list-tags">
-        {doc.tags.slice(0, 3).map((t) => <span key={t} className="tag">{t}</span>)}
+        {doc.tags.slice(0, 3).map((t) => (
+          <span key={t} className="tag">
+            {t}
+          </span>
+        ))}
       </div>
+
       <span className="doc-list-size">{sizeLabel(doc.sizeMB)}</span>
-      <span className="doc-list-date">{relativeDate(doc.date)}</span>
+      <span className="doc-list-date">{relativeDate(doc.date, nowTime)}</span>
+
       <div className="doc-list-privacy">
-        {doc.privacy === "public" ? <span className="badge-public">🌐</span> : <span className="badge-private">🔒</span>}
+        {doc.privacy === "public" ? (
+          <span className="badge-public">🌐</span>
+        ) : (
+          <span className="badge-private">🔒</span>
+        )}
       </div>
+
       <div className="doc-list-actions">
-        <button className="row-action-btn" title="Xem trước" onClick={() => onPreview(doc)}>👁️</button>
-        <button className="row-action-btn" title="Tải xuống" onClick={() => onDownload(doc)}>⬇️</button>
-        <button className="row-action-btn" title="Chỉnh sửa" onClick={() => onEdit(doc)}>✏️</button>
-        <button className="row-action-btn row-action-btn--del" title="Xóa" onClick={() => onDelete(doc)}>🗑️</button>
+        <button
+          className="row-action-btn"
+          title="Xem trước"
+          onClick={() => onPreview(doc)}
+        >
+          👁️
+        </button>
+
+        <button
+          className="row-action-btn"
+          title="Tải xuống"
+          onClick={() => onDownload(doc)}
+        >
+          ⬇️
+        </button>
+
+        <button
+          className="row-action-btn"
+          title="Chỉnh sửa"
+          onClick={() => onEdit(doc)}
+        >
+          ✏️
+        </button>
+
+        <button
+          className="row-action-btn row-action-btn--del"
+          title="Xóa"
+          onClick={() => onDelete(doc)}
+        >
+          🗑️
+        </button>
       </div>
     </div>
   );
@@ -448,57 +775,94 @@ function DocRow({ doc, onEdit, onDelete, onPreview, onDownload }) {
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+
+  const [nowTime] = useState(() => Date.now());
+  const [currentHour] = useState(() => new Date().getHours());
+  const [storedUser] = useState(() => getStoredUser());
+  const [chatCount] = useState(() => getChatSessionCount());
+
   const [docs, setDocs] = useState([]);
-  const [loadingDocs, setLoadingDocs] = useState(false);
+  const [loadingDocs, setLoadingDocs] = useState(true);
   const [docsError, setDocsError] = useState("");
+
   const [search, setSearch] = useState("");
   const [subject, setSubject] = useState("Tất cả");
   const [fileType, setFileType] = useState("Tất cả");
   const [sort, setSort] = useState("newest");
   const [view, setView] = useState("grid");
+
   const [showUpload, setShowUpload] = useState(false);
   const [editDoc, setEditDoc] = useState(null);
   const [deleteDoc, setDeleteDoc] = useState(null);
+
   const [previewDoc, setPreviewDoc] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState("");
+  const [previewContent, setPreviewContent] = useState("");
   const [previewError, setPreviewError] = useState("");
 
   useEffect(() => {
-    loadDocuments();
+    let cancelled = false;
+
+    async function fetchDocuments() {
+      try {
+        const result = await getDocuments();
+        const data = result?.data || result || [];
+
+        if (cancelled) return;
+
+        setDocs(Array.isArray(data) ? data.map(mapDoc) : []);
+        setDocsError("");
+      } catch (err) {
+        if (cancelled) return;
+
+        console.error("Dashboard load docs error:", err);
+        setDocsError("Không thể tải danh sách tài liệu.");
+      } finally {
+        if (!cancelled) {
+          setLoadingDocs(false);
+        }
+      }
+    }
+
+    fetchDocuments();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  async function loadDocuments() {
-    try {
-      setLoadingDocs(true);
-      setDocsError("");
-      const result = await getDocuments();
-      const data = result?.data || result || [];
-      setDocs(Array.isArray(data) ? data.map(mapDoc) : []);
-    } catch (err) {
-      console.error("Dashboard load docs error:", err);
-      setDocsError("Không thể tải danh sách tài liệu.");
-    } finally {
-      setLoadingDocs(false);
-    }
-  }
+  const totalBytes = useMemo(() => {
+    return docs.reduce((s, d) => s + d.fileSize, 0);
+  }, [docs]);
 
-  const totalBytes = docs.reduce((s, d) => s + d.fileSize, 0);
-  const chatCount = getChatSessionCount();
-  const oneWeekAgo = new Date(Date.now() - 7 * 86400000);
-  const docsThisWeek = docs.filter((d) => new Date(d.date) >= oneWeekAgo).length;
+  const docsThisWeek = useMemo(() => {
+    const oneWeekAgo = nowTime - 7 * 86400000;
 
-  const filtered = sortDocs(
-    docs.filter((d) => {
-      const q = search.toLowerCase();
-      const matchSearch = !q || d.name.toLowerCase().includes(q) || d.subject.toLowerCase().includes(q) || d.tags.some((t) => t.toLowerCase().includes(q));
-      const matchSubject = subject === "Tất cả" || d.subject === subject;
-      const matchType = fileType === "Tất cả" || d.ext === fileType;
-      return matchSearch && matchSubject && matchType;
-    }),
-    sort,
-  );
+    return docs.filter((d) => new Date(d.date).getTime() >= oneWeekAgo).length;
+  }, [docs, nowTime]);
 
-  const totalSize = docs.reduce((s, d) => s + d.sizeMB, 0).toFixed(1);
+  const filtered = useMemo(() => {
+    return sortDocs(
+      docs.filter((d) => {
+        const q = search.toLowerCase();
+
+        const matchSearch =
+          !q ||
+          d.name.toLowerCase().includes(q) ||
+          d.subject.toLowerCase().includes(q) ||
+          d.tags.some((t) => t.toLowerCase().includes(q));
+
+        const matchSubject = subject === "Tất cả" || d.subject === subject;
+        const matchType = fileType === "Tất cả" || d.ext === fileType;
+
+        return matchSearch && matchSubject && matchType;
+      }),
+      sort,
+    );
+  }, [docs, search, subject, fileType, sort]);
+
+  const totalSize = useMemo(() => {
+    return docs.reduce((s, d) => s + d.sizeMB, 0).toFixed(1);
+  }, [docs]);
 
   function handleUploadSuccess(newDoc) {
     setDocs((prev) => [newDoc, ...prev]);
@@ -509,7 +873,17 @@ export default function DashboardPage() {
     try {
       const result = await updateDocument(updated.id, updated.name);
       const data = result?.data || result;
-      setDocs((prev) => prev.map((d) => (d.id === updated.id ? mapDoc(data) : d)));
+
+      setDocs((prev) =>
+        prev.map((d) =>
+          d.id === updated.id && data && typeof data === "object"
+            ? mapDoc(data)
+            : d.id === updated.id
+              ? updated
+              : d,
+        ),
+      );
+
       setEditDoc(null);
     } catch (err) {
       console.error("Update document error:", err);
@@ -530,11 +904,30 @@ export default function DashboardPage() {
 
   async function handlePreview(doc) {
     setPreviewDoc(doc);
-    setPreviewUrl("");
+    setPreviewContent("");
     setPreviewError("");
+
     try {
-      const blob = await previewDocumentFile(doc.id);
-      setPreviewUrl(URL.createObjectURL(blob));
+      const result = await getDocumentById(doc.id);
+      const data = result?.data || result || {};
+
+      const rawContent =
+        data.description ||
+        data.textContent ||
+        data.previewText ||
+        data.content ||
+        doc.description ||
+        doc.textContent ||
+        "";
+
+      const shortContent =
+        rawContent && rawContent.length > 1000
+          ? rawContent.slice(0, 1000) + "\n\n..."
+          : rawContent;
+
+      setPreviewContent(
+        shortContent || "Tài liệu này chưa có nội dung xem trước.",
+      );
     } catch (err) {
       console.error("Preview document error:", err);
       setPreviewError("Không thể tải nội dung xem trước.");
@@ -545,12 +938,15 @@ export default function DashboardPage() {
     try {
       const blob = await downloadDocumentFile(doc.id);
       const fileURL = URL.createObjectURL(blob);
+
       const a = document.createElement("a");
       a.href = fileURL;
       a.download = `${doc.name || "document"}.${doc.ext || "file"}`;
+
       document.body.appendChild(a);
       a.click();
       a.remove();
+
       URL.revokeObjectURL(fileURL);
     } catch (err) {
       console.error("Download document error:", err);
@@ -558,51 +954,69 @@ export default function DashboardPage() {
     }
   }
 
-  const STATS = [
-    {
-      icon: "📁",
-      label: "Tài liệu",
-      value: `${docs.length}`,
-      sub: docsThisWeek > 0 ? `+${docsThisWeek} tuần này` : "Tuần này",
-      color: "blue",
-    },
-    {
-      icon: "💾",
-      label: "Dung lượng",
-      value: formatSize(totalBytes),
-      sub: `${((totalBytes / (5 * 1073741824)) * 100).toFixed(0)}% / 5 GB`,
-      color: "purple",
-    },
-    {
-      icon: "💬",
-      label: "Phiên Chat AI",
-      value: `${chatCount}`,
-      sub: "Tổng cộng",
-      color: "green",
-    },
-  ];
+  const stats = useMemo(
+    () => [
+      {
+        icon: "📁",
+        label: "Tài liệu",
+        value: `${docs.length}`,
+        sub: docsThisWeek > 0 ? `+${docsThisWeek} tuần này` : "Tuần này",
+        color: "blue",
+      },
+      {
+        icon: "💾",
+        label: "Dung lượng",
+        value: formatSize(totalBytes),
+        sub: `${((totalBytes / (5 * 1073741824)) * 100).toFixed(0)}% / 5 GB`,
+        color: "purple",
+      },
+      {
+        icon: "💬",
+        label: "Phiên Chat AI",
+        value: `${chatCount}`,
+        sub: "Tổng cộng",
+        color: "green",
+      },
+    ],
+    [docs.length, docsThisWeek, totalBytes, chatCount],
+  );
 
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Chào buổi sáng" : hour < 18 ? "Chào buổi chiều" : "Chào buổi tối";
-  const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
-  const displayName = storedUser.fullName || storedUser.name || storedUser.email || "Người dùng";
+  const greeting =
+    currentHour < 12
+      ? "Chào buổi sáng"
+      : currentHour < 18
+        ? "Chào buổi chiều"
+        : "Chào buổi tối";
+
+  const displayName =
+    storedUser.fullName || storedUser.name || storedUser.email || "Người dùng";
+
   const initials = displayName.includes("@")
     ? displayName[0].toUpperCase()
-    : displayName.split(" ").map((w) => w[0]).slice(-2).join("").toUpperCase();
+    : displayName
+        .split(" ")
+        .map((w) => w[0])
+        .slice(-2)
+        .join("")
+        .toUpperCase();
 
   return (
     <AppLayout>
       <div className="dashboard">
         <div className="dash-topbar">
           <div className="dash-greeting">
-            <h1>{greeting}, {displayName} 👋</h1>
+            <h1>
+              {greeting}, {displayName} 👋
+            </h1>
             <p>Hôm nay bạn muốn học gì?</p>
           </div>
+
           <div className="dash-topbar-right">
             <button className="notif-btn" title="Thông báo">
               🔔
               <span className="notif-badge">3</span>
             </button>
+
             <div className="user-chip">
               <div className="user-avatar">{initials}</div>
               <div className="user-info">
@@ -618,14 +1032,21 @@ export default function DashboardPage() {
             <span className="upgrade-icon">⚡</span>
             <div>
               <strong>Nâng cấp lên Premium</strong>
-              <span> — Tăng dung lượng lên 50 GB, AI không giới hạn, tài liệu độc quyền</span>
+              <span>
+                {" "}
+                — Tăng dung lượng lên 50 GB, AI không giới hạn, tài liệu độc
+                quyền
+              </span>
             </div>
           </div>
-          <button className="upgrade-btn" onClick={() => navigate("/courses")}>Xem gói Premium →</button>
+
+          <button className="upgrade-btn" onClick={() => navigate("/courses")}>
+            Xem gói Premium →
+          </button>
         </div>
 
         <div className="stats-grid">
-          {STATS.map((s) => (
+          {stats.map((s) => (
             <div key={s.label} className={`stat-card stat-${s.color}`}>
               <div className="stat-icon-wrap">{s.icon}</div>
               <div className="stat-body">
@@ -648,7 +1069,9 @@ export default function DashboardPage() {
           {!loadingDocs && docsError && (
             <div className="docs-empty">
               <div className="empty-icon">⚠️</div>
-              <p className="empty-title" style={{ color: "#ef4444" }}>{docsError}</p>
+              <p className="empty-title" style={{ color: "#ef4444" }}>
+                {docsError}
+              </p>
             </div>
           )}
 
@@ -657,39 +1080,116 @@ export default function DashboardPage() {
               <div className="docs-header">
                 <div>
                   <h1 className="docs-title">Tài liệu của tôi</h1>
-                  <p className="docs-sub">{docs.length} tài liệu · {totalSize} MB đã dùng</p>
+                  <p className="docs-sub">
+                    {docs.length} tài liệu · {totalSize} MB đã dùng
+                  </p>
                 </div>
-                <button className="btn-primary btn-upload" onClick={() => setShowUpload(true)}>⬆️ Upload tài liệu</button>
+
+                <button
+                  className="btn-primary btn-upload"
+                  onClick={() => setShowUpload(true)}
+                >
+                  ⬆️ Upload tài liệu
+                </button>
               </div>
 
               <div className="docs-toolbar">
                 <div className="search-wrap">
                   <span className="search-icon">🔍</span>
-                  <input className="search-input" type="text" placeholder="Tìm theo tên, môn học, tag..." value={search} onChange={(e) => setSearch(e.target.value)} />
-                  {search && <button className="search-clear" onClick={() => setSearch("")}>✕</button>}
+                  <input
+                    className="search-input"
+                    type="text"
+                    placeholder="Tìm theo tên, môn học, tag..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+
+                  {search && (
+                    <button
+                      className="search-clear"
+                      onClick={() => setSearch("")}
+                    >
+                      ✕
+                    </button>
+                  )}
                 </div>
+
                 <div className="filter-group">
-                  <select className="filter-select" value={subject} onChange={(e) => setSubject(e.target.value)}>
-                    {SUBJECTS.map((s) => <option key={s}>{s}</option>)}
+                  <select
+                    className="filter-select"
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                  >
+                    {SUBJECTS.map((s) => (
+                      <option key={s}>{s}</option>
+                    ))}
                   </select>
-                  <select className="filter-select" value={fileType} onChange={(e) => setFileType(e.target.value)}>
-                    {FILE_TYPES.map((t) => <option key={t}>{t}</option>)}
+
+                  <select
+                    className="filter-select"
+                    value={fileType}
+                    onChange={(e) => setFileType(e.target.value)}
+                  >
+                    {FILE_TYPES.map((t) => (
+                      <option key={t}>{t}</option>
+                    ))}
                   </select>
-                  <select className="filter-select" value={sort} onChange={(e) => setSort(e.target.value)}>
-                    {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+
+                  <select
+                    className="filter-select"
+                    value={sort}
+                    onChange={(e) => setSort(e.target.value)}
+                  >
+                    {SORT_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
+
                 <div className="view-toggle">
-                  <button className={`view-btn${view === "grid" ? " view-btn--active" : ""}`} onClick={() => setView("grid")} title="Dạng lưới">⊞</button>
-                  <button className={`view-btn${view === "list" ? " view-btn--active" : ""}`} onClick={() => setView("list")} title="Dạng danh sách">☰</button>
+                  <button
+                    className={`view-btn${
+                      view === "grid" ? " view-btn--active" : ""
+                    }`}
+                    onClick={() => setView("grid")}
+                    title="Dạng lưới"
+                  >
+                    ⊞
+                  </button>
+
+                  <button
+                    className={`view-btn${
+                      view === "list" ? " view-btn--active" : ""
+                    }`}
+                    onClick={() => setView("list")}
+                    title="Dạng danh sách"
+                  >
+                    ☰
+                  </button>
                 </div>
               </div>
 
               {(search || subject !== "Tất cả" || fileType !== "Tất cả") && (
                 <p className="results-label">
                   Tìm thấy <strong>{filtered.length}</strong> tài liệu
-                  {search && <> cho "<em>{search}</em>"</>}{" "}
-                  <button className="clear-filters" onClick={() => { setSearch(""); setSubject("Tất cả"); setFileType("Tất cả"); }}>Xóa bộ lọc</button>
+                  {search && (
+                    <>
+                      {" "}
+                      cho "<em>{search}</em>"
+                    </>
+                  )}{" "}
+                  <button
+                    className="clear-filters"
+                    onClick={() => {
+                      setSearch("");
+                      setSubject("Tất cả");
+                      setFileType("Tất cả");
+                    }}
+                  >
+                    Xóa bộ lọc
+                  </button>
                 </p>
               )}
 
@@ -697,7 +1197,15 @@ export default function DashboardPage() {
                 view === "grid" ? (
                   <div className="docs-grid">
                     {filtered.map((doc) => (
-                      <DocCard key={doc.id} doc={doc} onEdit={setEditDoc} onDelete={setDeleteDoc} onPreview={handlePreview} onDownload={handleDownload} />
+                      <DocCard
+                        key={doc.id}
+                        doc={doc}
+                        nowTime={nowTime}
+                        onEdit={setEditDoc}
+                        onDelete={setDeleteDoc}
+                        onPreview={handlePreview}
+                        onDownload={handleDownload}
+                      />
                     ))}
                   </div>
                 ) : (
@@ -710,17 +1218,42 @@ export default function DashboardPage() {
                       <span>Quyền</span>
                       <span>Thao tác</span>
                     </div>
+
                     {filtered.map((doc) => (
-                      <DocRow key={doc.id} doc={doc} onEdit={setEditDoc} onDelete={setDeleteDoc} onPreview={handlePreview} onDownload={handleDownload} />
+                      <DocRow
+                        key={doc.id}
+                        doc={doc}
+                        nowTime={nowTime}
+                        onEdit={setEditDoc}
+                        onDelete={setDeleteDoc}
+                        onPreview={handlePreview}
+                        onDownload={handleDownload}
+                      />
                     ))}
                   </div>
                 )
               ) : (
                 <div className="docs-empty">
                   <div className="empty-icon">📭</div>
-                  <p className="empty-title">{docs.length === 0 ? "Chưa có tài liệu nào" : "Không tìm thấy tài liệu phù hợp"}</p>
-                  <p className="empty-sub">{docs.length === 0 ? "Bắt đầu bằng cách upload tài liệu đầu tiên của bạn" : "Thử thay đổi từ khóa hoặc bộ lọc"}</p>
-                  {docs.length === 0 && <button className="btn-primary" onClick={() => setShowUpload(true)}>⬆️ Upload ngay</button>}
+                  <p className="empty-title">
+                    {docs.length === 0
+                      ? "Chưa có tài liệu nào"
+                      : "Không tìm thấy tài liệu phù hợp"}
+                  </p>
+                  <p className="empty-sub">
+                    {docs.length === 0
+                      ? "Bắt đầu bằng cách upload tài liệu đầu tiên của bạn"
+                      : "Thử thay đổi từ khóa hoặc bộ lọc"}
+                  </p>
+
+                  {docs.length === 0 && (
+                    <button
+                      className="btn-primary"
+                      onClick={() => setShowUpload(true)}
+                    >
+                      ⬆️ Upload ngay
+                    </button>
+                  )}
                 </div>
               )}
             </>
@@ -728,18 +1261,37 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {showUpload && <UploadModal onClose={() => setShowUpload(false)} onSuccess={handleUploadSuccess} />}
-      {editDoc && <EditModal doc={editDoc} onClose={() => setEditDoc(null)} onSave={handleEditSave} />}
-      {deleteDoc && <DeleteConfirm doc={deleteDoc} onClose={() => setDeleteDoc(null)} onConfirm={handleDeleteConfirm} />}
+      {showUpload && (
+        <UploadModal
+          onClose={() => setShowUpload(false)}
+          onSuccess={handleUploadSuccess}
+        />
+      )}
+
+      {editDoc && (
+        <EditModal
+          doc={editDoc}
+          onClose={() => setEditDoc(null)}
+          onSave={handleEditSave}
+        />
+      )}
+
+      {deleteDoc && (
+        <DeleteConfirm
+          doc={deleteDoc}
+          onClose={() => setDeleteDoc(null)}
+          onConfirm={handleDeleteConfirm}
+        />
+      )}
+
       {previewDoc && (
         <PreviewModal
           doc={previewDoc}
-          previewUrl={previewUrl}
+          previewContent={previewContent}
           previewError={previewError}
           onClose={() => {
-            if (previewUrl) URL.revokeObjectURL(previewUrl);
             setPreviewDoc(null);
-            setPreviewUrl("");
+            setPreviewContent("");
             setPreviewError("");
           }}
         />

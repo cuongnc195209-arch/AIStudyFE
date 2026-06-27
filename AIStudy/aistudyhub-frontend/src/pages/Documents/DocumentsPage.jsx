@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import AppLayout from "../../components/layout/AppLayout";
 import {
   getDocuments,
+  getDocumentById,
   createDocument,
   updateDocument,
   deleteDocument,
   downloadDocumentFile,
-  previewDocumentFile,
 } from "../../apis/documentApi";
 import "./DocumentsPage.css";
 
@@ -780,7 +780,7 @@ export default function DocumentsPage() {
   const [deleteDoc, setDeleteDoc] = useState(null);
 
   const [previewDoc, setPreviewDoc] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState("");
+  const [previewContent, setPreviewContent] = useState("");
   const [previewError, setPreviewError] = useState("");
 
   useEffect(() => {
