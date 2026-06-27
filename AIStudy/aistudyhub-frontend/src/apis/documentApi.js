@@ -63,12 +63,10 @@ export function searchDocuments(name = "", type = "") {
   });
 }
 
-/**
- * BE zip hiện tại chưa có GET /v1/documents/public.
- * Nên FE dùng searchDocuments rồi filter isPublic ở ForumPage.
- */
 export function getPublicDocuments() {
-  return searchDocuments("", "");
+  return request("/v1/documents/public", {
+    method: "GET",
+  });
 }
 
 export function createDocument({ file, data }) {

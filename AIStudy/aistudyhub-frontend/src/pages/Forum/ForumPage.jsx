@@ -101,7 +101,15 @@ function normalizeExt(d) {
 }
 
 function isPublicDocument(d) {
-  return d.isPublic === true || d.is_public === true || d.privacy === "public";
+  return (
+    d.isPublic === true ||
+    d.isPublic === "true" ||
+    d.is_public === true ||
+    d.is_public === "true" ||
+    d.public === true ||
+    d.public === "true" ||
+    d.privacy === "public"
+  );
 }
 
 function mapDoc(d) {
