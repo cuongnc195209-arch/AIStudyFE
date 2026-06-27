@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import AppLayout from "../../components/layout/AppLayout";
 import {
   getDocuments,
-  getDocumentById,
   createDocument,
   updateDocument,
   deleteDocument,
   downloadDocumentFile,
+  previewDocumentFile,
 } from "../../apis/documentApi";
 import "./DocumentsPage.css";
 
@@ -177,6 +177,7 @@ function UploadModal({ onClose, onSuccess }) {
           fileSize: file.raw.size,
           description: description,
           textContent: description,
+          isPublic: meta.privacy === "public",
         },
       });
 
@@ -780,7 +781,7 @@ export default function DocumentsPage() {
   const [deleteDoc, setDeleteDoc] = useState(null);
 
   const [previewDoc, setPreviewDoc] = useState(null);
-  const [previewContent, setPreviewContent] = useState("");
+  const [previewUrl, setPreviewUrl] = useState("");
   const [previewError, setPreviewError] = useState("");
 
   useEffect(() => {

@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { clearAuthStorage } from "../../apis/api";
+import { getStorageUsage } from "../../apis/storageApi";
 import "./AppLayout.css";
 
 const NAV_ITEMS = [
@@ -10,13 +11,59 @@ const NAV_ITEMS = [
   { to: "/courses", icon: "🎓", label: "Khóa học" },
 ];
 
+function formatGB(bytes) {
+  if (!bytes && bytes !== 0) return "0.0";
+  return (Number(bytes) / 1073741824).toFixed(1);
+}
+
+function getStoragePercent(storageUsage) {
+  if (!storageUsage) return "0%";
+
+  const percentage = storageUsage.percentageUsed;
+
+  if (typeof percentage === "string") {
+    return percentage.includes("%") ? percentage : `${percentage}%`;
+  }
+
+  if (typeof percentage === "number") {
+    return `${Math.min(100, Math.max(0, percentage))}%`;
+  }
+
+  return "0%";
+}
+
 export default function AppLayout({ children }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [storageUsage, setStorageUsage] = useState(null);
+
   const navigate = useNavigate();
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadStorageUsage() {
+      try {
+        const result = await getStorageUsage();
+        const data = result?.data || result;
+
+        if (!cancelled) {
+          setStorageUsage(data);
+        }
+      } catch (err) {
+        console.error("Load storage usage error:", err);
+      }
+    }
+
+    loadStorageUsage();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleLogout = async () => {
     try {
-      // Nếu có gọi API logout thì gọi ở đây
+      // Nếu sau này có API logout thì gọi ở đây
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
@@ -30,9 +77,11 @@ export default function AppLayout({ children }) {
       <aside className="app-sidebar">
         <div className="sidebar-header">
           <div className="sidebar-logo-icon">📋</div>
+
           {!collapsed && (
             <span className="sidebar-logo-text">AI Study Hub</span>
           )}
+
           <button
             className="sidebar-toggle"
             onClick={() => setCollapsed(!collapsed)}
@@ -53,6 +102,7 @@ export default function AppLayout({ children }) {
               title={collapsed ? item.label : undefined}
             >
               <span className="sidebar-link-icon">{item.icon}</span>
+
               {!collapsed && (
                 <span className="sidebar-link-label">{item.label}</span>
               )}
@@ -65,10 +115,23 @@ export default function AppLayout({ children }) {
             <div className="sidebar-storage">
               <div className="storage-row">
                 <span className="storage-label">Dung lượng</span>
-                <span className="storage-value">2.4 / 5 GB</span>
+
+                <span className="storage-value">
+                  {storageUsage
+                    ? `${formatGB(storageUsage.usedQuota)} / ${formatGB(
+                        storageUsage.totalQuota,
+                      )} GB`
+                    : "Đang tải..."}
+                </span>
               </div>
+
               <div className="storage-track">
-                <div className="storage-fill" style={{ width: "48%" }} />
+                <div
+                  className="storage-fill"
+                  style={{
+                    width: getStoragePercent(storageUsage),
+                  }}
+                />
               </div>
             </div>
           )}
@@ -81,6 +144,7 @@ export default function AppLayout({ children }) {
             title={collapsed ? "Cài đặt" : undefined}
           >
             <span className="sidebar-link-icon">⚙️</span>
+
             {!collapsed && <span className="sidebar-link-label">Cài đặt</span>}
           </NavLink>
 
@@ -90,6 +154,7 @@ export default function AppLayout({ children }) {
             title={collapsed ? "Đăng xuất" : undefined}
           >
             <span className="sidebar-link-icon">🚪</span>
+
             {!collapsed && (
               <span className="sidebar-link-label">Đăng xuất</span>
             )}

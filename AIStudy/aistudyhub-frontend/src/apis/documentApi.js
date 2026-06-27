@@ -56,6 +56,17 @@ export function getDocumentById(id) {
   });
 }
 
+export function searchDocuments(name = "", type = "") {
+  const params = new URLSearchParams();
+
+  if (name) params.append("name", name);
+  if (type && type !== "Tất cả") params.append("type", type);
+
+  return request(`/v1/documents/search?${params.toString()}`, {
+    method: "GET",
+  });
+}
+
 export function createDocument({ file, data }) {
   const formData = new FormData();
 
@@ -67,6 +78,10 @@ export function createDocument({ file, data }) {
   formData.append("description", description);
   formData.append("textContent", description);
 
+  // BE hiện tại chưa nhận isPublic, nhưng thêm dòng này không làm lỗi.
+  // Khi BE thêm @RequestParam isPublic thì FE đã sẵn sàng.
+  formData.append("isPublic", data?.isPublic ? "true" : "false");
+
   return request("/v1/documents", {
     method: "POST",
     body: formData,
@@ -77,6 +92,15 @@ export function updateDocument(id, newName) {
   return request(`/v1/documents/${id}?newName=${encodeURIComponent(newName)}`, {
     method: "PUT",
   });
+}
+
+export function updateDocumentVisibility(id, isPublic) {
+  return request(
+    `/v1/documents/${id}/visibility?isPublic=${encodeURIComponent(isPublic)}`,
+    {
+      method: "PATCH",
+    },
+  );
 }
 
 export function deleteDocument(id) {

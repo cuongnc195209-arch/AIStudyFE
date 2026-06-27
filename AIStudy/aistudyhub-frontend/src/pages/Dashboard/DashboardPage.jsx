@@ -216,6 +216,7 @@ function UploadModal({ onClose, onSuccess }) {
           fileSize: file.raw.size,
           description,
           textContent: description,
+          isPublic: meta.privacy === "public",
         },
       });
 
