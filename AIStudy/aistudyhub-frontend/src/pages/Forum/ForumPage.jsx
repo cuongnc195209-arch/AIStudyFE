@@ -101,15 +101,6 @@ function normalizeExt(d) {
 }
 
 function isPublicDocument(d) {
-  const hasPublicField =
-    d.isPublic !== undefined ||
-    d.is_public !== undefined ||
-    d.privacy !== undefined;
-
-  // Nếu BE dùng endpoint /public và không trả isPublic,
-  // vẫn cho hiển thị vì BE đã lọc ở server.
-  if (!hasPublicField) return true;
-
   return d.isPublic === true || d.is_public === true || d.privacy === "public";
 }
 

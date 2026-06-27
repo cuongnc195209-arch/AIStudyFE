@@ -44,12 +44,6 @@ export function getDocuments() {
   });
 }
 
-export function getPublicDocuments() {
-  return request("/v1/documents/public", {
-    method: "GET",
-  });
-}
-
 export function getDocumentById(id) {
   return request(`/v1/documents/${id}`, {
     method: "GET",
@@ -62,9 +56,19 @@ export function searchDocuments(name = "", type = "") {
   if (name) params.append("name", name);
   if (type && type !== "Tất cả") params.append("type", type);
 
-  return request(`/v1/documents/search?${params.toString()}`, {
+  const query = params.toString();
+
+  return request(`/v1/documents/search${query ? `?${query}` : ""}`, {
     method: "GET",
   });
+}
+
+/**
+ * BE zip hiện tại chưa có GET /v1/documents/public.
+ * Nên FE dùng searchDocuments rồi filter isPublic ở ForumPage.
+ */
+export function getPublicDocuments() {
+  return searchDocuments("", "");
 }
 
 export function createDocument({ file, data }) {
@@ -78,10 +82,6 @@ export function createDocument({ file, data }) {
   formData.append("description", description);
   formData.append("textContent", description);
 
-  // BE hiện tại chưa nhận isPublic, nhưng thêm dòng này không làm lỗi.
-  // Khi BE thêm @RequestParam isPublic thì FE đã sẵn sàng.
-  formData.append("isPublic", data?.isPublic ? "true" : "false");
-
   return request("/v1/documents", {
     method: "POST",
     body: formData,
@@ -94,13 +94,18 @@ export function updateDocument(id, newName) {
   });
 }
 
+/**
+ * BE hiện tại dùng:
+ * PUT /api/v1/documents/{documentId}/toggle-public
+ * Body: { "isPublic": true/false }
+ */
 export function updateDocumentVisibility(id, isPublic) {
-  return request(
-    `/v1/documents/${id}/visibility?isPublic=${encodeURIComponent(isPublic)}`,
-    {
-      method: "PATCH",
-    },
-  );
+  return request(`/v1/documents/${id}/toggle-public`, {
+    method: "PUT",
+    body: JSON.stringify({
+      isPublic: Boolean(isPublic),
+    }),
+  });
 }
 
 export function deleteDocument(id) {

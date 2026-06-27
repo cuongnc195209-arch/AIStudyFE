@@ -6,6 +6,7 @@ import {
   getDocumentById,
   createDocument,
   updateDocument,
+  updateDocumentVisibility,
   deleteDocument,
   downloadDocumentFile,
 } from "../../apis/documentApi";
@@ -63,6 +64,9 @@ function normalizeExt(value) {
 }
 
 function mapDoc(d) {
+  const isPublic =
+    d.isPublic === true || d.is_public === true || d.privacy === "public";
+
   return {
     id: d.id || d.documentId || d.document_id,
     name: d.documentName || d.name || "Untitled Document",
@@ -74,7 +78,8 @@ function mapDoc(d) {
       ? d.createdAt.slice(0, 10)
       : d.date || new Date().toISOString().slice(0, 10),
     tags: Array.isArray(d.tags) ? d.tags : [],
-    privacy: d.privacy || "private",
+    privacy: isPublic ? "public" : "private",
+    isPublic,
     downloads: d.downloads || 0,
     previewUrl: d.previewUrl || "",
     downloadUrl: d.downloadUrl || "",
@@ -227,11 +232,22 @@ function UploadModal({ onClose, onSuccess }) {
         throw new Error("Backend chưa trả về documentId sau khi tạo tài liệu.");
       }
 
+      let savedForUi = saved;
+
+      if (meta.privacy === "public") {
+        const toggleResult = await updateDocumentVisibility(savedId, true);
+        savedForUi = toggleResult?.data ||
+          toggleResult || {
+            ...saved,
+            isPublic: true,
+          };
+      }
+
       setProgress(100);
       setStep("done");
 
       setTimeout(() => {
-        onSuccess(mapDoc(saved));
+        onSuccess(mapDoc(savedForUi));
       }, 600);
     } catch (err) {
       console.error("Upload failed:", err);
@@ -872,16 +888,38 @@ export default function DashboardPage() {
 
   async function handleEditSave(updated) {
     try {
+      const oldDoc = docs.find((d) => d.id === updated.id);
+
       const result = await updateDocument(updated.id, updated.name);
-      const data = result?.data || result;
+      let data = result?.data || result || updated;
+
+      if (oldDoc && oldDoc.privacy !== updated.privacy) {
+        const toggleResult = await updateDocumentVisibility(
+          updated.id,
+          updated.privacy === "public",
+        );
+
+        data = toggleResult?.data ||
+          toggleResult || {
+            ...data,
+            isPublic: updated.privacy === "public",
+          };
+      }
+
+      const mapped = data && typeof data === "object" ? mapDoc(data) : updated;
 
       setDocs((prev) =>
         prev.map((d) =>
-          d.id === updated.id && data && typeof data === "object"
-            ? mapDoc(data)
-            : d.id === updated.id
-              ? updated
-              : d,
+          d.id === updated.id
+            ? {
+                ...d,
+                ...mapped,
+                subject: updated.subject,
+                tags: updated.tags,
+                privacy: updated.privacy,
+                isPublic: updated.privacy === "public",
+              }
+            : d,
         ),
       );
 
