@@ -365,6 +365,10 @@
 .status-active { color: #059669; }
 .status-locked { color: #ef4444; }
 
+.role-admin { color: #7c3aed; }
+.role-mod { color: #f97316; }
+.role-user { color: #3b82f6; }
+
 .plan-badge {
   display: inline-block;
   padding: 3px 10px;
