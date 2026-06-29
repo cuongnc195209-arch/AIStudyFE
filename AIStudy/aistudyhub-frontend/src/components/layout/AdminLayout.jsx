@@ -68,17 +68,6 @@ export default function AdminLayout({ activeSection, onNavigate, children }) {
         </nav>
 
         <div className="admin-sidebar-footer">
-          <NavLink
-            to="/dashboard"
-            className="admin-nav-btn"
-            title={collapsed ? "Về trang User" : undefined}
-          >
-            <span className="admin-nav-icon">↩️</span>
-            {!collapsed && (
-              <span className="admin-nav-label">Về trang User</span>
-            )}
-          </NavLink>
-
           <button
             className="admin-nav-btn admin-logout-btn"
             onClick={handleLogout}

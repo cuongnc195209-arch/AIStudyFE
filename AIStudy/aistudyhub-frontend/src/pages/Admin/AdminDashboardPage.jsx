@@ -507,16 +507,25 @@ function mapUser(u) {
   const status = rawStatus === "BANNED" || rawStatus === "LOCKED" ? "locked" : "active";
   const fullName =
     u.fullName ||
+    u.customerProfileFullName ||
     u.customerProfile?.fullName ||
     (u.email || "").split("@")[0] ||
     "Unknown";
   const id = u.id || u.customerProfile?.id;
+  const rawRole =
+    u.role ||
+    u.userRole ||
+    u.accountRole ||
+    (Array.isArray(u.roles) ? u.roles[0] : null) ||
+    (Array.isArray(u.authorities) ? u.authorities[0]?.authority || u.authorities[0] : null) ||
+    "USER";
+  const role = rawRole.replace(/^ROLE_/, "").toUpperCase();
   return {
     id,
     name: fullName,
     email: u.email || "",
     joined: u.createdAt ? u.createdAt.slice(0, 10) : "",
-    role: u.role || "USER",
+    role,
     status,
   };
 }
@@ -529,11 +538,10 @@ function UsersSection({ onToast }) {
   const [confirm, setConfirm] = useState(null);
 
   useEffect(() => {
-    getUsers()
+    getUsers({ size: 9999 })
       .then((res) => {
-        console.log("getUsers response:", res);
         const list = res?.content || res?.data || res || [];
-        const all = Array.isArray(list) ? list.map(mapUser) : [];
+        const all = Array.isArray(list) ? list.map((u, i) => ({ ...mapUser(u), id: u.id || u.customerProfile?.id || `user-${i}` })) : [];
         setUsers(all.filter((u) => u.role !== "ADMIN"));
       })
       .catch((err) => console.error("Load users error:", err))
@@ -637,8 +645,8 @@ function UsersSection({ onToast }) {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((u) => (
-              <tr key={u.id}>
+            {filtered.map((u, idx) => (
+              <tr key={u.id ?? idx}>
                 <td>
                   <div className="td-user">
                     <div className="td-avatar">
@@ -658,11 +666,16 @@ function UsersSection({ onToast }) {
                   {u.joined ? new Date(u.joined).toLocaleDateString("vi-VN") : "—"}
                 </td>
                 <td>
-                  <span className="plan-badge" style={{
-                    background: u.role === "ADMIN" ? "#7c3aed18" : "#6b728018",
-                    color: u.role === "ADMIN" ? "#7c3aed" : "#6b7280",
-                  }}>
-                    {u.role === "ADMIN" ? "Admin" : "User"}
+                  <span
+                    className={`status-badge ${
+                      u.role === "ADMIN" ? "role-admin" :
+                      u.role === "MODERATOR" ? "role-mod" :
+                      "role-user"
+                    }`}
+                  >
+                    {u.role === "ADMIN" ? "👑 Admin" :
+                     u.role === "MODERATOR" ? "🛡️ Moderator" :
+                     "👤 User"}
                   </span>
                 </td>
                 <td>
