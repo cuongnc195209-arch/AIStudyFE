@@ -1,16 +1,14 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import AppLayout from '../../components/layout/AppLayout'
 import { updateProfile, changePassword } from '../../apis/authApi'
+import { getDocuments } from '../../apis/documentApi'
 import './SettingsPage.css'
 
 /* ── Nav sections ── */
 const SECTIONS = [
   { id: 'profile',       icon: '👤', label: 'Hồ sơ cá nhân' },
   { id: 'security',      icon: '🔒', label: 'Bảo mật' },
-  { id: 'notifications', icon: '🔔', label: 'Thông báo' },
-  { id: 'storage',       icon: '💾', label: 'Lưu trữ' },
   { id: 'membership',    icon: '⭐', label: 'Gói thành viên' },
-  { id: 'account',       icon: '⚠️',  label: 'Tài khoản' },
 ]
 
 /* ── Toast ── */
@@ -221,24 +219,6 @@ function SecuritySection({ onSave }) {
         </form>
       </div>
 
-      <div className="subsection">
-        <h3 className="subsection-title">Phiên đăng nhập</h3>
-        <div className="sessions-list">
-          {SESSIONS.map(s => (
-            <div key={s.id} className="session-row">
-              <div className="session-device-icon">💻</div>
-              <div className="session-info">
-                <p className="session-device">{s.device}</p>
-                <p className="session-loc">{s.location} · {s.time}</p>
-              </div>
-              {s.current
-                ? <span className="badge-current">Thiết bị này</span>
-                : <button className="btn-outline btn-sm btn-revoke">Đăng xuất</button>
-              }
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   )
 }
@@ -305,17 +285,88 @@ function NotificationsSection({ onSave }) {
 }
 
 /* ── Section: Storage ── */
-function StorageSection() {
-  const TOTAL_GB   = 5
-  const USED_GB    = 2.4
-  const usedPct    = (USED_GB / TOTAL_GB) * 100
+const EXT_COLORS = {
+  pdf: '#ef4444', ppt: '#f97316', pptx: '#f97316',
+  doc: '#3b82f6', docx: '#3b82f6',
+  xls: '#10b981', xlsx: '#10b981',
+  jpg: '#8b5cf6', jpeg: '#8b5cf6', png: '#8b5cf6', gif: '#8b5cf6', webp: '#8b5cf6',
+  mp4: '#ec4899', mp3: '#ec4899',
+  zip: '#64748b', rar: '#64748b',
+}
 
-  const BREAKDOWN = [
-    { label: 'PDF',   size: 1.1,  count: 8,  color: '#ef4444' },
-    { label: 'PPT',   size: 0.8,  count: 4,  color: '#f97316' },
-    { label: 'DOC',   size: 0.3,  count: 6,  color: '#3b82f6' },
-    { label: 'Hình ảnh', size: 0.2, count: 6, color: '#10b981' },
-  ]
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+  if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+  return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB'
+}
+
+function toGB(bytes) {
+  return bytes / (1024 * 1024 * 1024)
+}
+
+function StorageSection() {
+  const [docs, setDocs] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    getDocuments()
+      .then(res => {
+        if (cancelled) return
+        const list = res?.data || res || []
+        const arr = Array.isArray(list) ? list : []
+        setDocs(arr)
+      })
+      .catch(err => {
+        if (cancelled) return
+        console.error('Documents API error:', err)
+        setError('Không thể tải dữ liệu lưu trữ.')
+      })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="section-content">
+        <div className="section-head">
+          <h2>Lưu trữ</h2>
+          <p>Đang tải dữ liệu...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="section-content">
+        <div className="section-head">
+          <h2>Lưu trữ</h2>
+          <p style={{ color: '#ef4444' }}>{error}</p>
+        </div>
+      </div>
+    )
+  }
+
+  const totalBytes = 5 * 1024 * 1024 * 1024
+  const usedBytes  = docs.reduce((s, d) => s + (d.fileSize || 0), 0)
+  const freeBytes  = totalBytes - usedBytes
+  const usedPct    = totalBytes > 0 ? (usedBytes / totalBytes) * 100 : 0
+
+  const fileList = docs.map(d => {
+    const ext = (d.fileType || d.ext || '').toLowerCase()
+    const name = d.documentName || d.name || 'Untitled'
+    return {
+      name,
+      ext,
+      size: d.fileSize || 0,
+      color: EXT_COLORS[ext] || '#94a3b8',
+      label: ext.toUpperCase() || '?',
+    }
+  }).sort((a, b) => b.size - a.size)
 
   return (
     <div className="section-content">
@@ -324,7 +375,6 @@ function StorageSection() {
         <p>Quản lý dung lượng Cloud Storage</p>
       </div>
 
-      {/* Usage overview */}
       <div className="storage-overview">
         <div className="storage-circle-wrap">
           <svg viewBox="0 0 120 120" className="storage-circle">
@@ -338,52 +388,30 @@ function StorageSection() {
             />
           </svg>
           <div className="storage-circle-text">
-            <span className="storage-circle-used">{USED_GB} GB</span>
+            <span className="storage-circle-used">{formatSize(usedBytes)}</span>
             <span className="storage-circle-label">đã dùng</span>
           </div>
         </div>
         <div className="storage-details">
           <div className="storage-stat-row">
             <span>Đã sử dụng</span>
-            <strong>{USED_GB} GB</strong>
+            <strong>{formatSize(usedBytes)}</strong>
           </div>
           <div className="storage-stat-row">
             <span>Còn trống</span>
-            <strong>{(TOTAL_GB - USED_GB).toFixed(1)} GB</strong>
+            <strong>{formatSize(freeBytes)}</strong>
           </div>
           <div className="storage-stat-row">
             <span>Tổng dung lượng</span>
-            <strong>{TOTAL_GB} GB</strong>
+            <strong>{formatSize(totalBytes)}</strong>
           </div>
           <div className="storage-main-bar">
-            <div className="storage-main-fill" style={{ width: `${usedPct}%` }} />
+            <div className="storage-main-fill" style={{ width: `${Math.min(usedPct, 100)}%` }} />
           </div>
           <p className="storage-pct">{usedPct.toFixed(0)}% đã sử dụng</p>
         </div>
       </div>
 
-      {/* Breakdown */}
-      <div className="subsection">
-        <h3 className="subsection-title">Phân tích theo loại file</h3>
-        <div className="breakdown-list">
-          {BREAKDOWN.map(item => (
-            <div key={item.label} className="breakdown-row">
-              <div className="breakdown-ext" style={{ background: item.color }}>{item.label}</div>
-              <div className="breakdown-info">
-                <div className="breakdown-bar-track">
-                  <div className="breakdown-bar-fill" style={{ width: `${(item.size / USED_GB) * 100}%`, background: item.color }} />
-                </div>
-                <div className="breakdown-meta">
-                  <span>{item.count} file</span>
-                  <span>{item.size} GB</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Upgrade CTA */}
       <div className="storage-upgrade-card">
         <div className="upgrade-card-left">
           <div className="upgrade-card-icon">⚡</div>
@@ -593,10 +621,7 @@ export default function SettingsPage() {
   const SECTION_MAP = {
     profile:       <ProfileSection       onSave={showToast} />,
     security:      <SecuritySection      onSave={showToast} />,
-    notifications: <NotificationsSection onSave={showToast} />,
-    storage:       <StorageSection />,
     membership:    <MembershipSection />,
-    account:       <AccountSection       onSave={showToast} />,
   }
 
   return (

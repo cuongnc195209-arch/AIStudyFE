@@ -671,6 +671,16 @@
   transition: width 0.4s ease;
 }
 
+.breakdown-file-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .breakdown-meta {
   display: flex;
   justify-content: space-between;

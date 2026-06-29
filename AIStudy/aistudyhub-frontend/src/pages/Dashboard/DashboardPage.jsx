@@ -1052,15 +1052,76 @@ export default function DashboardPage() {
 
           <div className="dash-topbar-right">
             <button className="notif-btn" title="Thông báo">
-              🔔
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
               <span className="notif-badge">3</span>
+              <span className="notif-ping" />
             </button>
 
-            <div className="user-chip">
-              <div className="user-avatar">{initials}</div>
-              <div className="user-info">
-                <span className="user-name">{displayName}</span>
-                <span className="user-plan">Gói miễn phí</span>
+            <div className="user-chip-wrapper">
+              <div className="user-chip">
+                <div className="user-avatar">
+                  <span>{initials}</span>
+                  <span className="avatar-status" />
+                </div>
+                <div className="user-info">
+                  <span className="user-name">{displayName}</span>
+                  <span className="user-plan">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                    </svg>
+                    Miễn phí
+                  </span>
+                </div>
+                <svg className="user-chip-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </div>
+
+              <div className="user-dropdown">
+                <div className="user-dropdown-header">
+                  <div className="user-avatar" style={{ width: 44, height: 44, fontSize: '1rem', borderRadius: 12 }}>
+                    <span>{initials}</span>
+                  </div>
+                  <div>
+                    <div className="dropdown-name">{displayName}</div>
+                    <div className="dropdown-email">{storedUser?.email || ''}</div>
+                  </div>
+                </div>
+
+                <div className="user-dropdown-divider" />
+
+                <button className="user-dropdown-item" onClick={() => navigate('/settings')}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                  Hồ sơ cá nhân
+                </button>
+
+                <button className="user-dropdown-item" onClick={() => navigate('/courses')}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                  </svg>
+                  Nâng cấp Premium
+                  <span className="dropdown-upgrade-badge">PRO</span>
+                </button>
+
+                <div className="user-dropdown-divider" />
+
+                <button className="user-dropdown-item user-dropdown-logout" onClick={() => {
+                  localStorage.clear();
+                  navigate('/login', { replace: true });
+                }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                    <polyline points="16 17 21 12 16 7" />
+                    <line x1="21" y1="12" x2="9" y2="12" />
+                  </svg>
+                  Đăng xuất
+                </button>
               </div>
             </div>
           </div>
@@ -1073,7 +1134,7 @@ export default function DashboardPage() {
               <strong>Nâng cấp lên Premium</strong>
               <span>
                 {" "}
-                — Tăng dung lượng lên 50 GB, AI không giới hạn, tài liệu độc
+                — Tăng dung lượng lên 10 GB, AI không giới hạn, tài liệu độc
                 quyền
               </span>
             </div>

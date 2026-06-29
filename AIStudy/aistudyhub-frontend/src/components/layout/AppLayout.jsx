@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { clearAuthStorage } from "../../apis/api";
-import { getStorageUsage } from "../../apis/storageApi";
+import { getDocuments } from "../../apis/documentApi";
 import "./AppLayout.css";
 
 const NAV_ITEMS = [
@@ -11,54 +11,38 @@ const NAV_ITEMS = [
   { to: "/courses", icon: "🎓", label: "Khóa học" },
 ];
 
-function formatGB(bytes) {
-  if (!bytes && bytes !== 0) return "0.0";
-  return (Number(bytes) / 1073741824).toFixed(1);
+function formatStorage(bytes) {
+  if (!bytes || bytes === 0) return "0 KB";
+  if (bytes < 1048576) return `${(bytes / 1024).toFixed(0)} KB`;
+  if (bytes < 1073741824) return `${(bytes / 1048576).toFixed(1)} MB`;
+  return `${(bytes / 1073741824).toFixed(1)} GB`;
 }
 
-function getStoragePercent(storageUsage) {
-  if (!storageUsage) return "0%";
-
-  const percentage = storageUsage.percentageUsed;
-
-  if (typeof percentage === "string") {
-    return percentage.includes("%") ? percentage : `${percentage}%`;
-  }
-
-  if (typeof percentage === "number") {
-    return `${Math.min(100, Math.max(0, percentage))}%`;
-  }
-
-  return "0%";
-}
+const TOTAL_QUOTA = 5 * 1073741824; // 5 GB
 
 export default function AppLayout({ children }) {
   const [collapsed, setCollapsed] = useState(false);
-  const [storageUsage, setStorageUsage] = useState(null);
+  const [usedBytes, setUsedBytes] = useState(null);
 
   const navigate = useNavigate();
 
   useEffect(() => {
     let cancelled = false;
 
-    async function loadStorageUsage() {
-      try {
-        const result = await getStorageUsage();
-        const data = result?.data || result;
+    getDocuments()
+      .then(res => {
+        if (cancelled) return;
+        const list = res?.data || res || [];
+        const arr = Array.isArray(list) ? list : [];
+        const total = arr.reduce((s, d) => s + (d.fileSize || 0), 0);
+        setUsedBytes(total);
+      })
+      .catch(err => {
+        console.error("Load documents for storage error:", err);
+        setUsedBytes(0);
+      });
 
-        if (!cancelled) {
-          setStorageUsage(data);
-        }
-      } catch (err) {
-        console.error("Load storage usage error:", err);
-      }
-    }
-
-    loadStorageUsage();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   const handleLogout = async () => {
@@ -117,10 +101,8 @@ export default function AppLayout({ children }) {
                 <span className="storage-label">Dung lượng</span>
 
                 <span className="storage-value">
-                  {storageUsage
-                    ? `${formatGB(storageUsage.usedQuota)} / ${formatGB(
-                        storageUsage.totalQuota,
-                      )} GB`
+                  {usedBytes !== null
+                    ? `${formatStorage(usedBytes)} / 5 GB`
                     : "Đang tải..."}
                 </span>
               </div>
@@ -129,24 +111,12 @@ export default function AppLayout({ children }) {
                 <div
                   className="storage-fill"
                   style={{
-                    width: getStoragePercent(storageUsage),
+                    width: usedBytes !== null ? `${Math.min(100, (usedBytes / TOTAL_QUOTA) * 100)}%` : "0%",
                   }}
                 />
               </div>
             </div>
           )}
-
-          <NavLink
-            to="/settings"
-            className={({ isActive }) =>
-              `sidebar-link${isActive ? " sidebar-link--active" : ""}`
-            }
-            title={collapsed ? "Cài đặt" : undefined}
-          >
-            <span className="sidebar-link-icon">⚙️</span>
-
-            {!collapsed && <span className="sidebar-link-label">Cài đặt</span>}
-          </NavLink>
 
           <button
             className="sidebar-link sidebar-logout"

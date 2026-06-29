@@ -32,83 +32,288 @@
 .dash-topbar-right {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   flex-shrink: 0;
 }
 
+/* ── Notification Button ── */
 .notif-btn {
   position: relative;
   background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  width: 42px;
-  height: 42px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 12px;
+  width: 44px;
+  height: 44px;
   cursor: pointer;
-  font-size: 1.1rem;
   display: grid;
   place-items: center;
-  transition: box-shadow 0.15s;
+  color: #64748b;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .notif-btn:hover {
-  box-shadow: 0 2px 8px rgba(0, 102, 255, 0.12);
-  border-color: #c7d7ff;
+  background: #f8fafc;
+  border-color: #a5b4fc;
+  color: #6366f1;
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.12);
+  transform: translateY(-1px);
+}
+
+.notif-btn:active {
+  transform: translateY(0);
 }
 
 .notif-badge {
   position: absolute;
-  top: -4px;
-  right: -4px;
-  background: #ef4444;
+  top: -2px;
+  right: -2px;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
   color: white;
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   font-weight: 700;
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  display: grid;
-  place-items: center;
-  border: 2px solid #f0f4ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid white;
+  box-shadow: 0 1px 4px rgba(239, 68, 68, 0.35);
+  line-height: 1;
+  padding: 0;
+  z-index: 2;
 }
 
+.notif-ping {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.4);
+  animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+  pointer-events: none;
+}
+
+@keyframes ping {
+  0% { transform: scale(1); opacity: 0.75; }
+  75%, 100% { transform: scale(2); opacity: 0; }
+}
+
+/* ── User Chip ── */
 .user-chip {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  padding: 6px 14px 6px 6px;
+  background: #ffffff;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 6px 12px 6px 6px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.user-chip:hover {
+  border-color: #a5b4fc;
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.1);
+  transform: translateY(-1px);
+}
+
+.user-chip:hover .user-chip-arrow {
+  color: #6366f1;
 }
 
 .user-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #0066ff, #0052cc);
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
   color: white;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   font-weight: 700;
   display: grid;
   place-items: center;
   flex-shrink: 0;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+.avatar-status {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 10px;
+  height: 10px;
+  background: #22c55e;
+  border-radius: 50%;
+  border: 2.5px solid white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .user-info {
   display: flex;
   flex-direction: column;
+  gap: 1px;
 }
 
 .user-name {
   font-size: 0.82rem;
-  font-weight: 600;
-  color: #111827;
+  font-weight: 650;
+  color: #0f172a;
   line-height: 1.2;
+  letter-spacing: -0.01em;
 }
 
 .user-plan {
-  font-size: 0.72rem;
-  color: #6b7280;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #6366f1;
+  background: #eef2ff;
+  padding: 1px 7px 1px 4px;
+  border-radius: 4px;
+  width: fit-content;
+}
+
+.user-plan svg {
+  color: #818cf8;
+}
+
+.user-chip-arrow {
+  color: #94a3b8;
+  transition: all 0.2s ease;
+  margin-left: 2px;
+}
+
+/* ── User Chip Wrapper + Dropdown ── */
+.user-chip-wrapper {
+  position: relative;
+}
+
+.user-chip-wrapper:hover .user-chip {
+  border-color: #a5b4fc;
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.1);
+}
+
+.user-chip-wrapper:hover .user-chip-arrow {
+  color: #6366f1;
+  transform: rotate(180deg);
+}
+
+.user-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 260px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 6px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.06);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px) scale(0.97);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1000;
+}
+
+.user-chip-wrapper:hover .user-dropdown {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+}
+
+.user-dropdown-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 10px;
+}
+
+.user-dropdown-header .user-avatar {
+  box-shadow: 0 3px 10px rgba(99, 102, 241, 0.3);
+}
+
+.dropdown-name {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.3;
+}
+
+.dropdown-email {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 1px;
+}
+
+.user-dropdown-divider {
+  height: 1px;
+  background: #f1f5f9;
+  margin: 4px 8px;
+}
+
+.user-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  background: none;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 550;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.user-dropdown-item svg {
+  color: #94a3b8;
+  flex-shrink: 0;
+  transition: color 0.15s ease;
+}
+
+.user-dropdown-item:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.user-dropdown-item:hover svg {
+  color: #6366f1;
+}
+
+.dropdown-upgrade-badge {
+  margin-left: auto;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: white;
+  background: linear-gradient(135deg, #f59e0b, #f97316);
+  padding: 2px 7px;
+  border-radius: 5px;
+  letter-spacing: 0.5px;
+}
+
+.user-dropdown-logout {
+  color: #ef4444;
+}
+
+.user-dropdown-logout svg {
+  color: #fca5a5;
+}
+
+.user-dropdown-logout:hover {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.user-dropdown-logout:hover svg {
+  color: #ef4444;
 }
 
 /* ── Upgrade banner ── */
