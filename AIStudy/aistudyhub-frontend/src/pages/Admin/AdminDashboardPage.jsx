@@ -533,7 +533,7 @@ function UsersSection({ onToast }) {
       .then((res) => {
         console.log("getUsers response:", res);
         const list = res?.content || res?.data || res || [];
-        const all = Array.isArray(list) ? list.map(mapUser) : [];
+        const all = Array.isArray(list) ? list.map((u, i) => ({ ...mapUser(u), id: u.id || u.customerProfile?.id || `user-${i}` })) : [];
         setUsers(all.filter((u) => u.role !== "ADMIN"));
       })
       .catch((err) => console.error("Load users error:", err))
@@ -637,8 +637,8 @@ function UsersSection({ onToast }) {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((u) => (
-              <tr key={u.id}>
+            {filtered.map((u, idx) => (
+              <tr key={u.id ?? idx}>
                 <td>
                   <div className="td-user">
                     <div className="td-avatar">
