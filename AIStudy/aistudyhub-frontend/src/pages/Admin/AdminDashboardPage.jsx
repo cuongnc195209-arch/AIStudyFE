@@ -2,6 +2,11 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { getProfile } from "../../apis/authApi";
 import { getUsers, updateUserStatus } from "../../apis/adminApi";
+import {
+  getDocuments,
+  getPublicDocuments,
+  deleteDocument,
+} from "../../apis/documentApi";
 import AdminLayout from "../../components/layout/AdminLayout";
 import "./AdminDashboardPage.css";
 
@@ -273,68 +278,125 @@ function ConfirmModal({ title, desc, danger, onConfirm, onClose }) {
 /* ════════════════════════════════
    SECTION: OVERVIEW
 ════════════════════════════════ */
+function formatStorage(bytes) {
+  if (!bytes) return "0 B";
+  if (bytes >= 1073741824) return `${(bytes / 1073741824).toFixed(0)} GB`;
+  if (bytes >= 1048576) return `${(bytes / 1048576).toFixed(0)} MB`;
+  if (bytes >= 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${bytes} B`;
+}
+
 function OverviewSection() {
+  const [loading, setLoading] = useState(true);
+  const [recentUsers, setRecentUsers] = useState([]);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [usersThisWeek, setUsersThisWeek] = useState(0);
+  const [totalDocs, setTotalDocs] = useState(0);
+  const [docsThisWeek, setDocsThisWeek] = useState(0);
+  const [storageUsed, setStorageUsed] = useState(0);
+
+  useEffect(() => {
+    const now = Date.now();
+    const oneWeekAgo = now - 7 * 86400000;
+
+    Promise.allSettled([
+      getUsers({ size: 9999 }),
+      getPublicDocuments(),
+    ]).then(([usersRes, docsRes]) => {
+      if (usersRes.status === "fulfilled") {
+        const res = usersRes.value;
+        const list = res?.content || res?.data || res || [];
+        const mapped = Array.isArray(list) ? list.map(mapUser) : [];
+        const nonAdmin = mapped.filter((u) => u.role !== "ADMIN");
+
+        setTotalUsers(res?.totalElements || nonAdmin.length);
+        setUsersThisWeek(
+          nonAdmin.filter(
+            (u) => u.joined && new Date(u.joined).getTime() >= oneWeekAgo,
+          ).length,
+        );
+        setRecentUsers(nonAdmin.slice(0, 5));
+      }
+
+      if (docsRes.status === "fulfilled") {
+        const data = docsRes.value?.data || docsRes.value || [];
+        const docList = Array.isArray(data) ? data : [];
+        setTotalDocs(docList.length);
+        setDocsThisWeek(
+          docList.filter(
+            (d) =>
+              new Date(d.createdAt || d.date || 0).getTime() >= oneWeekAgo,
+          ).length,
+        );
+        const totalBytes = docList.reduce(
+          (sum, d) => sum + (d.fileSize || 0),
+          0,
+        );
+        setStorageUsed(totalBytes);
+      }
+
+      setLoading(false);
+    });
+  }, []);
+
   const STATS = [
     {
       icon: "👥",
       label: "Tổng người dùng",
-      value: "2,847",
-      trend: "+42 tuần này",
-      trendUp: true,
+      value: loading ? "..." : totalUsers.toLocaleString(),
+      trend: loading
+        ? "Đang tải..."
+        : usersThisWeek > 0
+          ? `+${usersThisWeek} tuần này`
+          : "Tuần này: 0",
+      trendUp: usersThisWeek > 0,
       color: "blue",
     },
     {
       icon: "📁",
       label: "Tài liệu hệ thống",
-      value: "18,392",
-      trend: "+156 tuần này",
-      trendUp: true,
+      value: loading ? "..." : totalDocs.toLocaleString(),
+      trend: loading
+        ? "Đang tải..."
+        : docsThisWeek > 0
+          ? `+${docsThisWeek} tuần này`
+          : "Tuần này: 0",
+      trendUp: docsThisWeek > 0,
       color: "purple",
     },
     {
       icon: "💾",
       label: "Lưu trữ đã dùng",
-      value: "284 GB",
-      trend: "/ 1 TB tổng",
+      value: loading ? "..." : formatStorage(storageUsed),
+      trend: loading ? "Đang tải..." : "Tổng tài liệu công khai",
       trendUp: null,
       color: "orange",
     },
     {
       icon: "💰",
       label: "Doanh thu tháng",
-      value: "12.87M₫",
-      trend: "+18% so với T11",
-      trendUp: true,
+      value: "—",
+      trend: "Chưa có API",
+      trendUp: null,
       color: "green",
     },
     {
       icon: "💬",
       label: "Câu hỏi AI hôm nay",
-      value: "1,204",
-      trend: "+8% hôm qua",
-      trendUp: true,
+      value: "—",
+      trend: "Chưa có API",
+      trendUp: null,
       color: "teal",
     },
     {
       icon: "🚩",
       label: "Báo cáo chờ xử lý",
-      value: "3",
-      trend: "Cần kiểm duyệt",
+      value: `${MOCK_REPORTS.length}`,
+      trend: "Dữ liệu mẫu",
       trendUp: false,
       color: "red",
     },
   ];
-
-  const [recentUsers, setRecentUsers] = useState([]);
-  useEffect(() => {
-    getUsers()
-      .then((res) => {
-        const list = res?.content || res?.data || res || [];
-        const mapped = Array.isArray(list) ? list.map(mapUser) : [];
-        setRecentUsers(mapped.filter((u) => u.role !== "ADMIN").slice(0, 5));
-      })
-      .catch(() => {});
-  }, []);
 
   const ALERTS = [
     {
@@ -667,11 +729,45 @@ function UsersSection({ onToast }) {
 /* ════════════════════════════════
    SECTION: DOCUMENTS
 ════════════════════════════════ */
+function mapDocAdmin(d) {
+  const rawExt = String(d.fileType || d.ext || "PDF").toUpperCase();
+  let ext = rawExt;
+  if (rawExt === "DOCX") ext = "DOC";
+  if (rawExt === "PPTX") ext = "PPT";
+  if (["JPG", "JPEG", "PNG"].includes(rawExt)) ext = "IMG";
+
+  return {
+    id: d.id || d.documentId || d.document_id,
+    name: d.documentName || d.name || "Untitled",
+    ext,
+    owner: d.ownerName || d.uploadedBy || d.userName || "—",
+    subject: d.subject || "Tài liệu",
+    size: d.fileSize
+      ? d.fileSize >= 1048576
+        ? `${(d.fileSize / 1048576).toFixed(1)} MB`
+        : `${(d.fileSize / 1024).toFixed(0)} KB`
+      : "—",
+    date: d.createdAt ? d.createdAt.slice(0, 10) : "",
+    privacy: d.isPublic || d.is_public ? "public" : "private",
+  };
+}
+
 function DocumentsSection({ onToast }) {
-  const [docs, setDocs] = useState(MOCK_DOCUMENTS);
+  const [docs, setDocs] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [extFilter, setExtFilter] = useState("Tất cả");
   const [confirm, setConfirm] = useState(null);
+
+  useEffect(() => {
+    getPublicDocuments()
+      .then((res) => {
+        const data = res?.data || res || [];
+        setDocs(Array.isArray(data) ? data.map(mapDocAdmin) : []);
+      })
+      .catch((err) => console.error("Load admin docs error:", err))
+      .finally(() => setLoading(false));
+  }, []);
 
   const filtered = docs.filter((d) => {
     const q = search.toLowerCase();
@@ -684,9 +780,15 @@ function DocumentsSection({ onToast }) {
     return matchSearch && matchExt;
   });
 
-  function handleDelete() {
-    setDocs((ds) => ds.filter((d) => d.id !== confirm.id));
-    onToast(`Đã xóa tài liệu "${confirm.name}"`);
+  async function handleDelete() {
+    try {
+      await deleteDocument(confirm.id);
+      setDocs((ds) => ds.filter((d) => d.id !== confirm.id));
+      onToast(`Đã xóa tài liệu "${confirm.name}"`);
+    } catch (err) {
+      console.error("Delete doc error:", err);
+      onToast("Xóa tài liệu thất bại");
+    }
     setConfirm(null);
   }
 
@@ -785,7 +887,8 @@ function DocumentsSection({ onToast }) {
             ))}
           </tbody>
         </table>
-        {filtered.length === 0 && (
+        {loading && <div className="table-empty">Đang tải...</div>}
+        {!loading && filtered.length === 0 && (
           <div className="table-empty">Không tìm thấy tài liệu</div>
         )}
       </div>
