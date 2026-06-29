@@ -65,17 +65,25 @@ function normalizeExt(value) {
 
 function mapDoc(d) {
   const isPublic =
-    d.isPublic === true || d.is_public === true || d.privacy === "public";
+    d.isPublic === true ||
+    d.isPublic === "true" ||
+    d.is_public === true ||
+    d.is_public === "true" ||
+    d.public === true ||
+    d.public === "true" ||
+    d.privacy === "public";
 
   return {
     id: d.id || d.documentId || d.document_id,
     name: d.documentName || d.name || "Untitled Document",
-    ext: normalizeExt(d.fileType || d.ext || "PDF"),
+    ext: normalizeExt
+      ? normalizeExt(d.fileType || d.ext || "PDF")
+      : (d.fileType || d.ext || "PDF").toUpperCase(),
     subject: d.subject || "Tài liệu",
-    sizeMB: d.fileSize ? Number((d.fileSize / 1048576).toFixed(2)) : 0,
+    sizeMB: d.fileSize ? Number((Number(d.fileSize) / 1048576).toFixed(2)) : 0,
     fileSize: d.fileSize || 0,
     date: d.createdAt
-      ? d.createdAt.slice(0, 10)
+      ? String(d.createdAt).slice(0, 10)
       : d.date || new Date().toISOString().slice(0, 10),
     tags: Array.isArray(d.tags) ? d.tags : [],
     privacy: isPublic ? "public" : "private",
@@ -199,7 +207,10 @@ function UploadModal({ onClose, onSuccess }) {
   async function handleSubmit(e) {
     e.preventDefault();
 
-    if (!meta.name.trim() || !file) return;
+    if (!meta.name.trim() || !file) {
+      setError("Vui lòng chọn file và nhập tên tài liệu.");
+      return;
+    }
 
     const description = meta.description.trim();
 
@@ -219,11 +230,13 @@ function UploadModal({ onClose, onSuccess }) {
           documentName: meta.name.trim(),
           fileType: file.ext,
           fileSize: file.raw.size,
-          description,
+          description: description,
           textContent: description,
           isPublic: meta.privacy === "public",
         },
       });
+
+      setProgress(70);
 
       const saved = result?.data || result || {};
       const savedId = saved.id || saved.documentId || saved.document_id;
@@ -236,6 +249,7 @@ function UploadModal({ onClose, onSuccess }) {
 
       if (meta.privacy === "public") {
         const toggleResult = await updateDocumentVisibility(savedId, true);
+
         savedForUi = toggleResult?.data ||
           toggleResult || {
             ...saved,
@@ -250,9 +264,10 @@ function UploadModal({ onClose, onSuccess }) {
         onSuccess(mapDoc(savedForUi));
       }, 600);
     } catch (err) {
-      console.error("Upload failed:", err);
+      console.error("Upload document error:", err);
       setStep("form");
-      setError(err?.message || "Upload thất bại. Vui lòng thử lại.");
+      setProgress(0);
+      setError("Upload thất bại. Vui lòng thử lại.");
     }
   }
 
@@ -383,7 +398,9 @@ function UploadModal({ onClose, onSuccess }) {
               </div>
 
               <div className="fg-full">
-                <label>Mô tả</label>
+                <label>
+                  Mô tả <span className="required">*</span>
+                </label>
                 <textarea
                   value={meta.description}
                   onChange={(e) =>
@@ -391,6 +408,7 @@ function UploadModal({ onClose, onSuccess }) {
                   }
                   placeholder="Mô tả ngắn về tài liệu..."
                   rows={3}
+                  required
                 />
               </div>
             </div>
@@ -929,7 +947,6 @@ export default function DashboardPage() {
       alert("Cập nhật thất bại. Vui lòng thử lại.");
     }
   }
-
   async function handleDeleteConfirm(id) {
     try {
       await deleteDocument(id);
@@ -1052,7 +1069,16 @@ export default function DashboardPage() {
 
           <div className="dash-topbar-right">
             <button className="notif-btn" title="Thông báo">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
                 <path d="M13.73 21a2 2 0 0 1-3.46 0" />
               </svg>
@@ -1069,40 +1095,93 @@ export default function DashboardPage() {
                 <div className="user-info">
                   <span className="user-name">{displayName}</span>
                   <span className="user-plan">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
                       <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                     </svg>
                     Miễn phí
                   </span>
                 </div>
-                <svg className="user-chip-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  className="user-chip-arrow"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <polyline points="6 9 12 15 18 9" />
                 </svg>
               </div>
 
               <div className="user-dropdown">
                 <div className="user-dropdown-header">
-                  <div className="user-avatar" style={{ width: 44, height: 44, fontSize: '1rem', borderRadius: 12 }}>
+                  <div
+                    className="user-avatar"
+                    style={{
+                      width: 44,
+                      height: 44,
+                      fontSize: "1rem",
+                      borderRadius: 12,
+                    }}
+                  >
                     <span>{initials}</span>
                   </div>
                   <div>
                     <div className="dropdown-name">{displayName}</div>
-                    <div className="dropdown-email">{storedUser?.email || ''}</div>
+                    <div className="dropdown-email">
+                      {storedUser?.email || ""}
+                    </div>
                   </div>
                 </div>
 
                 <div className="user-dropdown-divider" />
 
-                <button className="user-dropdown-item" onClick={() => navigate('/settings')}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <button
+                  className="user-dropdown-item"
+                  onClick={() => navigate("/settings")}
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                     <circle cx="12" cy="7" r="4" />
                   </svg>
                   Hồ sơ cá nhân
                 </button>
 
-                <button className="user-dropdown-item" onClick={() => navigate('/courses')}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <button
+                  className="user-dropdown-item"
+                  onClick={() => navigate("/courses")}
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
                     <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
                   </svg>
                   Nâng cấp Premium
@@ -1111,11 +1190,23 @@ export default function DashboardPage() {
 
                 <div className="user-dropdown-divider" />
 
-                <button className="user-dropdown-item user-dropdown-logout" onClick={() => {
-                  localStorage.clear();
-                  navigate('/login', { replace: true });
-                }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <button
+                  className="user-dropdown-item user-dropdown-logout"
+                  onClick={() => {
+                    localStorage.clear();
+                    navigate("/login", { replace: true });
+                  }}
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
                     <polyline points="16 17 21 12 16 7" />
                     <line x1="21" y1="12" x2="9" y2="12" />

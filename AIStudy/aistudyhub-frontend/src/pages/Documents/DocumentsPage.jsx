@@ -14,17 +14,23 @@ import "./DocumentsPage.css";
 /* ── Mapper dữ liệu từ Backend sang UI ── */
 function mapDoc(d) {
   const isPublic =
-    d.isPublic === true || d.is_public === true || d.privacy === "public";
+    d.isPublic === true ||
+    d.isPublic === "true" ||
+    d.is_public === true ||
+    d.is_public === "true" ||
+    d.public === true ||
+    d.public === "true" ||
+    d.privacy === "public";
 
   return {
     id: d.id || d.documentId || d.document_id,
     name: d.documentName || d.name || "Untitled Document",
     ext: (d.fileType || d.ext || "PDF").toUpperCase(),
     subject: d.subject || "Tài liệu",
-    sizeMB: d.fileSize ? Number((d.fileSize / 1048576).toFixed(2)) : 0,
+    sizeMB: d.fileSize ? Number((Number(d.fileSize) / 1048576).toFixed(2)) : 0,
     fileSize: d.fileSize || 0,
     date: d.createdAt
-      ? d.createdAt.slice(0, 10)
+      ? String(d.createdAt).slice(0, 10)
       : d.date || new Date().toISOString().slice(0, 10),
     tags: Array.isArray(d.tags) ? d.tags : [],
     privacy: isPublic ? "public" : "private",
@@ -197,12 +203,16 @@ function UploadModal({ onClose, onSuccess }) {
 
       if (meta.privacy === "public") {
         const toggleResult = await updateDocumentVisibility(savedId, true);
+
         savedForUi = toggleResult?.data ||
           toggleResult || {
             ...saved,
             isPublic: true,
           };
       }
+
+      onSuccess(mapDoc(savedForUi));
+      setStep("done");
 
       setProgress(100);
       setStep("done");

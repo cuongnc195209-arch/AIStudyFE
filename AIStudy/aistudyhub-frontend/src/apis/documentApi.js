@@ -80,6 +80,10 @@ export function createDocument({ file, data }) {
   formData.append("description", description);
   formData.append("textContent", description);
 
+  // BE hiện tại chưa dùng trực tiếp field này trong upload,
+  // nhưng để sẵn cũng không sao nếu BE sau này thêm @RequestParam isPublic.
+  formData.append("isPublic", data?.isPublic ? "true" : "false");
+
   return request("/v1/documents", {
     method: "POST",
     body: formData,
@@ -92,11 +96,6 @@ export function updateDocument(id, newName) {
   });
 }
 
-/**
- * BE hiện tại dùng:
- * PUT /api/v1/documents/{documentId}/toggle-public
- * Body: { "isPublic": true/false }
- */
 export function updateDocumentVisibility(id, isPublic) {
   return request(`/v1/documents/${id}/toggle-public`, {
     method: "PUT",
