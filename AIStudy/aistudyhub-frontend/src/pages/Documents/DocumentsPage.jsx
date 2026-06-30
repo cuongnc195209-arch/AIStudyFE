@@ -8,6 +8,8 @@ import {
   deleteDocument,
   downloadDocumentFile,
   previewDocumentFile,
+  shareDocument,
+  searchDocuments,
 } from "../../apis/documentApi";
 import "./DocumentsPage.css";
 
@@ -40,8 +42,13 @@ function mapDoc(d) {
     downloadUrl: d.downloadUrl || "",
     description: d.description || "",
     textContent: d.textContent || d.description || "",
+    permissionType: d.permissionType || "",
   };
 }
+
+/* ── Backend chưa có API /shared-with-me chính thức — tab "Được chia sẻ"
+   tạm dùng heuristic qua /search (xem loadSharedDocuments bên dưới) ── */
+const ENABLE_SHARED_TAB = true;
 
 /* ── Hằng số ── */
 const SUBJECTS = [
@@ -210,9 +217,6 @@ function UploadModal({ onClose, onSuccess }) {
             isPublic: true,
           };
       }
-
-      onSuccess(mapDoc(savedForUi));
-      setStep("done");
 
       setProgress(100);
       setStep("done");
@@ -510,6 +514,86 @@ function EditModal({ doc, onClose, onSave }) {
   );
 }
 
+/* ── Share Modal ── */
+function ShareModal({ doc, onClose, onSubmit }) {
+  const [targetUserId, setTargetUserId] = useState("");
+  const [permissionType, setPermissionType] = useState("view");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError("");
+    setSubmitting(true);
+
+    try {
+      await onSubmit(doc.id, targetUserId.trim(), permissionType);
+    } catch (err) {
+      setError(err?.message || "Chia sẻ thất bại. Vui lòng thử lại.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div
+      className="modal-overlay"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="modal modal--sm">
+        <div className="modal-header">
+          <h2>Chia sẻ tài liệu</h2>
+          <button className="modal-close" onClick={onClose}>
+            ✕
+          </button>
+        </div>
+
+        <form className="modal-body" onSubmit={handleSubmit}>
+          <p className="delete-confirm-text">
+            Chia sẻ <strong>"{doc.name}"</strong> cho người dùng khác
+          </p>
+
+          <div className="form-grid">
+            <div className="fg-full">
+              <label>
+                User ID người nhận <span className="required">*</span>
+              </label>
+              <input
+                value={targetUserId}
+                onChange={(e) => setTargetUserId(e.target.value)}
+                placeholder="Dán User ID (xem trong Hồ sơ cá nhân của người nhận)"
+                required
+              />
+            </div>
+
+            <div className="fg-full">
+              <label>Quyền truy cập</label>
+              <select
+                value={permissionType}
+                onChange={(e) => setPermissionType(e.target.value)}
+              >
+                <option value="view">👁️ Chỉ xem</option>
+                <option value="edit">✏️ Chỉnh sửa</option>
+              </select>
+            </div>
+          </div>
+
+          {error && <p className="upload-error">⚠️ {error}</p>}
+
+          <div className="modal-footer">
+            <button type="button" className="btn-cancel" onClick={onClose}>
+              Hủy
+            </button>
+            <button type="submit" className="btn-primary" disabled={submitting}>
+              {submitting ? "Đang chia sẻ..." : "🔗 Chia sẻ"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 /* ── Delete Confirm ── */
 function DeleteConfirm({ doc, onClose, onConfirm }) {
   return (
@@ -639,7 +723,7 @@ function PreviewModal({ doc, previewUrl, previewError, onClose }) {
 }
 
 /* ── Document Card ── */
-function DocCard({ doc, onEdit, onDelete, onPreview, onDownload }) {
+function DocCard({ doc, readOnly, onEdit, onDelete, onPreview, onDownload, onShare }) {
   return (
     <div className="doc-card">
       <div className="doc-card-top">
@@ -651,7 +735,11 @@ function DocCard({ doc, onEdit, onDelete, onPreview, onDownload }) {
         </div>
 
         <div className="doc-card-privacy">
-          {doc.privacy === "public" ? (
+          {readOnly ? (
+            <span className="badge-shared">
+              🔗 {doc.permissionType === "edit" ? "Chỉnh sửa" : "Chỉ xem"}
+            </span>
+          ) : doc.privacy === "public" ? (
             <span className="badge-public">🌐 Công khai</span>
           ) : (
             <span className="badge-private">🔒 Riêng tư</span>
@@ -700,28 +788,40 @@ function DocCard({ doc, onEdit, onDelete, onPreview, onDownload }) {
           ⬇️
         </button>
 
-        <button
-          className="card-action-btn"
-          title="Chỉnh sửa"
-          onClick={() => onEdit(doc)}
-        >
-          ✏️
-        </button>
+        {!readOnly && (
+          <>
+            <button
+              className="card-action-btn"
+              title="Chỉnh sửa"
+              onClick={() => onEdit(doc)}
+            >
+              ✏️
+            </button>
 
-        <button
-          className="card-action-btn card-action-btn--del"
-          title="Xóa"
-          onClick={() => onDelete(doc)}
-        >
-          🗑️
-        </button>
+            <button
+              className="card-action-btn"
+              title="Chia sẻ"
+              onClick={() => onShare(doc)}
+            >
+              🔗
+            </button>
+
+            <button
+              className="card-action-btn card-action-btn--del"
+              title="Xóa"
+              onClick={() => onDelete(doc)}
+            >
+              🗑️
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
 }
 
 /* ── Document Row ── */
-function DocRow({ doc, onEdit, onDelete, onPreview, onDownload }) {
+function DocRow({ doc, readOnly, onEdit, onDelete, onPreview, onDownload, onShare }) {
   return (
     <div className="doc-list-row">
       <div
@@ -748,7 +848,11 @@ function DocRow({ doc, onEdit, onDelete, onPreview, onDownload }) {
       <span className="doc-list-date">{relativeDate(doc.date)}</span>
 
       <div className="doc-list-privacy">
-        {doc.privacy === "public" ? (
+        {readOnly ? (
+          <span className="badge-shared">
+            🔗 {doc.permissionType === "edit" ? "Chỉnh sửa" : "Chỉ xem"}
+          </span>
+        ) : doc.privacy === "public" ? (
           <span className="badge-public">🌐</span>
         ) : (
           <span className="badge-private">🔒</span>
@@ -772,31 +876,47 @@ function DocRow({ doc, onEdit, onDelete, onPreview, onDownload }) {
           ⬇️
         </button>
 
-        <button
-          className="row-action-btn"
-          title="Chỉnh sửa"
-          onClick={() => onEdit(doc)}
-        >
-          ✏️
-        </button>
+        {!readOnly && (
+          <>
+            <button
+              className="row-action-btn"
+              title="Chỉnh sửa"
+              onClick={() => onEdit(doc)}
+            >
+              ✏️
+            </button>
 
-        <button
-          className="row-action-btn row-action-btn--del"
-          title="Xóa"
-          onClick={() => onDelete(doc)}
-        >
-          🗑️
-        </button>
+            <button
+              className="row-action-btn"
+              title="Chia sẻ"
+              onClick={() => onShare(doc)}
+            >
+              🔗
+            </button>
+
+            <button
+              className="row-action-btn row-action-btn--del"
+              title="Xóa"
+              onClick={() => onDelete(doc)}
+            >
+              🗑️
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
 }
 
-/* ── Main Page ── */
-export default function DocumentsPage() {
+/* ── Document section: tái sử dụng ở DocumentsPage và DashboardPage ── */
+export function DocumentsSection() {
+  const [tab, setTab] = useState("mine");
   const [docs, setDocs] = useState([]);
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [error, setError] = useState("");
+  const [sharedDocs, setSharedDocs] = useState([]);
+  const [loadingShared, setLoadingShared] = useState(false);
+  const [sharedError, setSharedError] = useState("");
   const [search, setSearch] = useState("");
   const [subject, setSubject] = useState("Tất cả");
   const [fileType, setFileType] = useState("Tất cả");
@@ -805,6 +925,7 @@ export default function DocumentsPage() {
   const [showUpload, setShowUpload] = useState(false);
   const [editDoc, setEditDoc] = useState(null);
   const [deleteDoc, setDeleteDoc] = useState(null);
+  const [shareDoc, setShareDoc] = useState(null);
 
   const [previewDoc, setPreviewDoc] = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
@@ -831,8 +952,62 @@ export default function DocumentsPage() {
     loadDocuments();
   }, []);
 
+  useEffect(() => {
+    if (!ENABLE_SHARED_TAB) return;
+
+    async function loadSharedDocuments() {
+      try {
+        setLoadingShared(true);
+        setSharedError("");
+
+        // Backend chưa có endpoint /shared-with-me, nên tạm suy ra tài liệu
+        // được share bằng cách: lấy toàn bộ tài liệu truy cập được qua
+        // /search (không filter), rồi loại các tài liệu công khai và
+        // tài liệu mình sở hữu (lấy từ /all) — phần còn lại là private +
+        // không phải của mình => được người khác share riêng.
+        const [accessibleResult, ownedResult] = await Promise.all([
+          searchDocuments("", ""),
+          getDocuments(),
+        ]);
+
+        const accessibleData =
+          accessibleResult?.data || accessibleResult || [];
+        const ownedData = ownedResult?.data || ownedResult || [];
+
+        const ownedIds = new Set(
+          (Array.isArray(ownedData) ? ownedData : []).map(
+            (d) => d.id || d.documentId || d.document_id,
+          ),
+        );
+
+        const shared = (
+          Array.isArray(accessibleData) ? accessibleData : []
+        ).filter((d) => {
+          const id = d.id || d.documentId || d.document_id;
+          const isPublic = d.isPublic === true || d.isPublic === "true";
+
+          return !isPublic && !ownedIds.has(id);
+        });
+
+        setSharedDocs(shared.map(mapDoc));
+      } catch (err) {
+        console.error("Load shared documents error:", err);
+        setSharedError("Không thể tải danh sách tài liệu được chia sẻ.");
+      } finally {
+        setLoadingShared(false);
+      }
+    }
+
+    loadSharedDocuments();
+  }, []);
+
+  const activeTab = ENABLE_SHARED_TAB ? tab : "mine";
+  const activeDocs = activeTab === "mine" ? docs : sharedDocs;
+  const activeLoading = activeTab === "mine" ? loadingDocs : loadingShared;
+  const activeError = activeTab === "mine" ? error : sharedError;
+
   const filtered = sortDocs(
-    docs.filter((d) => {
+    activeDocs.filter((d) => {
       const q = search.toLowerCase();
 
       const matchSearch =
@@ -849,7 +1024,7 @@ export default function DocumentsPage() {
     sort,
   );
 
-  const totalSize = docs.reduce((s, d) => s + d.sizeMB, 0).toFixed(1);
+  const totalSize = activeDocs.reduce((s, d) => s + d.sizeMB, 0).toFixed(1);
 
   function handleUploadSuccess(newDoc) {
     setDocs((prev) => [newDoc, ...prev]);
@@ -898,6 +1073,11 @@ export default function DocumentsPage() {
       console.error("Update document error:", err);
       alert("Cập nhật thất bại. Vui lòng thử lại.");
     }
+  }
+
+  async function handleShareSubmit(id, targetUserId, permissionType) {
+    await shareDocument(id, targetUserId, permissionType);
+    setShareDoc(null);
   }
 
   async function handleDeleteConfirm(id) {
@@ -949,40 +1129,61 @@ export default function DocumentsPage() {
   }
 
   return (
-    <AppLayout>
+    <>
       <div className="docs-page">
-        {loadingDocs && (
+        {ENABLE_SHARED_TAB && (
+          <div className="docs-tabs">
+            <button
+              className={`docs-tab${tab === "mine" ? " docs-tab--active" : ""}`}
+              onClick={() => setTab("mine")}
+            >
+              📁 Tài liệu của tôi
+            </button>
+            <button
+              className={`docs-tab${tab === "shared" ? " docs-tab--active" : ""}`}
+              onClick={() => setTab("shared")}
+            >
+              🔗 Được chia sẻ với tôi
+            </button>
+          </div>
+        )}
+
+        {activeLoading && (
           <div className="docs-empty">
             <div className="empty-icon">⏳</div>
             <p className="empty-title">Đang tải tài liệu...</p>
           </div>
         )}
 
-        {!loadingDocs && error && (
+        {!activeLoading && activeError && (
           <div className="docs-empty">
             <div className="empty-icon">⚠️</div>
             <p className="empty-title" style={{ color: "#ef4444" }}>
-              {error}
+              {activeError}
             </p>
           </div>
         )}
 
-        {!loadingDocs && !error && (
+        {!activeLoading && !activeError && (
           <>
             <div className="docs-header">
               <div>
-                <h1 className="docs-title">Tài liệu của tôi</h1>
+                <h1 className="docs-title">
+                  {activeTab === "mine" ? "Tài liệu của tôi" : "Được chia sẻ với tôi"}
+                </h1>
                 <p className="docs-sub">
-                  {docs.length} tài liệu · {totalSize} MB đã dùng
+                  {activeDocs.length} tài liệu · {totalSize} MB
                 </p>
               </div>
 
-              <button
-                className="btn-primary btn-upload"
-                onClick={() => setShowUpload(true)}
-              >
-                ⬆️ Upload tài liệu
-              </button>
+              {activeTab === "mine" && (
+                <button
+                  className="btn-primary btn-upload"
+                  onClick={() => setShowUpload(true)}
+                >
+                  ⬆️ Upload tài liệu
+                </button>
+              )}
             </div>
 
             <div className="docs-toolbar">
@@ -1093,8 +1294,10 @@ export default function DocumentsPage() {
                     <DocCard
                       key={doc.id}
                       doc={doc}
+                      readOnly={activeTab === "shared"}
                       onEdit={setEditDoc}
                       onDelete={setDeleteDoc}
+                      onShare={setShareDoc}
                       onPreview={handlePreview}
                       onDownload={handleDownload}
                     />
@@ -1115,8 +1318,10 @@ export default function DocumentsPage() {
                     <DocRow
                       key={doc.id}
                       doc={doc}
+                      readOnly={activeTab === "shared"}
                       onEdit={setEditDoc}
                       onDelete={setDeleteDoc}
+                      onShare={setShareDoc}
                       onPreview={handlePreview}
                       onDownload={handleDownload}
                     />
@@ -1168,6 +1373,14 @@ export default function DocumentsPage() {
         />
       )}
 
+      {shareDoc && (
+        <ShareModal
+          doc={shareDoc}
+          onClose={() => setShareDoc(null)}
+          onSubmit={handleShareSubmit}
+        />
+      )}
+
       {deleteDoc && (
         <DeleteConfirm
           doc={deleteDoc}
@@ -1189,6 +1402,15 @@ export default function DocumentsPage() {
           }}
         />
       )}
+    </>
+  );
+}
+
+/* ── Standalone page: bọc AppLayout cho route /documents ── */
+export default function DocumentsPage() {
+  return (
+    <AppLayout>
+      <DocumentsSection />
     </AppLayout>
   );
 }

@@ -5,6 +5,40 @@
   background: #f0f4ff;
 }
 
+/* ── Tabs ── */
+.docs-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.docs-tab {
+  padding: 8px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  background: #fff;
+  color: #6b7280;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.docs-tab--active {
+  background: #0066ff;
+  border-color: #0066ff;
+  color: #fff;
+}
+
+.badge-shared {
+  font-size: 0.72rem;
+  color: #1d4ed8;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-weight: 600;
+}
+
 /* ── Header ── */
 .docs-header {
   display: flex;

@@ -36,7 +36,15 @@ function ProfileSection({ onSave }) {
   const [preview, setPreview] = useState(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [copied, setCopied] = useState(false)
+  const userId = storedUser.id || storedUser.userId || storedUser.user_id || ''
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  function handleCopyId() {
+    navigator.clipboard.writeText(userId)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
 
   function handleAvatarChange(e) {
     const file = e.target.files[0]
@@ -104,6 +112,15 @@ function ProfileSection({ onSave }) {
         <div>
           <label>Email <span className="badge-locked">Không thể thay đổi</span></label>
           <input value={form.email} disabled className="input-locked" />
+        </div>
+        <div>
+          <label>Mã định danh (User ID) <span className="badge-locked">Dùng để chia sẻ tài liệu</span></label>
+          <div className="id-field-row">
+            <input value={userId} disabled className="input-locked" />
+            <button type="button" className="copy-btn" onClick={handleCopyId}>
+              {copied ? '✅ Đã chép' : '📋 Sao chép'}
+            </button>
+          </div>
         </div>
         <div>
           <label>Mã sinh viên</label>

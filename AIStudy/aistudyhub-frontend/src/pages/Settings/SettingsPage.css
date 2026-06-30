@@ -299,6 +299,31 @@
   color: #ef4444;
 }
 
+.id-field-row {
+  display: flex;
+  gap: 8px;
+}
+
+.id-field-row .input-locked {
+  flex: 1;
+  font-family: monospace;
+  font-size: 0.82rem;
+}
+
+.copy-btn {
+  flex-shrink: 0;
+  padding: 0 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  color: #374151;
+  cursor: pointer;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.copy-btn:hover { background: #f3f4f6; }
+
 /* ── Avatar ── */
 .avatar-row {
   display: flex;

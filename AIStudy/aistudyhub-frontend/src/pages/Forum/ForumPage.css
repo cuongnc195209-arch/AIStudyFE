@@ -223,6 +223,16 @@
   font-weight: 500;
 }
 
+.post-shared-badge {
+  font-size: 0.72rem;
+  color: #1d4ed8;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-weight: 600;
+}
+
 .post-time {
   font-size: 0.75rem;
   color: #9ca3af;

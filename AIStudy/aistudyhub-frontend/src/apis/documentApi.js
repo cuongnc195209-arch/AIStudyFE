@@ -105,6 +105,14 @@ export function updateDocumentVisibility(id, isPublic) {
   });
 }
 
+export function shareDocument(id, targetUserId, permissionType = "view") {
+  const params = new URLSearchParams({ targetUserId, permissionType });
+
+  return request(`/v1/documents/${id}/share?${params.toString()}`, {
+    method: "POST",
+  });
+}
+
 export function deleteDocument(id) {
   return request(`/v1/documents/${id}`, {
     method: "DELETE",

@@ -698,6 +698,10 @@ function PublicDocCard({ doc, nowTime, onOpen }) {
           </span>
 
           <span className="post-subject-badge">{doc.subject}</span>
+
+          {!doc.isPublic && (
+            <span className="post-shared-badge">🔗 Chia sẻ riêng</span>
+          )}
         </div>
 
         <span className="post-time">{relativeDate(doc.date, nowTime)}</span>
@@ -774,9 +778,7 @@ export default function ForumPage() {
 
         if (cancelled) return;
 
-        const publicDocs = Array.isArray(data)
-          ? data.filter(isPublicDocument).map(mapDoc)
-          : [];
+        const publicDocs = Array.isArray(data) ? data.map(mapDoc) : [];
 
         setDocs(publicDocs);
       } catch (err) {
