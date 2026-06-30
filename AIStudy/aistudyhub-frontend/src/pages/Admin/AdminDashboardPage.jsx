@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { getProfile } from "../../apis/authApi";
-import { getUsers, updateUserStatus } from "../../apis/adminApi";
 import {
-  getDocuments,
-  getPublicDocuments,
-  deleteDocument,
-} from "../../apis/documentApi";
+  getUsers,
+  updateUserStatus,
+  updateUserRole,
+  getAdminStorage,
+  getAdminDocuments,
+  getAdminChats,
+} from "../../apis/adminApi";
+import { deleteDocument } from "../../apis/documentApi";
 import AdminLayout from "../../components/layout/AdminLayout";
 import "./AdminDashboardPage.css";
 
@@ -293,7 +296,8 @@ function OverviewSection() {
   const [usersThisWeek, setUsersThisWeek] = useState(0);
   const [totalDocs, setTotalDocs] = useState(0);
   const [docsThisWeek, setDocsThisWeek] = useState(0);
-  const [storageUsed, setStorageUsed] = useState(0);
+  const [storageUsed, setStorageUsed] = useState(null);
+  const [totalAiMessages, setTotalAiMessages] = useState(0);
 
   useEffect(() => {
     const now = Date.now();
@@ -301,8 +305,10 @@ function OverviewSection() {
 
     Promise.allSettled([
       getUsers({ size: 9999 }),
-      getPublicDocuments(),
-    ]).then(([usersRes, docsRes]) => {
+      getAdminDocuments({ size: 9999 }),
+      getAdminStorage(),
+      getAdminChats({ size: 9999 }),
+    ]).then(([usersRes, docsRes, storageRes, chatsRes]) => {
       if (usersRes.status === "fulfilled") {
         const res = usersRes.value;
         const list = res?.content || res?.data || res || [];
@@ -319,20 +325,35 @@ function OverviewSection() {
       }
 
       if (docsRes.status === "fulfilled") {
-        const data = docsRes.value?.data || docsRes.value || [];
+        const res = docsRes.value;
+        const data = res?.content || res?.data || res || [];
         const docList = Array.isArray(data) ? data : [];
-        setTotalDocs(docList.length);
+        setTotalDocs(res?.totalElements || docList.length);
         setDocsThisWeek(
           docList.filter(
             (d) =>
               new Date(d.createdAt || d.date || 0).getTime() >= oneWeekAgo,
           ).length,
         );
-        const totalBytes = docList.reduce(
-          (sum, d) => sum + (d.fileSize || 0),
-          0,
-        );
+      }
+
+      if (storageRes.status === "fulfilled") {
+        const res = storageRes.value;
+        const data =
+          typeof res === "object" && res !== null ? res?.data || res : {};
+        const totalBytes =
+          data.totalUsedBytes ??
+          data.usedBytes ??
+          data.totalSize ??
+          data.usedStorage ??
+          null;
         setStorageUsed(totalBytes);
+      }
+
+      if (chatsRes.status === "fulfilled") {
+        const res = chatsRes.value;
+        const rawList = res?.content || res?.data || res || [];
+        setTotalAiMessages(Array.isArray(rawList) ? rawList.length : 0);
       }
 
       setLoading(false);
@@ -367,8 +388,12 @@ function OverviewSection() {
     {
       icon: "💾",
       label: "Lưu trữ đã dùng",
-      value: loading ? "..." : formatStorage(storageUsed),
-      trend: loading ? "Đang tải..." : "Tổng tài liệu công khai",
+      value: loading ? "..." : storageUsed != null ? formatStorage(storageUsed) : "—",
+      trend: loading
+        ? "Đang tải..."
+        : storageUsed != null
+          ? "Toàn hệ thống"
+          : "BE chưa trả dữ liệu",
       trendUp: null,
       color: "orange",
     },
@@ -382,9 +407,9 @@ function OverviewSection() {
     },
     {
       icon: "💬",
-      label: "Câu hỏi AI hôm nay",
-      value: "—",
-      trend: "Chưa có API",
+      label: "Câu hỏi AI",
+      value: loading ? "..." : totalAiMessages.toLocaleString(),
+      trend: loading ? "Đang tải..." : "Tổng tin nhắn toàn hệ thống",
       trendUp: null,
       color: "teal",
     },
@@ -559,7 +584,7 @@ function UsersSection({ onToast }) {
   });
 
   async function doAction() {
-    const { action, user } = confirm;
+    const { action, user, newRole } = confirm;
     try {
       if (action === "lock") {
         await updateUserStatus(user.id, "BANNED");
@@ -573,6 +598,12 @@ function UsersSection({ onToast }) {
           us.map((u) => (u.id === user.id ? { ...u, status: "active" } : u)),
         );
       }
+      if (action === "role") {
+        await updateUserRole(user.id, newRole);
+        setUsers((us) =>
+          us.map((u) => (u.id === user.id ? { ...u, role: newRole } : u)),
+        );
+      }
       if (action === "delete")
         setUsers((us) => us.filter((u) => u.id !== user.id));
       onToast(
@@ -580,7 +611,9 @@ function UsersSection({ onToast }) {
           ? `Đã khóa tài khoản ${user.name}`
           : action === "unlock"
             ? `Đã mở khóa ${user.name}`
-            : `Đã xóa ${user.name}`,
+            : action === "role"
+              ? `Đã đổi vai trò của ${user.name} thành ${newRole === "ADMIN" ? "Admin" : newRole === "MODERATOR" ? "Moderator" : "User"}`
+              : `Đã xóa ${user.name}`,
       );
     } catch (err) {
       onToast(`Lỗi: ${err?.message || "Không thể thực hiện thao tác"}`);
@@ -666,17 +699,21 @@ function UsersSection({ onToast }) {
                   {u.joined ? new Date(u.joined).toLocaleDateString("vi-VN") : "—"}
                 </td>
                 <td>
-                  <span
-                    className={`status-badge ${
+                  <select
+                    className={`admin-select role-select ${
                       u.role === "ADMIN" ? "role-admin" :
                       u.role === "MODERATOR" ? "role-mod" :
                       "role-user"
                     }`}
+                    value={u.role}
+                    onChange={(e) =>
+                      setConfirm({ action: "role", user: u, newRole: e.target.value })
+                    }
                   >
-                    {u.role === "ADMIN" ? "👑 Admin" :
-                     u.role === "MODERATOR" ? "🛡️ Moderator" :
-                     "👤 User"}
-                  </span>
+                    <option value="USER">👤 User</option>
+                    <option value="MODERATOR">🛡️ Moderator</option>
+                    <option value="ADMIN">👑 Admin</option>
+                  </select>
                 </td>
                 <td>
                   <span className={`status-badge status-${u.status}`}>
@@ -727,9 +764,15 @@ function UsersSection({ onToast }) {
               ? "Khóa tài khoản"
               : confirm.action === "unlock"
                 ? "Mở khóa tài khoản"
-                : "Xóa tài khoản"
+                : confirm.action === "role"
+                  ? "Đổi vai trò"
+                  : "Xóa tài khoản"
           }
-          desc={`Bạn có chắc muốn ${confirm.action === "lock" ? "khóa" : confirm.action === "unlock" ? "mở khóa" : "xóa vĩnh viễn"} tài khoản "${confirm.user.name}"?`}
+          desc={
+            confirm.action === "role"
+              ? `Đổi vai trò của "${confirm.user.name}" thành ${confirm.newRole === "ADMIN" ? "Admin" : confirm.newRole === "MODERATOR" ? "Moderator" : "User"}?`
+              : `Bạn có chắc muốn ${confirm.action === "lock" ? "khóa" : confirm.action === "unlock" ? "mở khóa" : "xóa vĩnh viễn"} tài khoản "${confirm.user.name}"?`
+          }
           danger={confirm.action === "delete"}
           onConfirm={doAction}
           onClose={() => setConfirm(null)}
@@ -773,9 +816,9 @@ function DocumentsSection({ onToast }) {
   const [confirm, setConfirm] = useState(null);
 
   useEffect(() => {
-    getPublicDocuments()
+    getAdminDocuments({ size: 9999 })
       .then((res) => {
-        const data = res?.data || res || [];
+        const data = res?.content || res?.data || res || [];
         setDocs(Array.isArray(data) ? data.map(mapDocAdmin) : []);
       })
       .catch((err) => console.error("Load admin docs error:", err))
@@ -1010,6 +1053,91 @@ function ForumSection({ onToast }) {
           onClose={() => setConfirm(null)}
         />
       )}
+    </div>
+  );
+}
+
+/* ════════════════════════════════
+   SECTION: CHAT (AI)
+════════════════════════════════ */
+function mapChatAdmin(c) {
+  return {
+    id: c.id,
+    content: c.messageContent || "",
+  };
+}
+
+function ChatSection() {
+  const [chats, setChats] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    getAdminChats({ size: 9999 })
+      .then((res) => {
+        const data = res?.content || res?.data || res || [];
+        setChats(Array.isArray(data) ? data.map(mapChatAdmin) : []);
+      })
+      .catch((err) => console.error("Load admin chats error:", err))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const filtered = chats.filter((c) => {
+    const q = search.toLowerCase();
+    return !q || c.content.toLowerCase().includes(q);
+  });
+
+  return (
+    <div className="admin-section">
+      <div className="admin-section-head">
+        <h2>Quản lý Chat AI</h2>
+        <p>{chats.length} tin nhắn trên toàn hệ thống</p>
+      </div>
+
+      <div className="admin-toolbar">
+        <div className="admin-search-wrap">
+          <span className="admin-search-icon">🔍</span>
+          <input
+            className="admin-search"
+            placeholder="Tìm nội dung tin nhắn..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          {search && (
+            <button
+              className="admin-search-clear"
+              onClick={() => setSearch("")}
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="admin-table-wrap">
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>ID tin nhắn</th>
+              <th>Nội dung</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((c, idx) => (
+              <tr key={c.id ?? idx}>
+                <td className="td-secondary">
+                  {c.id ? `${c.id.slice(0, 8)}…` : "—"}
+                </td>
+                <td className="td-secondary">{c.content || "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {loading && <div className="table-empty">Đang tải...</div>}
+        {!loading && filtered.length === 0 && (
+          <div className="table-empty">Không tìm thấy tin nhắn</div>
+        )}
+      </div>
     </div>
   );
 }
@@ -1449,6 +1577,7 @@ export default function AdminDashboardPage() {
     overview: <OverviewSection />,
     users: <UsersSection onToast={showToast} />,
     documents: <DocumentsSection onToast={showToast} />,
+    chat: <ChatSection />,
     forum: <ForumSection onToast={showToast} />,
     stats: <StatsSection />,
     config: <ConfigSection onToast={showToast} />,
@@ -1467,6 +1596,7 @@ export default function AdminDashboardPage() {
                   overview: "Tổng quan",
                   users: "Người dùng",
                   documents: "Tài liệu",
+                  chat: "Chat AI",
                   forum: "Kiểm duyệt Forum",
                   stats: "Thống kê",
                   config: "Cấu hình",

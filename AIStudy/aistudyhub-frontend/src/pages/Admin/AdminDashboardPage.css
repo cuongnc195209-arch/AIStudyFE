@@ -369,6 +369,12 @@
 .role-mod { color: #f97316; }
 .role-user { color: #3b82f6; }
 
+.role-select {
+  padding: 5px 8px;
+  font-weight: 600;
+  font-size: 0.78rem;
+}
+
 .plan-badge {
   display: inline-block;
   padding: 3px 10px;

@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { id: "overview", icon: "📊", label: "Tổng quan" },
   { id: "users", icon: "👥", label: "Người dùng" },
   { id: "documents", icon: "📁", label: "Tài liệu" },
+  { id: "chat", icon: "💬", label: "Chat AI" },
   { id: "forum", icon: "🚩", label: "Kiểm duyệt Forum" },
   { id: "stats", icon: "📈", label: "Thống kê" },
   { id: "config", icon: "⚙️", label: "Cấu hình hệ thống" },
