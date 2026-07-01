@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { renderAsync } from "docx-preview";
 import AppLayout from "../../components/layout/AppLayout";
 import {
   getDocuments,
@@ -12,6 +13,49 @@ import {
   searchDocuments,
 } from "../../apis/documentApi";
 import "./DocumentsPage.css";
+
+/* ── BE trả fileType dạng MIME thô (vd "application/...wordprocessingml...")
+   nên cần chuẩn hoá về nhóm PDF/PPT/DOC/IMG thay vì uppercase trực tiếp ── */
+function normalizeExt(d) {
+  const raw = String(d.fileType || d.ext || d.mimeType || "").toLowerCase();
+  const fileName = String(d.documentName || d.name || "").toLowerCase();
+
+  if (raw.includes("pdf") || fileName.endsWith(".pdf")) return "PDF";
+
+  if (
+    raw.includes("ppt") ||
+    raw.includes("powerpoint") ||
+    raw.includes("presentation") ||
+    fileName.endsWith(".ppt") ||
+    fileName.endsWith(".pptx")
+  ) {
+    return "PPT";
+  }
+
+  if (
+    raw.includes("doc") ||
+    raw.includes("word") ||
+    raw.includes("msword") ||
+    fileName.endsWith(".doc") ||
+    fileName.endsWith(".docx")
+  ) {
+    return "DOC";
+  }
+
+  if (
+    raw.includes("image") ||
+    raw.includes("png") ||
+    raw.includes("jpg") ||
+    raw.includes("jpeg") ||
+    fileName.endsWith(".png") ||
+    fileName.endsWith(".jpg") ||
+    fileName.endsWith(".jpeg")
+  ) {
+    return "IMG";
+  }
+
+  return String(d.ext || d.fileType || "PDF").toUpperCase();
+}
 
 /* ── Mapper dữ liệu từ Backend sang UI ── */
 function mapDoc(d) {
@@ -27,7 +71,7 @@ function mapDoc(d) {
   return {
     id: d.id || d.documentId || d.document_id,
     name: d.documentName || d.name || "Untitled Document",
-    ext: (d.fileType || d.ext || "PDF").toUpperCase(),
+    ext: normalizeExt(d),
     subject: d.subject || "Tài liệu",
     sizeMB: d.fileSize ? Number((Number(d.fileSize) / 1048576).toFixed(2)) : 0,
     fileSize: d.fileSize || 0,
@@ -633,9 +677,33 @@ function DeleteConfirm({ doc, onClose, onConfirm }) {
 }
 
 /* ── Preview Modal: hiển thị nội dung file thật ── */
-function PreviewModal({ doc, previewUrl, previewError, onClose }) {
+function PreviewModal({ doc, previewUrl, previewBlob, previewError, onClose }) {
   const isImage = doc.ext === "IMG";
   const isPdf = doc.ext === "PDF";
+  const isDoc = doc.ext === "DOC";
+
+  const docxContainerRef = useRef(null);
+  const [docxError, setDocxError] = useState("");
+
+  useEffect(() => {
+    if (!isDoc || !previewBlob) return;
+
+    let cancelled = false;
+
+    renderAsync(previewBlob, docxContainerRef.current, undefined, {
+      ignoreWidth: true,
+    }).catch(() => {
+      if (!cancelled) {
+        setDocxError(
+          "Không thể hiển thị nội dung file này. Vui lòng tải xuống để xem.",
+        );
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isDoc, previewBlob]);
 
   return (
     <div
@@ -671,9 +739,10 @@ function PreviewModal({ doc, previewUrl, previewError, onClose }) {
               border: "1px solid #e5e7eb",
               borderRadius: "12px",
               background: "#f9fafb",
-              overflow: "hidden",
+              overflow: isDoc ? "auto" : "hidden",
               minHeight: "200px",
-              display: "flex",
+              maxHeight: isDoc ? "70vh" : undefined,
+              display: isDoc ? "block" : "flex",
               alignItems: "center",
               justifyContent: "center",
             }}
@@ -702,6 +771,18 @@ function PreviewModal({ doc, previewUrl, previewError, onClose }) {
                 title={doc.name}
                 style={{ width: "100%", height: "70vh", border: "none" }}
               />
+            ) : isDoc ? (
+              docxError ? (
+                <p style={{ color: "#ef4444", padding: "32px" }}>
+                  {docxError}
+                </p>
+              ) : (
+                <div
+                  ref={docxContainerRef}
+                  className="docx-preview-container"
+                  style={{ padding: "16px", background: "#fff", width: "100%" }}
+                />
+              )
             ) : (
               <iframe
                 src={previewUrl}
@@ -929,6 +1010,7 @@ export function DocumentsSection() {
 
   const [previewDoc, setPreviewDoc] = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
+  const [previewBlob, setPreviewBlob] = useState(null);
   const [previewError, setPreviewError] = useState("");
 
   useEffect(() => {
@@ -1095,12 +1177,14 @@ export function DocumentsSection() {
   async function handlePreview(doc) {
     setPreviewDoc(doc);
     setPreviewUrl("");
+    setPreviewBlob(null);
     setPreviewError("");
 
     try {
       const blob = await previewDocumentFile(doc.id);
       const url = URL.createObjectURL(blob);
       setPreviewUrl(url);
+      setPreviewBlob(blob);
     } catch (err) {
       console.error("Preview document error:", err);
       setPreviewError("Không thể tải nội dung xem trước.");
@@ -1393,11 +1477,13 @@ export function DocumentsSection() {
         <PreviewModal
           doc={previewDoc}
           previewUrl={previewUrl}
+          previewBlob={previewBlob}
           previewError={previewError}
           onClose={() => {
             if (previewUrl) URL.revokeObjectURL(previewUrl);
             setPreviewDoc(null);
             setPreviewUrl("");
+            setPreviewBlob(null);
             setPreviewError("");
           }}
         />
