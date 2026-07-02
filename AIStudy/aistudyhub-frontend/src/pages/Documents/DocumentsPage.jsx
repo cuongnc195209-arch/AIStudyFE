@@ -10,6 +10,7 @@ import {
   downloadDocumentFile,
   previewDocumentFile,
   shareDocument,
+  updateDocumentSharePermission,
   searchDocuments,
 } from "../../apis/documentApi";
 import "./DocumentsPage.css";
@@ -1158,7 +1159,19 @@ export function DocumentsSection() {
   }
 
   async function handleShareSubmit(id, targetUserId, permissionType) {
-    await shareDocument(id, targetUserId, permissionType);
+    try {
+      await shareDocument(id, targetUserId, permissionType);
+    } catch (err) {
+      const alreadyShared =
+        err?.status === 400 &&
+        String(err?.message || "").includes("đã được chia sẻ");
+
+      if (!alreadyShared) throw err;
+
+      // Tài liệu đã share cho user này rồi -> đổi quyền qua API update thay vì tạo mới
+      await updateDocumentSharePermission(id, targetUserId, permissionType);
+    }
+
     setShareDoc(null);
   }
 

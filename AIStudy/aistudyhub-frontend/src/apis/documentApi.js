@@ -113,6 +113,18 @@ export function shareDocument(id, targetUserId, permissionType = "view") {
   });
 }
 
+export function updateDocumentSharePermission(
+  id,
+  targetUserId,
+  permissionType = "view",
+) {
+  const params = new URLSearchParams({ targetUserId, permissionType });
+
+  return request(`/v1/documents/${id}/share?${params.toString()}`, {
+    method: "PUT",
+  });
+}
+
 export function deleteDocument(id) {
   return request(`/v1/documents/${id}`, {
     method: "DELETE",
