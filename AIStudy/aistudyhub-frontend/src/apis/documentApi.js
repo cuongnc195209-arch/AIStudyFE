@@ -84,6 +84,14 @@ export function createDocument({ file, data }) {
   // nhưng để sẵn cũng không sao nếu BE sau này thêm @RequestParam isPublic.
   formData.append("isPublic", data?.isPublic ? "true" : "false");
 
+  const categories = Array.isArray(data?.categories)
+    ? data.categories
+    : data?.subject
+      ? [data.subject]
+      : [];
+
+  categories.forEach((c) => formData.append("categories", c));
+
   return request("/v1/documents", {
     method: "POST",
     body: formData,

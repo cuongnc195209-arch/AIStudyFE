@@ -241,6 +241,7 @@ function UploadModal({ onClose, onSuccess }) {
           description: description,
           textContent: description,
           isPublic: meta.privacy === "public",
+          categories: [meta.subject],
         },
       });
 
