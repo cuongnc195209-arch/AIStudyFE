@@ -9,66 +9,107 @@ export function clearAuthStorage() {
   sessionStorage.clear();
 }
 
-function getUserId() {
+function safeJsonParse(value, fallback = null) {
   try {
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
-
-    return (
-      user?.id ||
-      user?.userId ||
-      user?.user_id ||
-      user?.data?.id ||
-      user?.data?.userId ||
-      user?.data?.user_id ||
-      null
-    );
+    return JSON.parse(value);
   } catch {
+    return fallback;
+  }
+}
+
+export function getStoredUser() {
+  return safeJsonParse(localStorage.getItem("user") || "{}", {});
+}
+
+export function getAccessToken() {
+  return localStorage.getItem("accessToken");
+}
+
+export function getRefreshToken() {
+  return localStorage.getItem("refreshToken");
+}
+
+export function getUserId() {
+  const user = getStoredUser();
+
+  return (
+    user?.id ||
+    user?.userId ||
+    user?.user_id ||
+    user?.data?.id ||
+    user?.data?.userId ||
+    user?.data?.user_id ||
+    null
+  );
+}
+
+function normalizePath(path) {
+  if (!path) return "";
+  return path.startsWith("/") ? path : `/${path}`;
+}
+
+export function isPublicApi(path) {
+  const normalizedPath = normalizePath(path);
+
+  return (
+    normalizedPath === "/auth/login" ||
+    normalizedPath === "/auth/register" ||
+    normalizedPath === "/auth/forgot-password" ||
+    normalizedPath === "/auth/reset-password" ||
+    normalizedPath === "/auth/refresh" ||
+    normalizedPath === "/auth/logout" ||
+    normalizedPath === "/v1/documents/public"
+  );
+}
+
+async function parseResponseBody(response) {
+  const raw = await response.text().catch(() => "");
+
+  if (!raw) {
     return null;
+  }
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return raw;
   }
 }
 
 export async function request(path, options = {}) {
-  const token = localStorage.getItem("accessToken");
-  const userId = getUserId();
+  const normalizedPath = normalizePath(path);
+  const publicApi = isPublicApi(normalizedPath);
 
-  const isPublicAuthApi =
-    path === "/auth/login" ||
-    path === "/auth/register" ||
-    path === "/auth/forgot-password" ||
-    path === "/auth/reset-password" ||
-    path === "/auth/refresh" ||
-    path === "/auth/logout";
-
+  const token = getAccessToken();
   const isFormData = options.body instanceof FormData;
 
   const headers = {
     ...(isFormData ? {} : { "Content-Type": "application/json" }),
-    ...(!isPublicAuthApi && token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(!isPublicAuthApi && userId ? { "X-User-Id": userId } : {}),
+    ...(!publicApi && token ? { Authorization: `Bearer ${token}` } : {}),
     ...(options.headers || {}),
   };
 
-  const response = await fetch(`${BASE_URL}${path}`, {
+  const response = await fetch(`${BASE_URL}${normalizedPath}`, {
     ...options,
     headers,
   });
 
-  const raw = await response.text().catch(() => null);
-  let result;
-  try {
-    result = JSON.parse(raw);
-  } catch {
-    result = raw;
-  }
+  const result = await parseResponseBody(response);
 
-  if (response.status === 401 && !isPublicAuthApi) {
+  if (response.status === 401 && !publicApi) {
     clearAuthStorage();
     window.location.href = "/login";
     return;
   }
 
   if (!response.ok) {
-    const error = typeof result === "object" && result ? result : { message: result || `API request failed (HTTP ${response.status})` };
+    const error =
+      typeof result === "object" && result !== null
+        ? result
+        : {
+            message: result || `API request failed (HTTP ${response.status})`,
+          };
+
     error.status = response.status;
     throw error;
   }

@@ -1,41 +1,25 @@
-import { BASE_URL, request } from "./api";
-
-function getUserId() {
-  try {
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
-
-    return (
-      user?.id ||
-      user?.userId ||
-      user?.user_id ||
-      user?.data?.id ||
-      user?.data?.userId ||
-      user?.data?.user_id ||
-      ""
-    );
-  } catch {
-    return "";
-  }
-}
+import { BASE_URL, getAccessToken, request } from "./api";
 
 function authHeaders() {
+  const token = getAccessToken();
+
   return {
-    Authorization: "Bearer " + localStorage.getItem("accessToken"),
-    "X-User-Id": getUserId(),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 }
 
 async function requestFile(path) {
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const response = await fetch(`${BASE_URL}${path}`, {
     method: "GET",
     headers: authHeaders(),
   });
 
-  if (!res.ok) {
-    throw new Error(await res.text());
+  if (!response.ok) {
+    const message = await response.text().catch(() => "");
+    throw new Error(message || `File request failed (HTTP ${response.status})`);
   }
 
-  return await res.blob();
+  return await response.blob();
 }
 
 export function getDocuments() {
@@ -53,8 +37,13 @@ export function getDocumentById(id) {
 export function searchDocuments(name = "", type = "") {
   const params = new URLSearchParams();
 
-  if (name) params.append("name", name);
-  if (type && type !== "Tất cả") params.append("type", type);
+  if (name && name.trim()) {
+    params.append("name", name.trim());
+  }
+
+  if (type && type !== "Tất cả") {
+    params.append("type", type);
+  }
 
   const query = params.toString();
 
@@ -75,22 +64,13 @@ export function createDocument({ file, data }) {
   formData.append("file", file);
 
   const description =
-    data?.description || data?.textContent || "Không có mô tả.";
+    data?.description ||
+    data?.textContent ||
+    data?.documentName ||
+    "Không có mô tả.";
 
   formData.append("description", description);
   formData.append("textContent", description);
-
-  // BE hiện tại chưa dùng trực tiếp field này trong upload,
-  // nhưng để sẵn cũng không sao nếu BE sau này thêm @RequestParam isPublic.
-  formData.append("isPublic", data?.isPublic ? "true" : "false");
-
-  const categories = Array.isArray(data?.categories)
-    ? data.categories
-    : data?.subject
-      ? [data.subject]
-      : [];
-
-  categories.forEach((c) => formData.append("categories", c));
 
   return request("/v1/documents", {
     method: "POST",
@@ -113,26 +93,6 @@ export function updateDocumentVisibility(id, isPublic) {
   });
 }
 
-export function shareDocument(id, targetUserId, permissionType = "view") {
-  const params = new URLSearchParams({ targetUserId, permissionType });
-
-  return request(`/v1/documents/${id}/share?${params.toString()}`, {
-    method: "POST",
-  });
-}
-
-export function updateDocumentSharePermission(
-  id,
-  targetUserId,
-  permissionType = "view",
-) {
-  const params = new URLSearchParams({ targetUserId, permissionType });
-
-  return request(`/v1/documents/${id}/share?${params.toString()}`, {
-    method: "PUT",
-  });
-}
-
 export function deleteDocument(id) {
   return request(`/v1/documents/${id}`, {
     method: "DELETE",
@@ -145,4 +105,44 @@ export function previewDocumentFile(id) {
 
 export function downloadDocumentFile(id) {
   return requestFile(`/v1/documents/${id}/download`);
+}
+
+/**
+ * Các hàm share này được export để DocumentsPage.jsx không bị lỗi import.
+ * Nếu BE chưa có endpoint share thì khi gọi thực tế có thể trả 404/403.
+ */
+export function shareDocument(id, targetUserId, permissionType = "view") {
+  const params = new URLSearchParams();
+
+  params.append("targetUserId", targetUserId);
+  params.append("permissionType", permissionType);
+
+  return request(`/v1/documents/${id}/share?${params.toString()}`, {
+    method: "POST",
+  });
+}
+
+export function updateDocumentSharePermission(
+  id,
+  targetUserId,
+  permissionType = "view",
+) {
+  const params = new URLSearchParams();
+
+  params.append("targetUserId", targetUserId);
+  params.append("permissionType", permissionType);
+
+  return request(`/v1/documents/${id}/share?${params.toString()}`, {
+    method: "PUT",
+  });
+}
+
+/**
+ * Nếu DocumentsPage.jsx có gọi danh sách tài liệu được chia sẻ.
+ * Endpoint này cần BE hỗ trợ. Nếu BE chưa có thì sẽ lỗi API sau, nhưng không lỗi import nữa.
+ */
+export function getSharedDocuments() {
+  return request("/v1/documents/shared", {
+    method: "GET",
+  });
 }
