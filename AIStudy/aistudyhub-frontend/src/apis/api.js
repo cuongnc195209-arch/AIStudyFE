@@ -146,7 +146,10 @@ function isPublicPath(path) {
 
 function buildUrl(path, queryParams) {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  const url = new URL(`${API_BASE_URL}${normalizedPath}`);
+  const url = new URL(
+    `${API_BASE_URL}${normalizedPath}`,
+    window.location.origin,
+  );
 
   if (queryParams && typeof queryParams === "object") {
     Object.entries(queryParams).forEach(([key, value]) => {
