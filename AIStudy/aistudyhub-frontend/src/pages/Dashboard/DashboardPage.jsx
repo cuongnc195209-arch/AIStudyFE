@@ -236,26 +236,6 @@ export default function DashboardPage() {
                   Hồ sơ cá nhân
                 </button>
 
-                <button
-                  className="user-dropdown-item"
-                  onClick={() => navigate("/courses")}
-                >
-                  <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-                  </svg>
-                  Nâng cấp Premium
-                  <span className="dropdown-upgrade-badge">PRO</span>
-                </button>
-
                 <div className="user-dropdown-divider" />
 
                 <button
@@ -299,7 +279,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <button className="upgrade-btn" onClick={() => navigate("/courses")}>
+          <button className="upgrade-btn" onClick={() => navigate("/premium")}>
             Xem gói Premium →
           </button>
         </div>

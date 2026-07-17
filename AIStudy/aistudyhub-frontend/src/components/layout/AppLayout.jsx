@@ -8,8 +8,14 @@ const NAV_ITEMS = [
   { to: "/dashboard", icon: "⊞", label: "Tổng quan" },
   { to: "/chatbot", icon: "💬", label: "AI Chatbot" },
   { to: "/forum", icon: "📚", label: "Cộng đồng" },
-  { to: "/courses", icon: "🎓", label: "Khóa học" },
 ];
+
+const PREMIUM_ITEM = { to: "/premium", icon: "⚡", label: "Nâng cấp Premium" };
+const MODERATION_ITEM = { to: "/moderation", icon: "🛡️", label: "Kiểm duyệt Forum" };
+
+function getCurrentRole() {
+  return (localStorage.getItem("role") || "").toUpperCase();
+}
 
 function formatStorage(bytes) {
   if (!bytes || bytes === 0) return "0 KB";
@@ -23,6 +29,7 @@ const TOTAL_QUOTA = 5 * 1073741824; // 5 GB
 export default function AppLayout({ children }) {
   const [collapsed, setCollapsed] = useState(false);
   const [usedBytes, setUsedBytes] = useState(null);
+  const [role] = useState(getCurrentRole);
 
   const navigate = useNavigate();
 
@@ -92,6 +99,36 @@ export default function AppLayout({ children }) {
               )}
             </NavLink>
           ))}
+
+          {role === "MODERATOR" && (
+            <NavLink
+              to={MODERATION_ITEM.to}
+              className={({ isActive }) =>
+                `sidebar-link${isActive ? " sidebar-link--active" : ""}`
+              }
+              title={collapsed ? MODERATION_ITEM.label : undefined}
+            >
+              <span className="sidebar-link-icon">{MODERATION_ITEM.icon}</span>
+
+              {!collapsed && (
+                <span className="sidebar-link-label">{MODERATION_ITEM.label}</span>
+              )}
+            </NavLink>
+          )}
+
+          <NavLink
+            to={PREMIUM_ITEM.to}
+            className={({ isActive }) =>
+              `sidebar-link sidebar-link--premium${isActive ? " sidebar-link--active" : ""}`
+            }
+            title={collapsed ? PREMIUM_ITEM.label : undefined}
+          >
+            <span className="sidebar-link-icon">{PREMIUM_ITEM.icon}</span>
+
+            {!collapsed && (
+              <span className="sidebar-link-label">{PREMIUM_ITEM.label}</span>
+            )}
+          </NavLink>
         </nav>
 
         <div className="sidebar-footer">

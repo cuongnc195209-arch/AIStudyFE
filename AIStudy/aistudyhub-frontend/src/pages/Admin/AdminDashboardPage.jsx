@@ -162,42 +162,6 @@ const MOCK_DOCUMENTS = [
   },
 ];
 
-const MOCK_REPORTS = [
-  {
-    id: 1,
-    type: "post",
-    title: "Chia sẻ tài liệu có bản quyền trái phép",
-    author: "Đặng Văn G",
-    reports: 5,
-    reason: "Vi phạm bản quyền",
-    time: "2 giờ trước",
-    content:
-      "Bài đăng chia sẻ link tải sách giáo trình có bản quyền mà không có sự cho phép của nhà xuất bản...",
-  },
-  {
-    id: 2,
-    type: "comment",
-    title: "Bình luận xúc phạm trong bài hỏi đáp OOP",
-    author: "Lê Văn C",
-    reports: 3,
-    reason: "Ngôn ngữ không phù hợp",
-    time: "5 giờ trước",
-    content:
-      "Nội dung bình luận sử dụng từ ngữ thô tục và xúc phạm người dùng khác trong cộng đồng...",
-  },
-  {
-    id: 3,
-    type: "post",
-    title: "Spam quảng cáo dịch vụ không liên quan",
-    author: "Unknown",
-    reports: 8,
-    reason: "Spam",
-    time: "1 ngày trước",
-    content:
-      "Bài đăng quảng cáo dịch vụ gia sư và bán tài liệu ngoài hệ thống, không liên quan đến học thuật...",
-  },
-];
-
 const SUBJECTS = [
   "Lập trình Web",
   "Cơ sở dữ liệu",
@@ -238,7 +202,7 @@ const MONTH_LABELS = [
 /* ════════════════════════════════
    SHARED HELPERS
 ════════════════════════════════ */
-function Toast({ message, type = "success", onDone }) {
+export function Toast({ message, type = "success", onDone }) {
   return (
     <div className={`admin-toast admin-toast--${type}`} onAnimationEnd={onDone}>
       {type === "success" ? "✅" : "⚠️"} {message}
@@ -413,35 +377,6 @@ function OverviewSection() {
       trendUp: null,
       color: "teal",
     },
-    {
-      icon: "🚩",
-      label: "Báo cáo chờ xử lý",
-      value: `${MOCK_REPORTS.length}`,
-      trend: "Dữ liệu mẫu",
-      trendUp: false,
-      color: "red",
-    },
-  ];
-
-  const ALERTS = [
-    {
-      icon: "⚠️",
-      msg: "3 bài đăng Forum bị report — cần kiểm duyệt",
-      level: "warn",
-      time: "2 giờ trước",
-    },
-    {
-      icon: "💾",
-      msg: "Dung lượng server đạt 28% — hệ thống ổn định",
-      level: "info",
-      time: "6 giờ trước",
-    },
-    {
-      icon: "✅",
-      msg: "Backup dữ liệu hoàn tất lúc 03:00 AM",
-      level: "ok",
-      time: "8 giờ trước",
-    },
   ];
 
   return (
@@ -501,24 +436,6 @@ function OverviewSection() {
             ))}
           </div>
         </div>
-
-        {/* Alerts */}
-        <div className="admin-card">
-          <div className="admin-card-head">
-            <h3>Cảnh báo hệ thống</h3>
-          </div>
-          <div className="alerts-list">
-            {ALERTS.map((a, i) => (
-              <div key={i} className={`alert-row alert-${a.level}`}>
-                <span className="alert-icon">{a.icon}</span>
-                <div className="alert-body">
-                  <p className="alert-msg">{a.msg}</p>
-                  <span className="alert-time">{a.time}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );
@@ -543,7 +460,7 @@ function mapUser(u) {
     u.accountRole ||
     (Array.isArray(u.roles) ? u.roles[0] : null) ||
     (Array.isArray(u.authorities) ? u.authorities[0]?.authority || u.authorities[0] : null) ||
-    "USER";
+    "CUSTOMER";
   const role = rawRole.replace(/^ROLE_/, "").toUpperCase();
   return {
     id,
@@ -710,7 +627,7 @@ function UsersSection({ onToast }) {
                       setConfirm({ action: "role", user: u, newRole: e.target.value })
                     }
                   >
-                    <option value="USER">👤 User</option>
+                    <option value="CUSTOMER">👤 User</option>
                     <option value="MODERATOR">🛡️ Moderator</option>
                     <option value="ADMIN">👑 Admin</option>
                   </select>
@@ -965,8 +882,8 @@ function DocumentsSection({ onToast }) {
 /* ════════════════════════════════
    SECTION: FORUM (MODERATION)
 ════════════════════════════════ */
-function ForumSection({ onToast }) {
-  const [reports, setReports] = useState(MOCK_REPORTS);
+export function ForumSection({ onToast }) {
+  const [reports, setReports] = useState([]);
   const [confirm, setConfirm] = useState(null);
 
   function handleKeep(id) {

@@ -6,7 +6,8 @@ import ForgotPasswordPage from "./pages/Auth/ForgotPasswordPage";
 import DashboardPage from "./pages/Dashboard/DashboardPage";
 import ChatbotPage from "./pages/Chatbot/ChatbotPage";
 import ForumPage from "./pages/Forum/ForumPage";
-import CoursesPage from "./pages/Courses/CoursesPage";
+import PremiumPage from "./pages/Premium/PremiumPage";
+import ModerationPage from "./pages/Moderation/ModerationPage";
 import SettingsPage from "./pages/Settings/SettingsPage";
 import AdminDashboardPage from "./pages/Admin/AdminDashboardPage";
 import PrivateRoute from "./routes/PrivateRoute";
@@ -23,8 +24,17 @@ function App() {
         <Route
           path="/dashboard"
           element={
-            <PrivateRoute allowedRoles={["CUSTOMER", "ADMIN", "TEACHER"]}>
+            <PrivateRoute allowedRoles={["CUSTOMER", "ADMIN", "TEACHER", "MODERATOR"]}>
               <DashboardPage />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/moderation"
+          element={
+            <PrivateRoute allowedRoles={["MODERATOR"]}>
+              <ModerationPage />
             </PrivateRoute>
           }
         />
@@ -48,10 +58,10 @@ function App() {
         />
 
         <Route
-          path="/courses"
+          path="/premium"
           element={
             <PrivateRoute>
-              <CoursesPage />
+              <PremiumPage />
             </PrivateRoute>
           }
         />

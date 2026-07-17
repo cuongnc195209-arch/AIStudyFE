@@ -133,6 +133,22 @@ body {
   font-weight: 600;
 }
 
+.sidebar-link--premium {
+  margin-top: 8px;
+  color: #b45309;
+}
+
+.sidebar-link--premium:hover {
+  background: #fff7ed;
+  color: #b45309;
+}
+
+.sidebar-link--premium.sidebar-link--active {
+  background: #fff7ed;
+  color: #b45309;
+  font-weight: 600;
+}
+
 .sidebar-link-icon {
   font-size: 1.1rem;
   min-width: 22px;

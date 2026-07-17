@@ -8,7 +8,6 @@ import './SettingsPage.css'
 const SECTIONS = [
   { id: 'profile',       icon: '👤', label: 'Hồ sơ cá nhân' },
   { id: 'security',      icon: '🔒', label: 'Bảo mật' },
-  { id: 'membership',    icon: '⭐', label: 'Gói thành viên' },
 ]
 
 /* ── Toast ── */
@@ -444,7 +443,7 @@ function StorageSection() {
 }
 
 /* ── Section: Membership ── */
-function MembershipSection() {
+export function MembershipSection() {
   const PLANS = [
     {
       id: 'free',
@@ -459,7 +458,7 @@ function MembershipSection() {
         'Upload tối đa 10 MB/file',
         'Diễn đàn cơ bản',
       ],
-      missing: ['Khóa học Premium', 'AI không giới hạn', 'Gói nhóm'],
+      missing: ['Khóa học Premium', 'AI không giới hạn'],
     },
     {
       id: 'premium',
@@ -475,24 +474,6 @@ function MembershipSection() {
         'Upload tối đa 100 MB/file',
         'Truy cập tất cả khóa học',
         'Ưu tiên hỗ trợ',
-      ],
-      missing: ['Gói nhóm'],
-    },
-    {
-      id: 'group',
-      name: 'Nhóm',
-      price: '299.000₫',
-      period: '/tháng',
-      current: false,
-      color: '#7c3aed',
-      badge: 'Tiết kiệm nhất',
-      features: [
-        '200 GB lưu trữ (chia sẻ)',
-        'Tối đa 5 thành viên',
-        'AI không giới hạn',
-        'Chia sẻ tài liệu nội bộ',
-        'Tất cả tính năng Premium',
-        'Dashboard nhóm',
       ],
       missing: [],
     },
@@ -638,7 +619,6 @@ export default function SettingsPage() {
   const SECTION_MAP = {
     profile:       <ProfileSection       onSave={showToast} />,
     security:      <SecuritySection      onSave={showToast} />,
-    membership:    <MembershipSection />,
   }
 
   return (
