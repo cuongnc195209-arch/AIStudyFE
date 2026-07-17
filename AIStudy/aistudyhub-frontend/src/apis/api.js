@@ -73,10 +73,6 @@ export function clearAuthTokens() {
   localStorage.removeItem(USER_KEY);
 }
 
-/**
- * Alias cho FE cũ.
- * AppLayout.jsx đang import clearAuthStorage.
- */
 export function clearAuthStorage() {
   clearAuthTokens();
 }
@@ -85,9 +81,6 @@ export function removeAuthStorage() {
   clearAuthTokens();
 }
 
-/**
- * Alias cho FE cũ nếu có nơi lưu cả token + user.
- */
 export function setAuthStorage(authData = {}) {
   const accessToken =
     authData.accessToken || authData.token || authData.access_token || null;

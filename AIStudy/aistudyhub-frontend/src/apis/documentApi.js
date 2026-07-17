@@ -1,101 +1,47 @@
 import api from "./api";
 
-function appendIfPresent(formData, key, value) {
-  if (value !== undefined && value !== null && value !== "") {
-    formData.append(key, value);
+export const SUBJECT_OPTIONS = [
+  { value: "PRF192", label: "Lập trình cơ bản" },
+  { value: "MAE101", label: "Toán cao cấp" },
+  { value: "CEA201", label: "Tin học đại cương" },
+  { value: "CSI104", label: "Nhập môn khoa học máy tính" },
+  { value: "PRO192", label: "Lập trình hướng đối tượng" },
+  { value: "MAD101", label: "Toán rời rạc" },
+  { value: "OSG202", label: "Hệ điều hành" },
+  { value: "CSD201", label: "Cấu trúc dữ liệu và giải thuật" },
+  { value: "DBI202", label: "Cơ sở dữ liệu" },
+  { value: "LAB211", label: "Java Lab" },
+  { value: "PRJ301", label: "Lập trình Web" },
+  { value: "MAS291", label: "Xác suất thống kê" },
+  { value: "SWR302", label: "Yêu cầu phần mềm" },
+  { value: "SWT301", label: "Kiểm thử phần mềm" },
+  { value: "PRN212", label: ".NET / C#" },
+  { value: "OTHER", label: "Khác" },
+];
+
+const SUBJECT_LABEL_BY_CODE = SUBJECT_OPTIONS.reduce((map, item) => {
+  map[item.value] = item.label;
+  return map;
+}, {});
+
+export function getSubjectLabel(subjectCode) {
+  if (!subjectCode) {
+    return "Chưa phân loại";
   }
+
+  return SUBJECT_LABEL_BY_CODE[subjectCode] || subjectCode;
 }
 
-function normalizeCategories(categories) {
-  if (!categories) {
-    return [];
+function normalizeSubjectCode(subjectCode) {
+  if (!subjectCode) {
+    return "";
   }
 
-  if (Array.isArray(categories)) {
-    return categories.filter(Boolean);
-  }
+  const value = String(subjectCode).trim().toUpperCase();
 
-  return [categories].filter(Boolean);
-}
+  const exists = SUBJECT_OPTIONS.some((item) => item.value === value);
 
-function normalizeCreateDocumentPayload(firstArg, secondArg) {
-  /**
-   * Hỗ trợ các kiểu gọi:
-   *
-   * createDocument({
-   *   file,
-   *   description,
-   *   textContent,
-   *   categories
-   * })
-   *
-   * createDocument(file, {
-   *   description,
-   *   textContent,
-   *   categories
-   * })
-   *
-   * createDocument({
-   *   file,
-   *   data: {
-   *     description,
-   *     subject,
-   *     categories
-   *   }
-   * })
-   */
-  let payload;
-
-  if (firstArg instanceof File || firstArg instanceof Blob) {
-    payload = {
-      ...(secondArg || {}),
-      file: firstArg,
-    };
-  } else {
-    payload = firstArg || {};
-  }
-
-  const nestedData = payload.data || payload.formData || payload.values || {};
-
-  const file = payload.file || nestedData.file || null;
-
-  const description =
-    payload.description ||
-    payload.documentDescription ||
-    payload.desc ||
-    payload.note ||
-    nestedData.description ||
-    nestedData.documentDescription ||
-    nestedData.desc ||
-    nestedData.note ||
-    "";
-
-  const textContent =
-    payload.textContent ||
-    payload.content ||
-    nestedData.textContent ||
-    nestedData.content ||
-    description;
-
-  const categoryNames =
-    payload.categoryNames ||
-    payload.categories ||
-    payload.subject ||
-    payload.subjectName ||
-    payload.course ||
-    nestedData.categoryNames ||
-    nestedData.categories ||
-    nestedData.subject ||
-    nestedData.subjectName ||
-    nestedData.course ||
-    [];
-
-  return {
-    file,
-    description,
-    textContent,
-    categoryNames,
-  };
+  return exists ? value : "OTHER";
 }
 
 function getFileNameFromDisposition(
@@ -139,11 +85,6 @@ function createBlobResult(response, fallbackName = "document") {
 
   const url = URL.createObjectURL(blob);
 
-  /**
-   * Gắn thêm metadata vào chính Blob.
-   * Như vậy FE cũ gọi URL.createObjectURL(result) vẫn chạy,
-   * FE mới gọi result.url / result.blob cũng vẫn chạy.
-   */
   blob.blob = blob;
   blob.url = url;
   blob.contentType = response?.contentType || blob.type;
@@ -157,14 +98,6 @@ export async function getDocuments() {
   return api.get("/v1/documents/all");
 }
 
-export async function getAllDocuments() {
-  return getDocuments();
-}
-
-export async function getMyDocuments() {
-  return getDocuments();
-}
-
 export async function getPublicDocuments() {
   return api.get("/v1/documents/public");
 }
@@ -175,47 +108,34 @@ export async function searchDocuments(searchText = "") {
   });
 }
 
-export async function searchAndFilterDocuments(searchText = "") {
-  return searchDocuments(searchText);
-}
-
 export async function getDocumentById(documentId) {
   return api.get(`/v1/documents/${documentId}`);
 }
 
-export async function getDocumentDetail(documentId) {
-  return getDocumentById(documentId);
-}
+export async function createDocument(payload = {}) {
+  const file = payload.file;
+  const description = String(payload.description || "").trim();
+  const subjectCode = normalizeSubjectCode(payload.subjectCode);
 
-export async function createDocument(firstArg, secondArg) {
-  const payload = normalizeCreateDocumentPayload(firstArg, secondArg);
-
-  if (!payload.file) {
+  if (!file) {
     throw new Error("Vui lòng chọn file để upload");
   }
-
-  const description = String(payload.description || "").trim();
 
   if (!description) {
     throw new Error("Vui lòng nhập mô tả tài liệu");
   }
 
+  if (!subjectCode) {
+    throw new Error("Vui lòng chọn môn học");
+  }
+
   const formData = new FormData();
 
-  formData.append("file", payload.file);
+  formData.append("file", file);
   formData.append("description", description);
-
-  appendIfPresent(formData, "textContent", payload.textContent || description);
-
-  normalizeCategories(payload.categoryNames).forEach((category) => {
-    formData.append("categories", category);
-  });
+  formData.append("subjectCode", subjectCode);
 
   return api.post("/v1/documents", formData);
-}
-
-export async function uploadDocument(firstArg, secondArg) {
-  return createDocument(firstArg, secondArg);
 }
 
 export async function updateDocumentName(documentId, newName) {
@@ -224,15 +144,6 @@ export async function updateDocumentName(documentId, newName) {
       newName,
     },
   });
-}
-
-export async function updateDocument(documentId, payload) {
-  const newName =
-    typeof payload === "string"
-      ? payload
-      : payload?.newName || payload?.documentName || payload?.name;
-
-  return updateDocumentName(documentId, newName);
 }
 
 export async function deleteDocument(documentId) {
@@ -245,74 +156,39 @@ export async function toggleDocumentPublicStatus(documentId, isPublic) {
   });
 }
 
-export async function updateDocumentVisibility(documentId, isPublic) {
-  return toggleDocumentPublicStatus(documentId, isPublic);
-}
-
-export async function togglePublicStatus(documentId, isPublic) {
-  return toggleDocumentPublicStatus(documentId, isPublic);
-}
-
-export async function updateDocumentPublicStatus(documentId, isPublic) {
-  return api.put(`/v1/documents/${documentId}/public-status`, null, {
-    queryParams: {
-      isPublic: Boolean(isPublic),
-    },
-  });
-}
-
 export async function reviewDocument(documentId, decision) {
+  const cleanDecision = String(decision || "")
+    .trim()
+    .toUpperCase();
+
+  if (cleanDecision !== "ACCEPT" && cleanDecision !== "DENY") {
+    throw new Error("Decision không hợp lệ. Chỉ dùng ACCEPT hoặc DENY.");
+  }
+
   return api.put(`/v1/documents/${documentId}/review`, null, {
     queryParams: {
-      decision,
+      decision: cleanDecision,
     },
   });
 }
 
-export async function approvePublicRequest(documentId, decision) {
-  return reviewDocument(documentId, decision);
-}
-
-export async function acceptDocumentPublicRequest(documentId) {
-  return reviewDocument(documentId, "ACCEPT");
-}
-
-export async function denyDocumentPublicRequest(documentId) {
-  return reviewDocument(documentId, "DENY");
-}
-
-export async function previewDocument(documentId) {
+export async function previewDocumentFile(documentId) {
   const response = await api.blob(`/v1/documents/${documentId}/preview-file`);
   return createBlobResult(response, `preview-${documentId}`);
 }
 
-export async function previewDocumentFile(documentId) {
-  return previewDocument(documentId);
-}
-
-export async function getDocumentPreviewBlob(documentId) {
-  return previewDocument(documentId);
-}
-
-export async function downloadDocument(documentId) {
+export async function downloadDocumentFile(documentId) {
   const response = await api.blob(`/v1/documents/${documentId}/download`);
   return createBlobResult(response, `document-${documentId}`);
 }
 
-export async function downloadDocumentFile(documentId) {
-  return downloadDocument(documentId);
-}
-
-export async function getDocumentDownloadBlob(documentId) {
-  return downloadDocument(documentId);
-}
-
 export async function downloadDocumentToDevice(documentId) {
-  const result = await downloadDocument(documentId);
+  const result = await downloadDocumentFile(documentId);
 
   const link = document.createElement("a");
   link.href = result.url;
   link.download = result.fileName || `document-${documentId}`;
+
   document.body.appendChild(link);
   link.click();
   link.remove();
@@ -350,61 +226,32 @@ export async function updateDocumentSharePermission(
   });
 }
 
-export async function updateSharePermission(
-  documentId,
-  targetUserId,
-  permissionType = "view",
-) {
-  return updateDocumentSharePermission(
-    documentId,
-    targetUserId,
-    permissionType,
-  );
-}
-
-export async function getSharedDocuments() {
-  return searchDocuments("");
-}
-
-export async function getPendingPublicDocuments() {
+export async function getPendingPublicDocuments({ page = 0, size = 10 } = {}) {
   return api.get("/admin/documents", {
     status: "PENDING",
+    page,
+    size,
   });
 }
 
 const documentApi = {
+  SUBJECT_OPTIONS,
+  getSubjectLabel,
+
   getDocuments,
-  getAllDocuments,
-  getMyDocuments,
   getPublicDocuments,
   searchDocuments,
-  searchAndFilterDocuments,
   getDocumentById,
-  getDocumentDetail,
   createDocument,
-  uploadDocument,
   updateDocumentName,
-  updateDocument,
   deleteDocument,
   toggleDocumentPublicStatus,
-  updateDocumentVisibility,
-  togglePublicStatus,
-  updateDocumentPublicStatus,
   reviewDocument,
-  approvePublicRequest,
-  acceptDocumentPublicRequest,
-  denyDocumentPublicRequest,
-  previewDocument,
   previewDocumentFile,
-  getDocumentPreviewBlob,
-  downloadDocument,
   downloadDocumentFile,
-  getDocumentDownloadBlob,
   downloadDocumentToDevice,
   shareDocument,
   updateDocumentSharePermission,
-  updateSharePermission,
-  getSharedDocuments,
   getPendingPublicDocuments,
 };
 

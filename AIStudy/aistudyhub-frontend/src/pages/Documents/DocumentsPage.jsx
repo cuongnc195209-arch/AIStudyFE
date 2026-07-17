@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { renderAsync } from "docx-preview";
 import AppLayout from "../../components/layout/AppLayout";
 import {
+  SUBJECT_OPTIONS,
+  getSubjectLabel,
   getDocuments,
   createDocument,
-  updateDocument,
-  updateDocumentVisibility,
+  updateDocumentName,
+  toggleDocumentPublicStatus,
   deleteDocument,
   downloadDocumentFile,
   previewDocumentFile,
@@ -15,8 +17,6 @@ import {
 } from "../../apis/documentApi";
 import "./DocumentsPage.css";
 
-/* ── BE trả fileType dạng MIME thô (vd "application/...wordprocessingml...")
-   nên cần chuẩn hoá về nhóm PDF/PPT/DOC/IMG thay vì uppercase trực tiếp ── */
 function normalizeExt(d) {
   const raw = String(d.fileType || d.ext || d.mimeType || "").toLowerCase();
   const fileName = String(d.documentName || d.name || "").toLowerCase();
@@ -58,7 +58,6 @@ function normalizeExt(d) {
   return String(d.ext || d.fileType || "PDF").toUpperCase();
 }
 
-/* ── Mapper dữ liệu từ Backend sang UI ── */
 function mapDoc(d) {
   const isPublic =
     d.isPublic === true ||
@@ -73,7 +72,8 @@ function mapDoc(d) {
     id: d.id || d.documentId || d.document_id,
     name: d.documentName || d.name || "Untitled Document",
     ext: normalizeExt(d),
-    subject: d.subject || "Tài liệu",
+    subjectCode: d.subjectCode || "",
+    subject: getSubjectLabel(d.subjectCode),
     sizeMB: d.fileSize ? Number((Number(d.fileSize) / 1048576).toFixed(2)) : 0,
     fileSize: d.fileSize || 0,
     date: d.createdAt
@@ -91,19 +91,11 @@ function mapDoc(d) {
   };
 }
 
-/* ── Backend chưa có API /shared-with-me chính thức — tab "Được chia sẻ"
-   tạm dùng heuristic qua /search (xem loadSharedDocuments bên dưới) ── */
 const ENABLE_SHARED_TAB = true;
 
-/* ── Hằng số ── */
-const SUBJECTS = [
+const SUBJECT_FILTERS = [
   "Tất cả",
-  "Lập trình Web",
-  "Cơ sở dữ liệu",
-  "Trí tuệ nhân tạo",
-  "Mạng máy tính",
-  "Giải tích",
-  "Vật lý đại cương",
+  ...SUBJECT_OPTIONS.map((subject) => subject.label),
 ];
 
 const FILE_TYPES = ["Tất cả", "PDF", "PPT", "DOC", "IMG"];
@@ -134,7 +126,6 @@ const EXT_COLOR = {
   IMG: "#10b981",
 };
 
-/* ── Helpers ── */
 function sizeLabel(mb) {
   return mb >= 1 ? `${mb} MB` : `${(mb * 1024).toFixed(0)} KB`;
 }
@@ -156,22 +147,21 @@ function sortDocs(docs, sort) {
     if (sort === "oldest") return new Date(a.date) - new Date(b.date);
     if (sort === "name") return a.name.localeCompare(b.name);
     if (sort === "size") return b.sizeMB - a.sizeMB;
+
     return 0;
   });
 }
 
-/* ── Upload Modal ── */
 function UploadModal({ onClose, onSuccess }) {
   const [step, setStep] = useState("drop");
   const [file, setFile] = useState(null);
   const [error, setError] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const [progress, setProgress] = useState(0);
+
   const [meta, setMeta] = useState({
-    name: "",
-    subject: SUBJECTS[1],
+    subjectCode: "PRJ301",
     description: "",
-    tags: "",
     privacy: "private",
   });
 
@@ -201,11 +191,6 @@ function UploadModal({ onClose, onSuccess }) {
       sizeMB: Number((f.size / 1048576).toFixed(1)),
     });
 
-    setMeta((m) => ({
-      ...m,
-      name: f.name.replace(/\.[^.]+$/, ""),
-    }));
-
     setStep("form");
   }
 
@@ -218,12 +203,17 @@ function UploadModal({ onClose, onSuccess }) {
   async function handleSubmit(e) {
     e.preventDefault();
 
-    if (!meta.name.trim() || !file) return;
+    if (!file) return;
 
     const description = meta.description.trim();
 
     if (!description) {
       setError("Vui lòng nhập mô tả tài liệu trước khi upload.");
+      return;
+    }
+
+    if (!meta.subjectCode) {
+      setError("Vui lòng chọn môn học.");
       return;
     }
 
@@ -234,15 +224,8 @@ function UploadModal({ onClose, onSuccess }) {
     try {
       const result = await createDocument({
         file: file.raw,
-        data: {
-          documentName: meta.name.trim(),
-          fileType: file.ext,
-          fileSize: file.raw.size,
-          description: description,
-          textContent: description,
-          isPublic: meta.privacy === "public",
-          categories: [meta.subject],
-        },
+        description,
+        subjectCode: meta.subjectCode,
       });
 
       const saved = result?.data || result || {};
@@ -255,12 +238,13 @@ function UploadModal({ onClose, onSuccess }) {
       let savedForUi = saved;
 
       if (meta.privacy === "public") {
-        const toggleResult = await updateDocumentVisibility(savedId, true);
+        const toggleResult = await toggleDocumentPublicStatus(savedId, true);
 
         savedForUi = toggleResult?.data ||
           toggleResult || {
             ...saved,
-            isPublic: true,
+            isPublic: false,
+            status: "PENDING",
           };
       }
 
@@ -349,32 +333,20 @@ function UploadModal({ onClose, onSuccess }) {
             </div>
 
             <div className="form-grid">
-              <div className="fg-full">
-                <label>
-                  Tên tài liệu <span className="required">*</span>
-                </label>
-                <input
-                  value={meta.name}
-                  onChange={(e) =>
-                    setMeta((m) => ({ ...m, name: e.target.value }))
-                  }
-                  placeholder="Nhập tên tài liệu"
-                  required
-                />
-              </div>
-
               <div>
                 <label>
                   Môn học <span className="required">*</span>
                 </label>
                 <select
-                  value={meta.subject}
+                  value={meta.subjectCode}
                   onChange={(e) =>
-                    setMeta((m) => ({ ...m, subject: e.target.value }))
+                    setMeta((m) => ({ ...m, subjectCode: e.target.value }))
                   }
                 >
-                  {SUBJECTS.slice(1).map((s) => (
-                    <option key={s}>{s}</option>
+                  {SUBJECT_OPTIONS.map((subject) => (
+                    <option key={subject.value} value={subject.value}>
+                      {subject.label}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -388,23 +360,14 @@ function UploadModal({ onClose, onSuccess }) {
                   }
                 >
                   <option value="private">🔒 Riêng tư</option>
-                  <option value="public">🌐 Công khai</option>
+                  <option value="public">🌐 Gửi duyệt công khai</option>
                 </select>
               </div>
 
               <div className="fg-full">
-                <label>Tag, cách nhau bằng dấu phẩy</label>
-                <input
-                  value={meta.tags}
-                  onChange={(e) =>
-                    setMeta((m) => ({ ...m, tags: e.target.value }))
-                  }
-                  placeholder="ví dụ: lý thuyết, ôn tập, chương 1"
-                />
-              </div>
-
-              <div className="fg-full">
-                <label>Mô tả</label>
+                <label>
+                  Mô tả <span className="required">*</span>
+                </label>
                 <textarea
                   value={meta.description}
                   onChange={(e) =>
@@ -412,6 +375,7 @@ function UploadModal({ onClose, onSuccess }) {
                   }
                   placeholder="Mô tả ngắn về tài liệu..."
                   rows={3}
+                  required
                 />
               </div>
             </div>
@@ -455,11 +419,9 @@ function UploadModal({ onClose, onSuccess }) {
   );
 }
 
-/* ── Edit Modal ── */
 function EditModal({ doc, onClose, onSave }) {
   const [meta, setMeta] = useState({
     name: doc.name,
-    subject: doc.subject,
     tags: doc.tags.join(", "),
     privacy: doc.privacy,
   });
@@ -470,7 +432,6 @@ function EditModal({ doc, onClose, onSave }) {
     onSave({
       ...doc,
       name: meta.name.trim(),
-      subject: meta.subject,
       tags: meta.tags
         .split(",")
         .map((t) => t.trim())
@@ -508,20 +469,6 @@ function EditModal({ doc, onClose, onSave }) {
             </div>
 
             <div>
-              <label>Môn học</label>
-              <select
-                value={meta.subject}
-                onChange={(e) =>
-                  setMeta((m) => ({ ...m, subject: e.target.value }))
-                }
-              >
-                {SUBJECTS.slice(1).map((s) => (
-                  <option key={s}>{s}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
               <label>Quyền riêng tư</label>
               <select
                 value={meta.privacy}
@@ -530,7 +477,7 @@ function EditModal({ doc, onClose, onSave }) {
                 }
               >
                 <option value="private">🔒 Riêng tư</option>
-                <option value="public">🌐 Công khai</option>
+                <option value="public">🌐 Gửi duyệt công khai</option>
               </select>
             </div>
 
@@ -546,6 +493,11 @@ function EditModal({ doc, onClose, onSave }) {
             </div>
           </div>
 
+          <p className="upload-error" style={{ color: "#6b7280" }}>
+            Môn học hiện tại lấy theo subjectCode từ BE. Trang này chỉ cho sửa
+            tên và trạng thái công khai.
+          </p>
+
           <div className="modal-footer">
             <button type="button" className="btn-cancel" onClick={onClose}>
               Hủy
@@ -560,7 +512,6 @@ function EditModal({ doc, onClose, onSave }) {
   );
 }
 
-/* ── Share Modal ── */
 function ShareModal({ doc, onClose, onSubmit }) {
   const [targetUserId, setTargetUserId] = useState("");
   const [permissionType, setPermissionType] = useState("view");
@@ -607,7 +558,7 @@ function ShareModal({ doc, onClose, onSubmit }) {
               <input
                 value={targetUserId}
                 onChange={(e) => setTargetUserId(e.target.value)}
-                placeholder="Dán User ID (xem trong Hồ sơ cá nhân của người nhận)"
+                placeholder="Dán User ID người nhận"
                 required
               />
             </div>
@@ -640,7 +591,6 @@ function ShareModal({ doc, onClose, onSubmit }) {
   );
 }
 
-/* ── Delete Confirm ── */
 function DeleteConfirm({ doc, onClose, onConfirm }) {
   return (
     <div
@@ -678,7 +628,6 @@ function DeleteConfirm({ doc, onClose, onConfirm }) {
   );
 }
 
-/* ── Preview Modal: hiển thị nội dung file thật ── */
 function PreviewModal({ doc, previewUrl, previewBlob, previewError, onClose }) {
   const isImage = doc.ext === "IMG";
   const isPdf = doc.ext === "PDF";
@@ -688,7 +637,7 @@ function PreviewModal({ doc, previewUrl, previewBlob, previewError, onClose }) {
   const [docxError, setDocxError] = useState("");
 
   useEffect(() => {
-    if (!isDoc || !previewBlob) return;
+    if (!isDoc || !previewBlob || !docxContainerRef.current) return;
 
     let cancelled = false;
 
@@ -775,9 +724,7 @@ function PreviewModal({ doc, previewUrl, previewBlob, previewError, onClose }) {
               />
             ) : isDoc ? (
               docxError ? (
-                <p style={{ color: "#ef4444", padding: "32px" }}>
-                  {docxError}
-                </p>
+                <p style={{ color: "#ef4444", padding: "32px" }}>{docxError}</p>
               ) : (
                 <div
                   ref={docxContainerRef}
@@ -805,8 +752,15 @@ function PreviewModal({ doc, previewUrl, previewBlob, previewError, onClose }) {
   );
 }
 
-/* ── Document Card ── */
-function DocCard({ doc, readOnly, onEdit, onDelete, onPreview, onDownload, onShare }) {
+function DocCard({
+  doc,
+  readOnly,
+  onEdit,
+  onDelete,
+  onPreview,
+  onDownload,
+  onShare,
+}) {
   return (
     <div className="doc-card">
       <div className="doc-card-top">
@@ -834,11 +788,12 @@ function DocCard({ doc, readOnly, onEdit, onDelete, onPreview, onDownload, onSha
       <p className="doc-card-subject">{doc.subject}</p>
 
       <div className="doc-card-tags">
-        {doc.tags.slice(0, 2).map((t) => (
-          <span key={t} className="tag">
-            {t}
+        {doc.tags.slice(0, 2).map((tag) => (
+          <span key={tag} className="tag">
+            {tag}
           </span>
         ))}
+
         {doc.tags.length > 2 && (
           <span className="tag tag--more">+{doc.tags.length - 2}</span>
         )}
@@ -903,8 +858,15 @@ function DocCard({ doc, readOnly, onEdit, onDelete, onPreview, onDownload, onSha
   );
 }
 
-/* ── Document Row ── */
-function DocRow({ doc, readOnly, onEdit, onDelete, onPreview, onDownload, onShare }) {
+function DocRow({
+  doc,
+  readOnly,
+  onEdit,
+  onDelete,
+  onPreview,
+  onDownload,
+  onShare,
+}) {
   return (
     <div className="doc-list-row">
       <div
@@ -920,9 +882,9 @@ function DocRow({ doc, readOnly, onEdit, onDelete, onPreview, onDownload, onShar
       </div>
 
       <div className="doc-list-tags">
-        {doc.tags.slice(0, 3).map((t) => (
-          <span key={t} className="tag">
-            {t}
+        {doc.tags.slice(0, 3).map((tag) => (
+          <span key={tag} className="tag">
+            {tag}
           </span>
         ))}
       </div>
@@ -991,20 +953,22 @@ function DocRow({ doc, readOnly, onEdit, onDelete, onPreview, onDownload, onShar
   );
 }
 
-/* ── Document section: tái sử dụng ở DocumentsPage và DashboardPage ── */
 export function DocumentsSection() {
   const [tab, setTab] = useState("mine");
   const [docs, setDocs] = useState([]);
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [error, setError] = useState("");
+
   const [sharedDocs, setSharedDocs] = useState([]);
   const [loadingShared, setLoadingShared] = useState(false);
   const [sharedError, setSharedError] = useState("");
+
   const [search, setSearch] = useState("");
   const [subject, setSubject] = useState("Tất cả");
   const [fileType, setFileType] = useState("Tất cả");
   const [sort, setSort] = useState("newest");
   const [view, setView] = useState("grid");
+
   const [showUpload, setShowUpload] = useState(false);
   const [editDoc, setEditDoc] = useState(null);
   const [deleteDoc, setDeleteDoc] = useState(null);
@@ -1037,43 +1001,23 @@ export function DocumentsSection() {
   }, []);
 
   useEffect(() => {
-    if (!ENABLE_SHARED_TAB) return;
+    if (!ENABLE_SHARED_TAB || loadingDocs) return;
 
     async function loadSharedDocuments() {
       try {
         setLoadingShared(true);
         setSharedError("");
 
-        // Backend chưa có endpoint /shared-with-me, nên tạm suy ra tài liệu
-        // được share bằng cách: lấy toàn bộ tài liệu truy cập được qua
-        // /search (không filter), rồi loại các tài liệu công khai và
-        // tài liệu mình sở hữu (lấy từ /all) — phần còn lại là private +
-        // không phải của mình => được người khác share riêng.
-        const [accessibleResult, ownedResult] = await Promise.all([
-          searchDocuments("", ""),
-          getDocuments(),
-        ]);
+        const accessibleResult = await searchDocuments("");
+        const accessibleData = accessibleResult?.data || accessibleResult || [];
 
-        const accessibleData =
-          accessibleResult?.data || accessibleResult || [];
-        const ownedData = ownedResult?.data || ownedResult || [];
+        const ownedIds = new Set(docs.map((doc) => doc.id));
 
-        const ownedIds = new Set(
-          (Array.isArray(ownedData) ? ownedData : []).map(
-            (d) => d.id || d.documentId || d.document_id,
-          ),
-        );
+        const shared = (Array.isArray(accessibleData) ? accessibleData : [])
+          .map(mapDoc)
+          .filter((doc) => !doc.isPublic && !ownedIds.has(doc.id));
 
-        const shared = (
-          Array.isArray(accessibleData) ? accessibleData : []
-        ).filter((d) => {
-          const id = d.id || d.documentId || d.document_id;
-          const isPublic = d.isPublic === true || d.isPublic === "true";
-
-          return !isPublic && !ownedIds.has(id);
-        });
-
-        setSharedDocs(shared.map(mapDoc));
+        setSharedDocs(shared);
       } catch (err) {
         console.error("Load shared documents error:", err);
         setSharedError("Không thể tải danh sách tài liệu được chia sẻ.");
@@ -1083,7 +1027,7 @@ export function DocumentsSection() {
     }
 
     loadSharedDocuments();
-  }, []);
+  }, [docs, loadingDocs]);
 
   const activeTab = ENABLE_SHARED_TAB ? tab : "mine";
   const activeDocs = activeTab === "mine" ? docs : sharedDocs;
@@ -1091,24 +1035,26 @@ export function DocumentsSection() {
   const activeError = activeTab === "mine" ? error : sharedError;
 
   const filtered = sortDocs(
-    activeDocs.filter((d) => {
+    activeDocs.filter((doc) => {
       const q = search.toLowerCase();
 
       const matchSearch =
         !q ||
-        d.name.toLowerCase().includes(q) ||
-        d.subject.toLowerCase().includes(q) ||
-        d.tags.some((t) => t.toLowerCase().includes(q));
+        doc.name.toLowerCase().includes(q) ||
+        doc.subject.toLowerCase().includes(q) ||
+        doc.tags.some((tag) => tag.toLowerCase().includes(q));
 
-      const matchSubject = subject === "Tất cả" || d.subject === subject;
-      const matchType = fileType === "Tất cả" || d.ext === fileType;
+      const matchSubject = subject === "Tất cả" || doc.subject === subject;
+      const matchType = fileType === "Tất cả" || doc.ext === fileType;
 
       return matchSearch && matchSubject && matchType;
     }),
     sort,
   );
 
-  const totalSize = activeDocs.reduce((s, d) => s + d.sizeMB, 0).toFixed(1);
+  const totalSize = activeDocs
+    .reduce((sum, doc) => sum + doc.sizeMB, 0)
+    .toFixed(1);
 
   function handleUploadSuccess(newDoc) {
     setDocs((prev) => [newDoc, ...prev]);
@@ -1117,13 +1063,13 @@ export function DocumentsSection() {
 
   async function handleEditSave(updated) {
     try {
-      const oldDoc = docs.find((d) => d.id === updated.id);
+      const oldDoc = docs.find((doc) => doc.id === updated.id);
 
-      const result = await updateDocument(updated.id, updated.name);
+      const result = await updateDocumentName(updated.id, updated.name);
       let data = result?.data || result || updated;
 
       if (oldDoc && oldDoc.privacy !== updated.privacy) {
-        const toggleResult = await updateDocumentVisibility(
+        const toggleResult = await toggleDocumentPublicStatus(
           updated.id,
           updated.privacy === "public",
         );
@@ -1138,17 +1084,16 @@ export function DocumentsSection() {
       const mapped = data && typeof data === "object" ? mapDoc(data) : updated;
 
       setDocs((prev) =>
-        prev.map((d) =>
-          d.id === updated.id
+        prev.map((doc) =>
+          doc.id === updated.id
             ? {
-                ...d,
+                ...doc,
                 ...mapped,
-                subject: updated.subject,
                 tags: updated.tags,
                 privacy: updated.privacy,
                 isPublic: updated.privacy === "public",
               }
-            : d,
+            : doc,
         ),
       );
 
@@ -1169,7 +1114,6 @@ export function DocumentsSection() {
 
       if (!alreadyShared) throw err;
 
-      // Tài liệu đã share cho user này rồi -> đổi quyền qua API update thay vì tạo mới
       await updateDocumentSharePermission(id, targetUserId, permissionType);
     }
 
@@ -1180,7 +1124,8 @@ export function DocumentsSection() {
     try {
       await deleteDocument(id);
 
-      setDocs((prev) => prev.filter((d) => d.id !== id));
+      setDocs((prev) => prev.filter((doc) => doc.id !== id));
+      setSharedDocs((prev) => prev.filter((doc) => doc.id !== id));
       setDeleteDoc(null);
     } catch (err) {
       console.error("Delete document error:", err);
@@ -1195,10 +1140,10 @@ export function DocumentsSection() {
     setPreviewError("");
 
     try {
-      const blob = await previewDocumentFile(doc.id);
-      const url = URL.createObjectURL(blob);
-      setPreviewUrl(url);
-      setPreviewBlob(blob);
+      const result = await previewDocumentFile(doc.id);
+
+      setPreviewUrl(result.url || URL.createObjectURL(result));
+      setPreviewBlob(result.blob || result);
     } catch (err) {
       console.error("Preview document error:", err);
       setPreviewError("Không thể tải nội dung xem trước.");
@@ -1207,17 +1152,21 @@ export function DocumentsSection() {
 
   async function handleDownload(doc) {
     try {
-      const blob = await downloadDocumentFile(doc.id);
-      const fileURL = URL.createObjectURL(blob);
+      const result = await downloadDocumentFile(doc.id);
+      const fileUrl = result.url || URL.createObjectURL(result);
 
-      const a = document.createElement("a");
-      a.href = fileURL;
-      a.download = `${doc.name || "document"}.${doc.ext || "file"}`;
-      document.body.appendChild(a);
-      a.click();
+      const link = document.createElement("a");
+      link.href = fileUrl;
+      link.download =
+        result.fileName || `${doc.name || "document"}.${doc.ext || "file"}`;
 
-      a.remove();
-      URL.revokeObjectURL(fileURL);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      setTimeout(() => {
+        URL.revokeObjectURL(fileUrl);
+      }, 1000);
     } catch (err) {
       console.error("Download document error:", err);
       alert(
@@ -1237,6 +1186,7 @@ export function DocumentsSection() {
             >
               📁 Tài liệu của tôi
             </button>
+
             <button
               className={`docs-tab${tab === "shared" ? " docs-tab--active" : ""}`}
               onClick={() => setTab("shared")}
@@ -1267,7 +1217,9 @@ export function DocumentsSection() {
             <div className="docs-header">
               <div>
                 <h1 className="docs-title">
-                  {activeTab === "mine" ? "Tài liệu của tôi" : "Được chia sẻ với tôi"}
+                  {activeTab === "mine"
+                    ? "Tài liệu của tôi"
+                    : "Được chia sẻ với tôi"}
                 </h1>
                 <p className="docs-sub">
                   {activeDocs.length} tài liệu · {totalSize} MB
@@ -1312,8 +1264,8 @@ export function DocumentsSection() {
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
                 >
-                  {SUBJECTS.map((s) => (
-                    <option key={s}>{s}</option>
+                  {SUBJECT_FILTERS.map((item) => (
+                    <option key={item}>{item}</option>
                   ))}
                 </select>
 
@@ -1322,8 +1274,8 @@ export function DocumentsSection() {
                   value={fileType}
                   onChange={(e) => setFileType(e.target.value)}
                 >
-                  {FILE_TYPES.map((t) => (
-                    <option key={t}>{t}</option>
+                  {FILE_TYPES.map((item) => (
+                    <option key={item}>{item}</option>
                   ))}
                 </select>
 
@@ -1332,9 +1284,9 @@ export function DocumentsSection() {
                   value={sort}
                   onChange={(e) => setSort(e.target.value)}
                 >
-                  {SORT_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
+                  {SORT_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
                     </option>
                   ))}
                 </select>
@@ -1342,9 +1294,7 @@ export function DocumentsSection() {
 
               <div className="view-toggle">
                 <button
-                  className={`view-btn${
-                    view === "grid" ? " view-btn--active" : ""
-                  }`}
+                  className={`view-btn${view === "grid" ? " view-btn--active" : ""}`}
                   onClick={() => setView("grid")}
                   title="Dạng lưới"
                 >
@@ -1352,9 +1302,7 @@ export function DocumentsSection() {
                 </button>
 
                 <button
-                  className={`view-btn${
-                    view === "list" ? " view-btn--active" : ""
-                  }`}
+                  className={`view-btn${view === "list" ? " view-btn--active" : ""}`}
                   onClick={() => setView("list")}
                   title="Dạng danh sách"
                 >
@@ -1431,18 +1379,20 @@ export function DocumentsSection() {
                 <div className="empty-icon">📭</div>
 
                 <p className="empty-title">
-                  {docs.length === 0
+                  {activeDocs.length === 0
                     ? "Chưa có tài liệu nào"
                     : "Không tìm thấy tài liệu phù hợp"}
                 </p>
 
                 <p className="empty-sub">
-                  {docs.length === 0
-                    ? "Bắt đầu bằng cách upload tài liệu đầu tiên của bạn"
+                  {activeDocs.length === 0
+                    ? activeTab === "mine"
+                      ? "Bắt đầu bằng cách upload tài liệu đầu tiên của bạn"
+                      : "Chưa có tài liệu nào được chia sẻ với bạn"
                     : "Thử thay đổi từ khóa hoặc bộ lọc"}
                 </p>
 
-                {docs.length === 0 && (
+                {activeTab === "mine" && activeDocs.length === 0 && (
                   <button
                     className="btn-primary"
                     onClick={() => setShowUpload(true)}
@@ -1495,6 +1445,7 @@ export function DocumentsSection() {
           previewError={previewError}
           onClose={() => {
             if (previewUrl) URL.revokeObjectURL(previewUrl);
+
             setPreviewDoc(null);
             setPreviewUrl("");
             setPreviewBlob(null);
@@ -1506,7 +1457,6 @@ export function DocumentsSection() {
   );
 }
 
-/* ── Standalone page: bọc AppLayout cho route /documents ── */
 export default function DocumentsPage() {
   return (
     <AppLayout>
