@@ -1,3 +1,4 @@
+//cấu hình hệ thống
 import { useState } from "react";
 import { updateAdminConfig } from "../../../apis/adminApi";
 import { SUBJECTS } from "../shared/mockData";
@@ -42,7 +43,7 @@ export default function ConfigSection({ onToast }) {
         maxDailyChatTokens: Number(config.maxDailyChatTokens),
         totalStorageQuotaGb: Number(config.totalStorageQuotaGb),
         maxFileSizeMb: Number(config.maxFileSizeMb),
-        allowedFileTypes: config.allowedFileTypes.join(","),
+        allowedFileTypes: config.allowedFileTypes.join(",").toLowerCase(),
       });
       console.log("Update config result:", result);
       onToast("Cấu hình đã được lưu và áp dụng!");
