@@ -227,7 +227,7 @@ export async function updateDocumentSharePermission(
 }
 
 export async function getPendingPublicDocuments({ page = 0, size = 10 } = {}) {
-  return api.get("/admin/documents", {
+  return api.get("/admin/document", {
     status: "PENDING",
     page,
     size,

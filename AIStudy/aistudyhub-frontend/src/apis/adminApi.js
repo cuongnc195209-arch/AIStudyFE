@@ -1,7 +1,7 @@
 import api from "./api";
 
 export async function getUsers({ key = "", page = 0, size = 10 } = {}) {
-  return api.get("/admin/users", {
+  return api.get("/admin/account", {
     key,
     page,
     size,
@@ -9,7 +9,7 @@ export async function getUsers({ key = "", page = 0, size = 10 } = {}) {
 }
 
 export async function updateUserStatus(userId, status) {
-  return api.put(`/admin/users/${userId}/status`, null, {
+  return api.put(`/admin/account/${userId}/status`, null, {
     queryParams: {
       status,
     },
@@ -17,7 +17,7 @@ export async function updateUserStatus(userId, status) {
 }
 
 export async function updateUserRole(userId, role) {
-  return api.put(`/admin/users/${userId}/role`, null, {
+  return api.put(`/admin/account/${userId}/role`, null, {
     queryParams: {
       role,
     },
@@ -31,7 +31,7 @@ export async function getAdminDocuments({
   page = 0,
   size = 10,
 } = {}) {
-  return api.get("/admin/documents", {
+  return api.get("/admin/document", {
     key,
     status,
     isPublic,
@@ -73,14 +73,14 @@ export async function rejectDocument(documentId) {
 }
 
 export async function getAdminChats({ page = 0, size = 10 } = {}) {
-  return api.get("/admin/chats", {
+  return api.get("/admin/chat", {
     page,
     size,
   });
 }
 
 export async function getAdminStorage({ page = 0, size = 10 } = {}) {
-  return api.get("/admin/storages", {
+  return api.get("/admin/storage", {
     page,
     size,
   });
