@@ -10,7 +10,7 @@ const NAV_ITEMS = [
   { id: "chat", icon: "💬", label: "Chat AI" },
   { id: "forum", icon: "🚩", label: "Kiểm duyệt Forum" },
   { id: "stats", icon: "📈", label: "Thống kê" },
-  // { id: "config", icon: "⚙️", label: "Cấu hình hệ thống" }, // tạm ẩn
+   { id: "config", icon: "⚙️", label: "Cấu hình hệ thống" }, // tạm ẩn
 ];
 
 export default function AdminLayout({ activeSection, onNavigate, children }) {
