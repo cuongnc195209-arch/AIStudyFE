@@ -1,6 +1,7 @@
 import { useState } from "react";
 import AppLayout from "../../components/layout/AppLayout";
-import { ForumSection, Toast } from "../Admin/AdminDashboardPage";
+import ForumSection from "../Admin/sections/ForumSection";
+import { Toast } from "../Admin/shared/Toast";
 import "../Admin/AdminDashboardPage.css";
 
 export default function ModerationPage() {
