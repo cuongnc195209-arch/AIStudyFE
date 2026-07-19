@@ -5,7 +5,10 @@ import {
   updateUserRole,
 } from "../../../apis/adminApi";
 import { ConfirmModal } from "../shared/ConfirmModal";
+import { AdminPagination } from "../shared/AdminPagination";
 import { mapUser } from "../shared/mappers";
+
+const USERS_PAGE_SIZE = 10;
 
 export default function UsersSection({ onToast }) {
   const [users, setUsers] = useState([]);
@@ -13,6 +16,7 @@ export default function UsersSection({ onToast }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [confirm, setConfirm] = useState(null);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     getUsers({ size: 9999 })
@@ -36,6 +40,23 @@ export default function UsersSection({ onToast }) {
     const matchFilter = filter === "all" || u.status === filter;
     return matchSearch && matchFilter;
   });
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / USERS_PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const paginated = filtered.slice(
+    (currentPage - 1) * USERS_PAGE_SIZE,
+    currentPage * USERS_PAGE_SIZE,
+  );
+
+  function handleSearchChange(value) {
+    setSearch(value);
+    setPage(1);
+  }
+
+  function handleFilterChange(value) {
+    setFilter(value);
+    setPage(1);
+  }
 
   async function doAction() {
     const { action, user, newRole } = confirm;
@@ -92,12 +113,12 @@ export default function UsersSection({ onToast }) {
             className="admin-search"
             placeholder="Tìm tên, email..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
           />
           {search && (
             <button
               className="admin-search-clear"
-              onClick={() => setSearch("")}
+              onClick={() => handleSearchChange("")}
             >
               ✕
             </button>
@@ -112,7 +133,7 @@ export default function UsersSection({ onToast }) {
             <button
               key={v}
               className={`filter-tab${filter === v ? " filter-tab--active" : ""}`}
-              onClick={() => setFilter(v)}
+              onClick={() => handleFilterChange(v)}
             >
               {l}
             </button>
@@ -132,7 +153,7 @@ export default function UsersSection({ onToast }) {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((u, idx) => (
+            {paginated.map((u, idx) => (
               <tr key={u.id ?? idx}>
                 <td>
                   <div className="td-user">
@@ -218,6 +239,14 @@ export default function UsersSection({ onToast }) {
           <div className="table-empty">Không tìm thấy người dùng</div>
         )}
       </div>
+
+      {!loading && filtered.length > 0 && (
+        <AdminPagination
+          page={currentPage}
+          totalPages={totalPages}
+          onChange={setPage}
+        />
+      )}
 
       {confirm && (
         <ConfirmModal
