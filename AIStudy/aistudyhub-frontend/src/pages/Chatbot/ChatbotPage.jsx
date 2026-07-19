@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import AppLayout from "../../components/layout/AppLayout";
 import {
   startChatSession,
-  sendMessage as sendChatMessage,
+  sendChatMessage,
   getChatHistory,
   updateSessionDocuments,
 } from "../../apis/chatbotApi";
@@ -265,7 +265,7 @@ export default function ChatbotPage() {
 
   async function handleNewSession() {
     try {
-      const result = await startChatSession([]);
+      const result = await startChatSession({ documentIds: [] });
       const sessionId = extractSessionId(result);
       const newSess = {
         id: sessionId || Date.now(),
@@ -311,7 +311,9 @@ export default function ChatbotPage() {
     }
 
     try {
-      const result = await startChatSession(docs.map((d) => d.id));
+      const result = await startChatSession({
+        documentIds: docs.map((d) => d.id),
+      });
       const sessionId = extractSessionId(result);
       const newSess = {
         id: sessionId || Date.now(),
