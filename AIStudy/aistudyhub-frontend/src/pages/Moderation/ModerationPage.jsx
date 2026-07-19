@@ -5,7 +5,6 @@ import {
   getPendingPublicDocuments,
   reviewDocument,
 } from "../../apis/documentApi";
-import { Toast } from "../Admin/shared/Toast";
 import "../Admin/AdminDashboardPage.css";
 
 const PAGE_SIZE = 9999;
@@ -23,8 +22,9 @@ function formatFileSize(bytes) {
 
   if (!value) return "—";
   if (value < 1024) return `${value} B`;
-  if (value < 1048576) return `${(value / 1024).toFixed(0)} KB`;
-  return `${(value / 1048576).toFixed(1)} MB`;
+  if (value < 1024 * 1024) return `${(value / 1024).toFixed(0)} KB`;
+
+  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function formatDate(value) {
@@ -57,17 +57,11 @@ function getDocStatus(d) {
   );
 }
 
-function isPendingDocument(d) {
-  const status = getDocStatus(d);
-
-  return status === "PENDING";
-}
-
 function mapPendingDocument(d, index = 0) {
   const documentId = d.documentId || d.id || d.document_id || d.uuid;
   const name = d.documentName || d.name || d.title || "Untitled";
   const createdAt = d.createdAt || d.created_at || d.uploadedAt || d.sharedAt;
-  const status = getDocStatus(d) || "PENDING";
+  const status = getDocStatus(d);
 
   return {
     id: documentId || `${name}-${createdAt || index}`,
@@ -86,7 +80,7 @@ function mapPendingDocument(d, index = 0) {
     fileType: String(d.fileType || d.ext || "FILE").toUpperCase(),
     fileSize: formatFileSize(d.fileSize),
     createdAt,
-    status,
+    status: status || "UNKNOWN",
     description: d.description || "",
   };
 }
@@ -96,7 +90,6 @@ export default function ModerationPage() {
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState(null);
   const [search, setSearch] = useState("");
-  const [toast, setToast] = useState(null);
   const [error, setError] = useState("");
 
   const fetchPendingDocuments = useCallback(async () => {
@@ -107,8 +100,15 @@ export default function ModerationPage() {
 
     const list = getListFromResponse(res);
 
+    /*
+      Quan trọng:
+      API đã gọi /api/admin/document?status=PENDING
+      nên BE đã lọc pending rồi.
+      FE không filter thêm .filter(isPendingDocument),
+      vì nếu BE chưa trả status đúng field thì FE sẽ tự xóa hết danh sách.
+    */
     return list
-      .filter(isPendingDocument)
+      .filter((doc) => getDocStatus(doc) === "PENDING")
       .map((doc, index) => mapPendingDocument(doc, index));
   }, []);
 
@@ -166,7 +166,8 @@ export default function ModerationPage() {
         doc.name.toLowerCase().includes(q) ||
         doc.owner.toLowerCase().includes(q) ||
         doc.subject.toLowerCase().includes(q) ||
-        doc.fileType.toLowerCase().includes(q)
+        doc.fileType.toLowerCase().includes(q) ||
+        doc.status.toLowerCase().includes(q)
       );
     });
   }, [documents, search]);
@@ -189,15 +190,15 @@ export default function ModerationPage() {
     const result = await Swal.fire({
       title: isAccept ? "Duyệt tài liệu?" : "Từ chối tài liệu?",
       html: `
-      <div style="text-align: center;">
-        <p style="font-size: 15px; margin-bottom: 8px;">
-          Bạn có chắc muốn ${isAccept ? "duyệt" : "từ chối"} tài liệu này không?
-        </p>
-        <b style="font-size: 16px; color: #111827;">
-          "${doc.name}"
-        </b>
-      </div>
-    `,
+        <div style="text-align: center;">
+          <p style="font-size: 15px; margin-bottom: 8px;">
+            Bạn có chắc muốn ${isAccept ? "duyệt" : "từ chối"} tài liệu này không?
+          </p>
+          <b style="font-size: 16px; color: #111827;">
+            "${doc.name}"
+          </b>
+        </div>
+      `,
       icon: isAccept ? "question" : "warning",
       showCancelButton: true,
       confirmButtonText: isAccept ? "Duyệt" : "Từ chối",
@@ -327,7 +328,9 @@ export default function ModerationPage() {
                     </td>
 
                     <td>
-                      <span className="status-badge role-mod">Pending</span>
+                      <span className="status-badge role-mod">
+                        {doc.status || "PENDING"}
+                      </span>
                     </td>
 
                     <td>
@@ -368,8 +371,6 @@ export default function ModerationPage() {
           </div>
         </div>
       </div>
-
-      {toast && <Toast message={toast} onDone={() => setToast(null)} />}
     </AppLayout>
   );
 }
