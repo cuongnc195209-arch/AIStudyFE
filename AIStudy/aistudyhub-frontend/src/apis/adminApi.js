@@ -81,6 +81,10 @@ export async function rejectDocument(documentId) {
   return reviewDocument(documentId, "DENY");
 }
 
+export async function updateAdminConfig(payload) {
+  return api.put("/admin/config", payload);
+}
+
 const adminApi = {
   getUsers,
 
@@ -98,6 +102,8 @@ const adminApi = {
   getAdminStorage,
   getAdminStorageUsage,
   getAdminStorageUsages,
+
+  updateAdminConfig,
 };
 
 export default adminApi;

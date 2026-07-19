@@ -8,6 +8,7 @@ import {
   getAdminStorage,
   getAdminDocuments,
   getAdminChats,
+  updateAdminConfig,
 } from "../../apis/adminApi";
 import { deleteDocument } from "../../apis/documentApi";
 import AdminLayout from "../../components/layout/AdminLayout";
@@ -904,7 +905,7 @@ function ChatSection() {
   const currentPage = Math.min(page, totalPages);
   const paginated = filtered.slice(
     (currentPage - 1) * CHAT_PAGE_SIZE,
-    currentPage * CHAT_PAGE_SIZE
+    currentPage * CHAT_PAGE_SIZE,
   );
 
   useEffect(() => {
@@ -1008,7 +1009,10 @@ function AdminPagination({ page, totalPages, onChange }) {
         </button>
         {pages.map((p, idx) =>
           p === "…" ? (
-            <span key={`ellipsis-${idx}`} className="page-btn page-btn-ellipsis">
+            <span
+              key={`ellipsis-${idx}`}
+              className="page-btn page-btn-ellipsis"
+            >
               …
             </span>
           ) : (
@@ -1019,7 +1023,7 @@ function AdminPagination({ page, totalPages, onChange }) {
             >
               {p}
             </button>
-          )
+          ),
         )}
         <button
           className="page-btn"
@@ -1165,12 +1169,12 @@ function StatsSection() {
 ════════════════════════════════ */
 function ConfigSection({ onToast }) {
   const [config, setConfig] = useState({
-    maxFileMB: 50,
-    storagePerUserGB: 5,
-    allowedFormats: ["PDF", "DOCX", "PPTX", "JPG", "PNG", "MP4"],
-    maintenanceMode: false,
-    maxAIQueriesPerDay: 20,
+    maxDailyChatTokens: 0,
+    totalStorageQuotaGb: 0,
+    maxFileSizeMb: 0,
+    allowedFileTypes: [],
   });
+  const [saving, setSaving] = useState(false);
   const [subjects, setSubjects] = useState(SUBJECTS);
   const [newSubject, setNewSubject] = useState("");
 
@@ -1190,10 +1194,28 @@ function ConfigSection({ onToast }) {
   function toggleFormat(fmt) {
     setConfig((c) => ({
       ...c,
-      allowedFormats: c.allowedFormats.includes(fmt)
-        ? c.allowedFormats.filter((f) => f !== fmt)
-        : [...c.allowedFormats, fmt],
+      allowedFileTypes: c.allowedFileTypes.includes(fmt)
+        ? c.allowedFileTypes.filter((f) => f !== fmt)
+        : [...c.allowedFileTypes, fmt],
     }));
+  }
+
+  async function saveConfig() {
+    setSaving(true);
+    try {
+      const result = await updateAdminConfig({
+        maxDailyChatTokens: Number(config.maxDailyChatTokens),
+        totalStorageQuotaGb: Number(config.totalStorageQuotaGb),
+        maxFileSizeMb: Number(config.maxFileSizeMb),
+        allowedFileTypes: config.allowedFileTypes.join(","),
+      });
+      console.log("Update config result:", result);
+      onToast("Cấu hình đã được lưu và áp dụng!");
+    } catch (err) {
+      onToast(`Lỗi khi lưu cấu hình: ${err?.message || err}`);
+    } finally {
+      setSaving(false);
+    }
   }
 
   function addSubject() {
@@ -1226,9 +1248,12 @@ function ConfigSection({ onToast }) {
                 type="number"
                 min={1}
                 max={500}
-                value={config.maxFileMB}
+                value={config.maxFileSizeMb}
                 onChange={(e) =>
-                  setConfig((c) => ({ ...c, maxFileMB: +e.target.value }))
+                  setConfig((c) => ({
+                    ...c,
+                    maxFileSizeMb: +e.target.value,
+                  }))
                 }
               />
               <span className="config-unit">MB</span>
@@ -1238,17 +1263,17 @@ function ConfigSection({ onToast }) {
             </p>
           </div>
           <div className="config-item">
-            <label>Dung lượng lưu trữ / người dùng Free (GB)</label>
+            <label>Tổng dung lượng lưu trữ (GB)</label>
             <div className="config-input-row">
               <input
                 type="number"
                 min={1}
                 max={100}
-                value={config.storagePerUserGB}
+                value={config.totalStorageQuotaGb}
                 onChange={(e) =>
                   setConfig((c) => ({
                     ...c,
-                    storagePerUserGB: +e.target.value,
+                    totalStorageQuotaGb: +e.target.value,
                   }))
                 }
               />
@@ -1256,48 +1281,20 @@ function ConfigSection({ onToast }) {
             </div>
           </div>
           <div className="config-item">
-            <label>Giới hạn câu hỏi AI / ngày (Free)</label>
+            <label>Giới hạn token chat AI / ngày</label>
             <div className="config-input-row">
               <input
                 type="number"
-                min={1}
-                max={1000}
-                value={config.maxAIQueriesPerDay}
+                min={0}
+                value={config.maxDailyChatTokens}
                 onChange={(e) =>
                   setConfig((c) => ({
                     ...c,
-                    maxAIQueriesPerDay: +e.target.value,
+                    maxDailyChatTokens: +e.target.value,
                   }))
                 }
               />
-              <span className="config-unit">câu/ngày</span>
-            </div>
-          </div>
-          <div className="config-item config-toggle-item">
-            <label>Chế độ bảo trì</label>
-            <div className="config-toggle-row">
-              <button
-                className={`admin-toggle${config.maintenanceMode ? " admin-toggle--on admin-toggle--danger" : ""}`}
-                onClick={() =>
-                  setConfig((c) => ({
-                    ...c,
-                    maintenanceMode: !c.maintenanceMode,
-                  }))
-                }
-              >
-                <span className="admin-toggle-thumb" />
-              </button>
-              <span
-                className={
-                  config.maintenanceMode
-                    ? "toggle-on-label"
-                    : "toggle-off-label"
-                }
-              >
-                {config.maintenanceMode
-                  ? "Đang bật — Người dùng không thể truy cập"
-                  : "Tắt"}
-              </span>
+              <span className="config-unit">token/ngày</span>
             </div>
           </div>
         </div>
@@ -1312,11 +1309,11 @@ function ConfigSection({ onToast }) {
           {ALL_FORMATS.map((fmt) => (
             <label
               key={fmt}
-              className={`format-checkbox${config.allowedFormats.includes(fmt) ? " format-checkbox--checked" : ""}`}
+              className={`format-checkbox${config.allowedFileTypes.includes(fmt) ? " format-checkbox--checked" : ""}`}
             >
               <input
                 type="checkbox"
-                checked={config.allowedFormats.includes(fmt)}
+                checked={config.allowedFileTypes.includes(fmt)}
                 onChange={() => toggleFormat(fmt)}
               />
               {fmt}
@@ -1358,9 +1355,10 @@ function ConfigSection({ onToast }) {
       <div className="config-save-row">
         <button
           className="abtn-primary abtn-lg"
-          onClick={() => onToast("Cấu hình đã được lưu và áp dụng!")}
+          disabled={saving}
+          onClick={saveConfig}
         >
-          💾 Lưu toàn bộ cấu hình
+          {saving ? "Đang lưu..." : "💾 Lưu cấu hình"}
         </button>
       </div>
     </div>
