@@ -24,7 +24,9 @@ function App() {
         <Route
           path="/dashboard"
           element={
-            <PrivateRoute allowedRoles={["CUSTOMER", "ADMIN", "TEACHER", "MODERATOR"]}>
+            <PrivateRoute
+              allowedRoles={["CUSTOMER", "ADMIN", "TEACHER", "MODERATOR"]}
+            >
               <DashboardPage />
             </PrivateRoute>
           }
@@ -33,13 +35,13 @@ function App() {
         <Route
           path="/moderation"
           element={
-            <PrivateRoute allowedRoles={["MODERATOR"]}>
+            <PrivateRoute allowedRoles={["MODERATOR", "ADMIN"]}>
               <ModerationPage />
             </PrivateRoute>
           }
         />
 
-<Route
+        <Route
           path="/chatbot"
           element={
             <PrivateRoute>
