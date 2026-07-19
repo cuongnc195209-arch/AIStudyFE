@@ -877,10 +877,13 @@ function mapChatAdmin(c) {
   };
 }
 
+const CHAT_PAGE_SIZE = 10;
+
 function ChatSection() {
   const [chats, setChats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     getAdminChats({ size: 9999 })
@@ -896,6 +899,17 @@ function ChatSection() {
     const q = search.toLowerCase();
     return !q || c.content.toLowerCase().includes(q);
   });
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / CHAT_PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const paginated = filtered.slice(
+    (currentPage - 1) * CHAT_PAGE_SIZE,
+    currentPage * CHAT_PAGE_SIZE
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
 
   return (
     <div className="admin-section">
@@ -933,7 +947,7 @@ function ChatSection() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((c, idx) => (
+            {paginated.map((c, idx) => (
               <tr key={c.id ?? idx}>
                 <td className="td-secondary">
                   {c.id ? `${c.id.slice(0, 8)}…` : "—"}
@@ -947,6 +961,73 @@ function ChatSection() {
         {!loading && filtered.length === 0 && (
           <div className="table-empty">Không tìm thấy tin nhắn</div>
         )}
+      </div>
+
+      {!loading && filtered.length > 0 && (
+        <AdminPagination
+          page={currentPage}
+          totalPages={totalPages}
+          onChange={setPage}
+        />
+      )}
+    </div>
+  );
+}
+
+/* Shared pagination control */
+function AdminPagination({ page, totalPages, onChange }) {
+  if (totalPages <= 1) return null;
+
+  const pages = [];
+  const addRange = (from, to) => {
+    for (let i = from; i <= to; i++) pages.push(i);
+  };
+
+  if (totalPages <= 7) {
+    addRange(1, totalPages);
+  } else {
+    pages.push(1);
+    if (page > 3) pages.push("…");
+    addRange(Math.max(2, page - 1), Math.min(totalPages - 1, page + 1));
+    if (page < totalPages - 2) pages.push("…");
+    pages.push(totalPages);
+  }
+
+  return (
+    <div className="admin-pagination">
+      <div className="admin-pagination-info">
+        Trang {page}/{totalPages}
+      </div>
+      <div className="admin-pagination-controls">
+        <button
+          className="page-btn"
+          disabled={page === 1}
+          onClick={() => onChange(page - 1)}
+        >
+          ‹
+        </button>
+        {pages.map((p, idx) =>
+          p === "…" ? (
+            <span key={`ellipsis-${idx}`} className="page-btn page-btn-ellipsis">
+              …
+            </span>
+          ) : (
+            <button
+              key={p}
+              className={`page-btn${p === page ? " page-btn--active" : ""}`}
+              onClick={() => onChange(p)}
+            >
+              {p}
+            </button>
+          )
+        )}
+        <button
+          className="page-btn"
+          disabled={page === totalPages}
+          onClick={() => onChange(page + 1)}
+        >
+          ›
+        </button>
       </div>
     </div>
   );
