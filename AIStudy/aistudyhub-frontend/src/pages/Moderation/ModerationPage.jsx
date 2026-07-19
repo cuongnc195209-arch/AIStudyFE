@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Swal from "sweetalert2";
 import AppLayout from "../../components/layout/AppLayout";
 import {
   getPendingPublicDocuments,
@@ -172,17 +173,42 @@ export default function ModerationPage() {
 
   async function handleReview(doc, decision) {
     if (!doc.documentId) {
-      setToast("BE chưa trả documentId nên không thể duyệt tài liệu này.");
+      await Swal.fire({
+        title: "Thiếu thông tin tài liệu",
+        text: "BE chưa trả documentId nên không thể duyệt tài liệu này.",
+        icon: "error",
+        confirmButtonText: "Đóng",
+        confirmButtonColor: "#2563eb",
+      });
+
       return;
     }
 
-    const actionText = decision === "ACCEPT" ? "duyệt" : "từ chối";
+    const isAccept = decision === "ACCEPT";
 
-    const confirmed = window.confirm(
-      `Bạn có chắc muốn ${actionText} tài liệu "${doc.name}" không?`,
-    );
+    const result = await Swal.fire({
+      title: isAccept ? "Duyệt tài liệu?" : "Từ chối tài liệu?",
+      html: `
+      <div style="text-align: center;">
+        <p style="font-size: 15px; margin-bottom: 8px;">
+          Bạn có chắc muốn ${isAccept ? "duyệt" : "từ chối"} tài liệu này không?
+        </p>
+        <b style="font-size: 16px; color: #111827;">
+          "${doc.name}"
+        </b>
+      </div>
+    `,
+      icon: isAccept ? "question" : "warning",
+      showCancelButton: true,
+      confirmButtonText: isAccept ? "Duyệt" : "Từ chối",
+      cancelButtonText: "Hủy",
+      confirmButtonColor: isAccept ? "#16a34a" : "#dc2626",
+      cancelButtonColor: "#6b7280",
+      reverseButtons: true,
+      focusCancel: true,
+    });
 
-    if (!confirmed) return;
+    if (!result.isConfirmed) return;
 
     setProcessingId(doc.id);
 
@@ -191,14 +217,27 @@ export default function ModerationPage() {
 
       setDocuments((prev) => prev.filter((item) => item.id !== doc.id));
 
-      setToast(
-        decision === "ACCEPT"
-          ? `Đã duyệt tài liệu "${doc.name}"`
-          : `Đã từ chối tài liệu "${doc.name}"`,
-      );
+      await Swal.fire({
+        title: isAccept ? "Đã duyệt tài liệu" : "Đã từ chối tài liệu",
+        text: isAccept
+          ? "Tài liệu đã được chấp nhận và có thể hiển thị công khai."
+          : "Tài liệu đã bị từ chối.",
+        icon: "success",
+        confirmButtonText: "OK",
+        confirmButtonColor: "#2563eb",
+        timer: 1800,
+        timerProgressBar: true,
+      });
     } catch (err) {
       console.error("Review document error:", err);
-      setToast(err?.message || "Duyệt tài liệu thất bại.");
+
+      await Swal.fire({
+        title: "Thao tác thất bại",
+        text: err?.message || "Không thể duyệt tài liệu. Vui lòng thử lại.",
+        icon: "error",
+        confirmButtonText: "Đóng",
+        confirmButtonColor: "#2563eb",
+      });
     } finally {
       setProcessingId(null);
     }
