@@ -9,7 +9,7 @@ export async function getUsers({ key = "", page = 0, size = 10 } = {}) {
 }
 
 export async function updateUserStatus(userId, status) {
-  return api.put(`/admin/account/${userId}/status`, null, {
+  return api.put(`/admin/account/status/${userId}`, null, {
     queryParams: {
       status,
     },
@@ -17,35 +17,44 @@ export async function updateUserStatus(userId, status) {
 }
 
 export async function updateUserRole(userId, role) {
-  return api.put(`/admin/account/${userId}/role`, null, {
+  return api.put(`/admin/account/role/${userId}`, null, {
     queryParams: {
       role,
     },
   });
 }
 
-export async function getAdminDocuments({
-  key = "",
-  status,
-  isPublic,
-  page = 0,
-  size = 10,
-} = {}) {
+export async function getAdminDocuments({ page = 0, size = 10 } = {}) {
   return api.get("/admin/document", {
-    key,
-    status,
-    isPublic,
     page,
     size,
   });
 }
 
-export async function getPendingPublicDocuments({ page = 0, size = 10 } = {}) {
-  return getAdminDocuments({
-    status: "PENDING",
+export async function getAdminChats({ page = 0, size = 10 } = {}) {
+  return api.get("/admin/chat", {
     page,
     size,
   });
+}
+
+export async function getAdminStorage({ page = 0, size = 10 } = {}) {
+  return api.get("/admin/storage", {
+    page,
+    size,
+  });
+}
+
+export async function getAdminStorageUsage({ page = 0, size = 10 } = {}) {
+  return getAdminStorage({ page, size });
+}
+
+export async function getAdminStorageUsages({ page = 0, size = 10 } = {}) {
+  return getAdminStorage({ page, size });
+}
+
+export async function getPendingPublicDocuments({ page = 0, size = 10 } = {}) {
+  return getAdminDocuments({ page, size });
 }
 
 export async function reviewDocument(documentId, decision) {
@@ -72,20 +81,6 @@ export async function rejectDocument(documentId) {
   return reviewDocument(documentId, "DENY");
 }
 
-export async function getAdminChats({ page = 0, size = 10 } = {}) {
-  return api.get("/admin/chat", {
-    page,
-    size,
-  });
-}
-
-export async function getAdminStorage({ page = 0, size = 10 } = {}) {
-  return api.get("/admin/storage", {
-    page,
-    size,
-  });
-}
-
 const adminApi = {
   getUsers,
 
@@ -101,6 +96,8 @@ const adminApi = {
 
   getAdminChats,
   getAdminStorage,
+  getAdminStorageUsage,
+  getAdminStorageUsages,
 };
 
 export default adminApi;

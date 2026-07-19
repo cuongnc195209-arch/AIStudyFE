@@ -16,151 +16,6 @@ import "./AdminDashboardPage.css";
 /* ════════════════════════════════
    MOCK DATA
 ════════════════════════════════ */
-const MOCK_USERS = [
-  {
-    id: 1,
-    name: "Nguyễn Văn A",
-    email: "a@fpt.edu.vn",
-    joined: "2026-01-15",
-    plan: "free",
-    docs: 24,
-    storage: 2.4,
-    status: "active",
-  },
-  {
-    id: 2,
-    name: "Trần Thị B",
-    email: "b@fpt.edu.vn",
-    joined: "2026-02-03",
-    plan: "premium",
-    docs: 87,
-    storage: 18.2,
-    status: "active",
-  },
-  {
-    id: 3,
-    name: "Lê Văn C",
-    email: "c@gmail.com",
-    joined: "2026-02-18",
-    plan: "free",
-    docs: 6,
-    storage: 0.7,
-    status: "locked",
-  },
-  {
-    id: 4,
-    name: "Phạm Thị D",
-    email: "d@fpt.edu.vn",
-    joined: "2026-03-01",
-    plan: "group",
-    docs: 45,
-    storage: 9.1,
-    status: "active",
-  },
-  {
-    id: 5,
-    name: "Hoàng Văn E",
-    email: "e@gmail.com",
-    joined: "2026-03-14",
-    plan: "free",
-    docs: 3,
-    storage: 0.3,
-    status: "active",
-  },
-  {
-    id: 6,
-    name: "Vũ Thị F",
-    email: "f@fpt.edu.vn",
-    joined: "2026-04-05",
-    plan: "premium",
-    docs: 62,
-    storage: 12.8,
-    status: "active",
-  },
-  {
-    id: 7,
-    name: "Đặng Văn G",
-    email: "g@gmail.com",
-    joined: "2026-04-20",
-    plan: "free",
-    docs: 11,
-    storage: 1.1,
-    status: "locked",
-  },
-  {
-    id: 8,
-    name: "Bùi Thị H",
-    email: "h@fpt.edu.vn",
-    joined: "2026-05-02",
-    plan: "free",
-    docs: 8,
-    storage: 0.9,
-    status: "active",
-  },
-];
-
-const MOCK_DOCUMENTS = [
-  {
-    id: 1,
-    name: "Giáo trình Lập trình Web",
-    ext: "PDF",
-    owner: "Nguyễn Văn A",
-    subject: "Lập trình Web",
-    size: "4.2 MB",
-    date: "2026-06-03",
-    privacy: "private",
-  },
-  {
-    id: 2,
-    name: "Slide CSDL Chương 5",
-    ext: "PPT",
-    owner: "Trần Thị B",
-    subject: "Cơ sở dữ liệu",
-    size: "8.1 MB",
-    date: "2026-06-02",
-    privacy: "public",
-  },
-  {
-    id: 3,
-    name: "Bài tập AI - A* Search",
-    ext: "DOC",
-    owner: "Lê Văn C",
-    subject: "Trí tuệ nhân tạo",
-    size: "1.3 MB",
-    date: "2026-05-31",
-    privacy: "private",
-  },
-  {
-    id: 4,
-    name: "Đề thi HK2 Mạng máy tính",
-    ext: "PDF",
-    owner: "Phạm Thị D",
-    subject: "Mạng máy tính",
-    size: "2.8 MB",
-    date: "2026-05-28",
-    privacy: "public",
-  },
-  {
-    id: 5,
-    name: "Tóm tắt Giải tích 1",
-    ext: "PDF",
-    owner: "Nguyễn Văn A",
-    subject: "Giải tích",
-    size: "1.1 MB",
-    date: "2026-05-25",
-    privacy: "private",
-  },
-  {
-    id: 6,
-    name: "Hình ảnh Lab Vật lý",
-    ext: "IMG",
-    owner: "Hoàng Văn E",
-    subject: "Vật lý đại cương",
-    size: "3.4 MB",
-    date: "2026-05-20",
-    privacy: "private",
-  },
-];
 
 const SUBJECTS = [
   "Lập trình Web",
@@ -177,8 +32,6 @@ const EXT_COLOR = {
   DOC: "#3b82f6",
   IMG: "#10b981",
 };
-const PLAN_COLOR = { free: "#6b7280", premium: "#0066ff", group: "#7c3aed" };
-const PLAN_LABEL = { free: "Miễn phí", premium: "Premium", group: "Nhóm" };
 
 const MONTH_USERS = [12, 19, 15, 28, 24, 38, 31, 45, 42, 58, 51, 67];
 const MONTH_REVENUE = [
@@ -276,7 +129,9 @@ function OverviewSection() {
       if (usersRes.status === "fulfilled") {
         const res = usersRes.value;
         const list = res?.content || res?.data || res || [];
-        const mapped = Array.isArray(list) ? list.map(mapUser) : [];
+        const mapped = Array.isArray(list)
+          ? list.map((u, index) => mapUser(u, index))
+          : [];
         const nonAdmin = mapped.filter((u) => u.role !== "ADMIN");
 
         setTotalUsers(res?.totalElements || nonAdmin.length);
@@ -295,8 +150,7 @@ function OverviewSection() {
         setTotalDocs(res?.totalElements || docList.length);
         setDocsThisWeek(
           docList.filter(
-            (d) =>
-              new Date(d.createdAt || d.date || 0).getTime() >= oneWeekAgo,
+            (d) => new Date(d.createdAt || d.date || 0).getTime() >= oneWeekAgo,
           ).length,
         );
       }
@@ -352,7 +206,11 @@ function OverviewSection() {
     {
       icon: "💾",
       label: "Lưu trữ đã dùng",
-      value: loading ? "..." : storageUsed != null ? formatStorage(storageUsed) : "—",
+      value: loading
+        ? "..."
+        : storageUsed != null
+          ? formatStorage(storageUsed)
+          : "—",
       trend: loading
         ? "Đang tải..."
         : storageUsed != null
@@ -410,11 +268,16 @@ function OverviewSection() {
         <div className="admin-card">
           <div className="admin-card-head">
             <h3>Đăng ký gần đây</h3>
-            <span className="card-meta">{recentUsers.length} người dùng mới</span>
+            <span className="card-meta">
+              {recentUsers.length} người dùng mới
+            </span>
           </div>
           <div className="mini-table">
-            {recentUsers.map((u) => (
-              <div key={u.id} className="mini-row">
+            {recentUsers.map((u, index) => (
+              <div
+                key={u.id || u.email || `recent-user-${index}`}
+                className="mini-row"
+              >
                 <div className="mini-avatar">
                   {u.name
                     .split(" ")
@@ -426,10 +289,13 @@ function OverviewSection() {
                   <p className="mini-name">{u.name}</p>
                   <p className="mini-email">{u.email}</p>
                 </div>
-                <span className="plan-badge" style={{
-                  background: u.role === "ADMIN" ? "#7c3aed20" : "#6b728020",
-                  color: u.role === "ADMIN" ? "#7c3aed" : "#6b7280",
-                }}>
+                <span
+                  className="plan-badge"
+                  style={{
+                    background: u.role === "ADMIN" ? "#7c3aed20" : "#6b728020",
+                    color: u.role === "ADMIN" ? "#7c3aed" : "#6b7280",
+                  }}
+                >
                   {u.role === "ADMIN" ? "Admin" : "User"}
                 </span>
               </div>
@@ -444,22 +310,31 @@ function OverviewSection() {
 /* ════════════════════════════════
    SECTION: USERS
 ════════════════════════════════ */
-function mapUser(u) {
+function mapUser(u, index = 0) {
   const rawStatus = (u.accountStatus || "").toUpperCase();
-  const status = rawStatus === "BANNED" || rawStatus === "LOCKED" ? "locked" : "active";
+  const status =
+    rawStatus === "BANNED" || rawStatus === "LOCKED" ? "locked" : "active";
   const fullName =
     u.fullName ||
     u.customerProfileFullName ||
     u.customerProfile?.fullName ||
     (u.email || "").split("@")[0] ||
     "Unknown";
-  const id = u.id || u.customerProfile?.id;
+  const id =
+    u.id ||
+    u.userId ||
+    u.user_id ||
+    u.customerProfile?.id ||
+    u.email ||
+    `user-${index}`;
   const rawRole =
     u.role ||
     u.userRole ||
     u.accountRole ||
     (Array.isArray(u.roles) ? u.roles[0] : null) ||
-    (Array.isArray(u.authorities) ? u.authorities[0]?.authority || u.authorities[0] : null) ||
+    (Array.isArray(u.authorities)
+      ? u.authorities[0]?.authority || u.authorities[0]
+      : null) ||
     "CUSTOMER";
   const role = rawRole.replace(/^ROLE_/, "").toUpperCase();
   return {
@@ -483,7 +358,9 @@ function UsersSection({ onToast }) {
     getUsers({ size: 9999 })
       .then((res) => {
         const list = res?.content || res?.data || res || [];
-        const all = Array.isArray(list) ? list.map((u, i) => ({ ...mapUser(u), id: u.id || u.customerProfile?.id || `user-${i}` })) : [];
+        const all = Array.isArray(list)
+          ? list.map((u, i) => mapUser(u, i))
+          : [];
         setUsers(all.filter((u) => u.role !== "ADMIN"));
       })
       .catch((err) => console.error("Load users error:", err))
@@ -613,18 +490,26 @@ function UsersSection({ onToast }) {
                   </div>
                 </td>
                 <td className="td-secondary">
-                  {u.joined ? new Date(u.joined).toLocaleDateString("vi-VN") : "—"}
+                  {u.joined
+                    ? new Date(u.joined).toLocaleDateString("vi-VN")
+                    : "—"}
                 </td>
                 <td>
                   <select
                     className={`admin-select role-select ${
-                      u.role === "ADMIN" ? "role-admin" :
-                      u.role === "MODERATOR" ? "role-mod" :
-                      "role-user"
+                      u.role === "ADMIN"
+                        ? "role-admin"
+                        : u.role === "MODERATOR"
+                          ? "role-mod"
+                          : "role-user"
                     }`}
                     value={u.role}
                     onChange={(e) =>
-                      setConfirm({ action: "role", user: u, newRole: e.target.value })
+                      setConfirm({
+                        action: "role",
+                        user: u,
+                        newRole: e.target.value,
+                      })
                     }
                   >
                     <option value="CUSTOMER">👤 User</option>
@@ -702,7 +587,7 @@ function UsersSection({ onToast }) {
 /* ════════════════════════════════
    SECTION: DOCUMENTS
 ════════════════════════════════ */
-function mapDocAdmin(d) {
+function mapDocAdmin(d, index = 0) {
   const rawExt = String(d.fileType || d.ext || "PDF").toUpperCase();
   let ext = rawExt;
   if (rawExt === "DOCX") ext = "DOC";
@@ -710,7 +595,11 @@ function mapDocAdmin(d) {
   if (["JPG", "JPEG", "PNG"].includes(rawExt)) ext = "IMG";
 
   return {
-    id: d.id || d.documentId || d.document_id,
+    id:
+      d.id ||
+      d.documentId ||
+      d.document_id ||
+      `${d.documentName || d.name || "document"}-${d.createdAt || d.date || index}`,
     name: d.documentName || d.name || "Untitled",
     ext,
     owner: d.ownerName || d.uploadedBy || d.userName || "—",
@@ -736,7 +625,11 @@ function DocumentsSection({ onToast }) {
     getAdminDocuments({ size: 9999 })
       .then((res) => {
         const data = res?.content || res?.data || res || [];
-        setDocs(Array.isArray(data) ? data.map(mapDocAdmin) : []);
+        setDocs(
+          Array.isArray(data)
+            ? data.map((d, index) => mapDocAdmin(d, index))
+            : [],
+        );
       })
       .catch((err) => console.error("Load admin docs error:", err))
       .finally(() => setLoading(false));
@@ -815,8 +708,8 @@ function DocumentsSection({ onToast }) {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((d) => (
-              <tr key={d.id}>
+            {filtered.map((d, index) => (
+              <tr key={d.id || `${d.name}-${d.date}-${index}`}>
                 <td>
                   <div className="td-doc">
                     <div
