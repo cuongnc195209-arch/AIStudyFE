@@ -11,10 +11,16 @@ const NAV_ITEMS = [
 ];
 
 const PREMIUM_ITEM = { to: "/premium", icon: "⚡", label: "Nâng cấp Premium" };
-const MODERATION_ITEM = { to: "/moderation", icon: "🛡️", label: "Kiểm duyệt Forum" };
+const MODERATION_ITEM = {
+  to: "/moderation",
+  icon: "🛡️",
+  label: "Kiểm duyệt Tài liệu",
+};
 
 function getCurrentRole() {
-  return (localStorage.getItem("role") || "").toUpperCase();
+  return (localStorage.getItem("role") || "")
+    .replace("ROLE_", "")
+    .toUpperCase();
 }
 
 function formatStorage(bytes) {
@@ -37,19 +43,21 @@ export default function AppLayout({ children }) {
     let cancelled = false;
 
     getDocuments()
-      .then(res => {
+      .then((res) => {
         if (cancelled) return;
         const list = res?.data || res || [];
         const arr = Array.isArray(list) ? list : [];
         const total = arr.reduce((s, d) => s + (d.fileSize || 0), 0);
         setUsedBytes(total);
       })
-      .catch(err => {
+      .catch((err) => {
         console.error("Load documents for storage error:", err);
         setUsedBytes(0);
       });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleLogout = async () => {
@@ -111,7 +119,9 @@ export default function AppLayout({ children }) {
               <span className="sidebar-link-icon">{MODERATION_ITEM.icon}</span>
 
               {!collapsed && (
-                <span className="sidebar-link-label">{MODERATION_ITEM.label}</span>
+                <span className="sidebar-link-label">
+                  {MODERATION_ITEM.label}
+                </span>
               )}
             </NavLink>
           )}
@@ -148,7 +158,10 @@ export default function AppLayout({ children }) {
                 <div
                   className="storage-fill"
                   style={{
-                    width: usedBytes !== null ? `${Math.min(100, (usedBytes / TOTAL_QUOTA) * 100)}%` : "0%",
+                    width:
+                      usedBytes !== null
+                        ? `${Math.min(100, (usedBytes / TOTAL_QUOTA) * 100)}%`
+                        : "0%",
                   }}
                 />
               </div>
