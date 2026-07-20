@@ -197,6 +197,7 @@ export default function ChatbotPage() {
   const [editingName, setEditingName] = useState(null);
   const [tempName, setTempName] = useState("");
   const [allDocs, setAllDocs] = useState([]);
+  const [sessionError, setSessionError] = useState("");
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -270,14 +271,20 @@ export default function ChatbotPage() {
     }
   }
 
-  // Tạo session mới: gọi API tạo session ở backend; nếu API lỗi vẫn tạo session tạm ở local
-  // (dùng Date.now() làm id) để người dùng không bị chặn thao tác, dù tin nhắn sẽ không đồng bộ được
+  // Tạo session mới: PHẢI có sessionId thật từ backend mới cho vào danh sách.
+  // Không còn fallback tạo session giả (Date.now() làm id) khi API lỗi hoặc không
+  // trả sessionId — session giả khiến các tin nhắn gửi sau đó không gắn được với
+  // tài liệu thật ở backend (AI "không đọc được tài liệu").
   async function handleNewSession() {
+    setSessionError("");
     try {
       const result = await startChatSession({ documentIds: [] });
       const sessionId = extractSessionId(result);
+      if (!sessionId) {
+        throw new Error("Backend không trả về sessionId hợp lệ");
+      }
       const newSess = {
-        id: sessionId || Date.now(),
+        id: sessionId,
         name: `Chat ${sessions.length + 1}`,
         docs: [],
         messages: [],
@@ -287,21 +294,16 @@ export default function ChatbotPage() {
       setActiveId(newSess.id);
     } catch (err) {
       console.error("Start session error:", err);
-      const newSess = {
-        id: Date.now(),
-        name: `Chat ${sessions.length + 1}`,
-        docs: [],
-        messages: [],
-        updatedAt: new Date().toISOString(),
-      };
-      setSessions((prev) => [newSess, ...prev]);
-      setActiveId(newSess.id);
+      setSessionError(
+        "Không thể tạo phiên chat mới (backend không phản hồi hợp lệ). Vui lòng thử lại."
+      );
     }
     inputRef.current?.focus();
   }
 
   async function handleDocConfirm(docs) {
     setShowDocPicker(false);
+    setSessionError("");
 
     if (activeSession) {
       try {
@@ -309,12 +311,15 @@ export default function ChatbotPage() {
           activeSession.id,
           docs.map((d) => d.id)
         );
+        setSessions((prev) =>
+          prev.map((s) => (s.id === activeId ? { ...s, docs } : s))
+        );
       } catch (err) {
         console.error("Update session docs error:", err);
+        setSessionError(
+          "Không thể cập nhật tài liệu cho phiên chat này. AI sẽ không đọc được tài liệu mới — vui lòng thử lại."
+        );
       }
-      setSessions((prev) =>
-        prev.map((s) => (s.id === activeId ? { ...s, docs } : s))
-      );
       inputRef.current?.focus();
       return;
     }
@@ -324,8 +329,11 @@ export default function ChatbotPage() {
         documentIds: docs.map((d) => d.id),
       });
       const sessionId = extractSessionId(result);
+      if (!sessionId) {
+        throw new Error("Backend không trả về sessionId hợp lệ");
+      }
       const newSess = {
-        id: sessionId || Date.now(),
+        id: sessionId,
         name: `Chat ${sessions.length + 1}`,
         docs,
         messages: [],
@@ -335,6 +343,9 @@ export default function ChatbotPage() {
       setActiveId(newSess.id);
     } catch (err) {
       console.error("Start session error:", err);
+      setSessionError(
+        "Không thể tạo phiên chat với tài liệu đã chọn. Vui lòng thử lại."
+      );
     }
     inputRef.current?.focus();
   }
@@ -523,6 +534,17 @@ export default function ChatbotPage() {
 
         {/* ── Chat Area ── */}
         <div className="chat-main">
+          {sessionError && (
+            <div className="chat-error-banner">
+              <span>⚠️ {sessionError}</span>
+              <button
+                className="chat-error-banner-close"
+                onClick={() => setSessionError("")}
+              >
+                ✕
+              </button>
+            </div>
+          )}
           {activeSession ? (
             <>
               {/* Top bar */}
