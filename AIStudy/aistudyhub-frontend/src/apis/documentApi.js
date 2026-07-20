@@ -1,5 +1,6 @@
 import api from "./api";
 
+// Danh sách môn học cố định (mã môn theo chương trình FPT) dùng cho dropdown chọn môn khi upload
 export const SUBJECT_OPTIONS = [
   { value: "PRF192", label: "Lập trình cơ bản" },
   { value: "MAE101", label: "Toán cao cấp" },
@@ -32,6 +33,7 @@ export function getSubjectLabel(subjectCode) {
   return SUBJECT_LABEL_BY_CODE[subjectCode] || subjectCode;
 }
 
+// Chuẩn hoá mã môn nhập vào — nếu không khớp mã nào trong SUBJECT_OPTIONS thì gán "OTHER"
 function normalizeSubjectCode(subjectCode) {
   if (!subjectCode) {
     return "";
@@ -44,6 +46,7 @@ function normalizeSubjectCode(subjectCode) {
   return exists ? value : "OTHER";
 }
 
+// Tách tên file gốc từ header Content-Disposition mà backend trả về khi tải file
 function getFileNameFromDisposition(
   contentDisposition,
   fallbackName = "document",
@@ -71,6 +74,7 @@ function getFileNameFromDisposition(
   return fallbackName;
 }
 
+// Biến response blob thô thành object tiện dùng: tạo sẵn Object URL để hiện ảnh/PDF/tải xuống
 function createBlobResult(response, fallbackName = "document") {
   const blob = response?.blob instanceof Blob ? response.blob : response;
 
@@ -112,6 +116,7 @@ export async function getDocumentById(documentId) {
   return api.get(`/v1/documents/${documentId}`);
 }
 
+// Upload tài liệu mới — validate ở client trước khi gửi FormData lên backend
 export async function createDocument(payload = {}) {
   const file = payload.file;
   const description = String(payload.description || "").trim();
@@ -156,6 +161,7 @@ export async function toggleDocumentPublicStatus(documentId, isPublic) {
   });
 }
 
+// Admin/Moderator duyệt tài liệu công khai — decision chỉ nhận ACCEPT hoặc DENY
 export async function reviewDocument(documentId, decision) {
   const cleanDecision = String(decision || "")
     .trim()
@@ -182,6 +188,7 @@ export async function downloadDocumentFile(documentId) {
   return createBlobResult(response, `document-${documentId}`);
 }
 
+// Tải file về máy: tạo thẻ <a download> ẩn, click giả lập rồi dọn dẹp Object URL
 export async function downloadDocumentToDevice(documentId) {
   const result = await downloadDocumentFile(documentId);
 
@@ -226,6 +233,7 @@ export async function updateDocumentSharePermission(
   });
 }
 
+// Dùng bởi ModerationPage — cùng endpoint /admin/document nhưng luôn lọc status=PENDING
 export async function getPendingPublicDocuments({ page = 0, size = 10 } = {}) {
   return api.get("/admin/document", {
     status: "PENDING",

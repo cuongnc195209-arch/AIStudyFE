@@ -10,6 +10,8 @@ import { mapUser } from "../shared/mappers";
 
 const USERS_PAGE_SIZE = 10;
 
+// Quản lý danh sách user: khoá/mở khoá, đổi role. Tải hết user (size 9999) rồi tự phân trang
+// ở client bằng AdminPagination — không phân trang thật ở phía backend.
 export default function UsersSection({ onToast }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,6 +27,7 @@ export default function UsersSection({ onToast }) {
         const all = Array.isArray(list)
           ? list.map((u, i) => mapUser(u, i))
           : [];
+        // Ẩn tài khoản ADMIN khỏi bảng — tránh admin tự khoá/hạ quyền chính mình hoặc admin khác qua bảng này
         setUsers(all.filter((u) => u.role !== "ADMIN"));
       })
       .catch((err) => console.error("Load users error:", err))
@@ -58,6 +61,8 @@ export default function UsersSection({ onToast }) {
     setPage(1);
   }
 
+  // Hàm xử lý chung cho cả 4 loại action (lock/unlock/role/delete) — action nào đang chờ xác nhận
+  // được lưu trong state "confirm", ConfirmModal gọi hàm này khi người dùng bấm "Xác nhận"
   async function doAction() {
     const { action, user, newRole } = confirm;
     try {
@@ -79,6 +84,7 @@ export default function UsersSection({ onToast }) {
           us.map((u) => (u.id === user.id ? { ...u, role: newRole } : u)),
         );
       }
+      // Lưu ý: action "delete" chỉ xoá khỏi state ở client, KHÔNG gọi API xoá tài khoản nào ở backend
       if (action === "delete")
         setUsers((us) => us.filter((u) => u.id !== user.id));
       onToast(

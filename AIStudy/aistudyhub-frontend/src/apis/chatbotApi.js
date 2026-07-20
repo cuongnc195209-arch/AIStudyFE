@@ -1,5 +1,7 @@
 import api from "./api";
 
+// Backend có thể trả sessionId dưới dạng object field hoặc lồng trong chuỗi text tự do
+// => hàm này cố dò ra UUID bằng nhiều cách khác nhau tuỳ hình dạng response
 function extractSessionId(response) {
   if (!response) {
     return null;
@@ -38,6 +40,7 @@ function extractSessionId(response) {
  *   documentIds
  * }
  */
+// createChatSession/startChatSession bên dưới chỉ là alias gọi lại hàm này
 export async function startChat(payload = {}) {
   const response = await api.post("/chat/start", payload || {});
 

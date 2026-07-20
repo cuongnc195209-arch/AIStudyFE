@@ -1,14 +1,19 @@
+// Component phân trang dùng chung cho các bảng admin (UsersSection, ChatSection...)
 export function AdminPagination({ page, totalPages, onChange }) {
-  if (totalPages <= 1) return null;
+  if (totalPages <= 1) return null; // chỉ 1 trang thì không cần hiện thanh phân trang
 
+  // Dựng danh sách số trang để hiện, có thể chứa dấu "…" khi rút gọn
   const pages = [];
   const addRange = (from, to) => {
     for (let i = from; i <= to; i++) pages.push(i);
   };
 
   if (totalPages <= 7) {
+    // Ít trang => hiện đủ hết, ví dụ: 1 2 3 4 5
     addRange(1, totalPages);
   } else {
+    // Nhiều trang => luôn giữ trang đầu, trang cuối, và 1 trang trước/sau trang hiện tại,
+    // phần còn lại rút gọn bằng "…", ví dụ: 1 … 4 5 6 … 20
     pages.push(1);
     if (page > 3) pages.push("…");
     addRange(Math.max(2, page - 1), Math.min(totalPages - 1, page + 1));
@@ -29,6 +34,7 @@ export function AdminPagination({ page, totalPages, onChange }) {
         >
           ‹
         </button>
+        {/* Dấu "…" chỉ là chữ tĩnh, không click được — khác các nút số trang bên cạnh */}
         {pages.map((p, idx) =>
           p === "…" ? (
             <span

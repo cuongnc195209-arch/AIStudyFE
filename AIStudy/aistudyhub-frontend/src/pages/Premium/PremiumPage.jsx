@@ -2,6 +2,7 @@ import AppLayout from '../../components/layout/AppLayout'
 import { MembershipSection } from '../Settings/SettingsPage'
 import '../Settings/SettingsPage.css'
 
+// Trang này chỉ mượn lại MembershipSection từ SettingsPage.jsx, đổi tiêu đề — không có logic riêng
 export default function PremiumPage() {
   return (
     <AppLayout>

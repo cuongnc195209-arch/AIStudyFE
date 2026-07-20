@@ -38,6 +38,8 @@ export default function LoginPage() {
 
       console.log("Login result:", result);
 
+      // authApi.login đã tự lưu token vào localStorage rồi, nhưng ở đây vẫn tự đọc lại result
+      // để lấy token/role/user một cách "phòng thủ" vì response backend không phải lúc nào cũng cùng hình dạng
       const authData = result.data || result;
 
       const accessToken =
@@ -58,6 +60,8 @@ export default function LoginPage() {
         localStorage.setItem("refreshToken", refreshToken);
       }
 
+      // Login xong chỉ có token, chưa chắc có đủ thông tin user (tên, role) => gọi thêm getProfile()
+      // để lấy hồ sơ đầy đủ. Nếu lỗi thì vẫn tiếp tục login bình thường (chỉ thiếu displayName/role chính xác).
       let profileData = {};
 
       try {
@@ -112,6 +116,7 @@ export default function LoginPage() {
       localStorage.setItem("user", JSON.stringify(user));
       localStorage.setItem("role", role);
 
+      // Điều hướng theo role: ADMIN vào thẳng /admin, các role còn lại (kể cả MODERATOR) vào /dashboard
       if (role === "ADMIN") {
         navigate("/admin", { replace: true });
       } else if (role === "MODERATOR") {
@@ -122,6 +127,7 @@ export default function LoginPage() {
     } catch (err) {
       console.error("Login error:", err);
 
+      // Dò message lỗi để phân biệt "tài khoản bị khoá" với "sai mật khẩu" — backend không có mã lỗi riêng biệt
       const msg = err?.message || err?.error || err?.data?.message || "";
       const msgLower = msg.toLowerCase();
       if (msgLower.includes("banned") || msgLower.includes("locked") || msgLower.includes("disabled")) {

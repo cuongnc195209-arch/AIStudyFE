@@ -112,6 +112,7 @@ function isPublicDocument(d) {
   );
 }
 
+// Chuẩn hoá tài liệu public thành "bài đăng" forum (thêm author, rating, commentCount...)
 function mapDoc(d) {
   const isPublic = isPublicDocument(d);
   const ext = normalizeExt(d);
@@ -170,6 +171,7 @@ function getInitials(name) {
     .toUpperCase();
 }
 
+// Component đánh giá sao dùng chung cho cả hiển thị (readonly) và chấm điểm (click để chọn số sao)
 function StarRating({ value, onChange, readonly = false, size = 20 }) {
   const [hover, setHover] = useState(0);
 
@@ -192,6 +194,7 @@ function StarRating({ value, onChange, readonly = false, size = 20 }) {
   );
 }
 
+// Modal báo cáo vi phạm — submit chỉ log ra console + alert, CHƯA có API gửi report lên backend
 function ReportModal({ doc, onClose, onSubmit }) {
   const [reason, setReason] = useState(REPORT_REASONS[0]);
   const [detail, setDetail] = useState("");
@@ -302,6 +305,9 @@ function ReportModal({ doc, onClose, onSubmit }) {
   );
 }
 
+// Modal chi tiết bài đăng: xem trước, tải xuống, đánh giá sao, bình luận.
+// QUAN TRỌNG: rating và comment CHỈ lưu ở localStorage theo key riêng từng doc (doc-comments-<id>, doc-ratings-<id>)
+// — không có API backend, nên dữ liệu này biến mất nếu đổi trình duyệt hoặc xoá localStorage.
 function DocDetailModal({ doc, nowTime, onClose, onRate, onReport }) {
   const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
 
@@ -685,6 +691,7 @@ function DocDetailModal({ doc, nowTime, onClose, onRate, onReport }) {
   );
 }
 
+// Thẻ bài đăng trong feed — click vào mở DocDetailModal
 function PublicDocCard({ doc, nowTime, onOpen }) {
   return (
     <div className="post-card" onClick={() => onOpen(doc)}>
@@ -825,12 +832,14 @@ export default function ForumPage() {
       return 0;
     });
 
+  // TODO: chưa gọi API thật — chỉ log console + hiện alert cho có UX, report không thực sự được lưu
   function handleReport(submission) {
     console.log("Report submitted:", submission);
     alert("Đã gửi báo cáo. Cảm ơn bạn!");
     setReportDoc(null);
   }
 
+  // Cập nhật rating hiển thị ở feed (chỉ optimistic, số liệu thật nằm trong localStorage của DocDetailModal)
   function handleRate(docId, stars) {
     setDocs((prev) =>
       prev.map((d) =>

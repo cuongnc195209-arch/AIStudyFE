@@ -12,13 +12,17 @@ import StatsSection from "./sections/StatsSection";
 import ConfigSection from "./sections/ConfigSection";
 import "./AdminDashboardPage.css";
 
+// Component gốc render tại route "/admin/*". Tự đọc section từ URL (thay vì khai route con riêng),
+// điều phối 7 SECTION_MAP bên dưới, và quản lý toast dùng chung cho toàn khu vực admin.
 export default function AdminDashboardPage() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // Ví dụ path "/admin/users" => section = "users"; path "/admin" => mặc định "overview"
   const sectionFromUrl = location.pathname.split("/admin/")[1] || "overview";
   const [section, setSection] = useState(sectionFromUrl);
 
+  // Đổi section: cập nhật state để re-render VÀ đồng bộ lại URL (để refresh trang không mất section đang xem)
   function handleNavigate(s) {
     setSection(s);
     navigate(s === "overview" ? "/admin" : `/admin/${s}`, { replace: true });
@@ -30,6 +34,8 @@ export default function AdminDashboardPage() {
     return JSON.parse(localStorage.getItem("user") || "{}");
   });
 
+  // Tải lại hồ sơ admin từ backend khi vào trang, rồi merge với dữ liệu cũ trong localStorage
+  // (giữ lại field cũ nếu response mới thiếu) để tránh hiện "Admin" trống trong lúc chờ API
   useEffect(() => {
     async function loadAdminProfile() {
       try {
@@ -106,6 +112,7 @@ export default function AdminDashboardPage() {
     setToast(msg);
   }
 
+  // Map section id (khớp với AdminLayout NAV_ITEMS) sang component tương ứng — chỉ render 1 cái tại 1 thời điểm
   const SECTION_MAP = {
     overview: <OverviewSection />,
     users: <UsersSection onToast={showToast} />,

@@ -15,6 +15,8 @@ function formatStorage(bytes) {
   return `${bytes} B`;
 }
 
+// Trang tổng quan admin: gộp 4 API khác nhau bằng Promise.allSettled để dù 1 API lỗi
+// vẫn hiện được các thẻ thống kê còn lại (thay vì cả trang trắng). Doanh thu chưa có API nên luôn hiện "—".
 export default function OverviewSection() {
   const [loading, setLoading] = useState(true);
   const [recentUsers, setRecentUsers] = useState([]);
@@ -29,6 +31,7 @@ export default function OverviewSection() {
     const now = Date.now();
     const oneWeekAgo = now - 7 * 86400000;
 
+    // allSettled thay vì Promise.all — nếu 1 API lỗi thì các API khác vẫn tính được, không throw dừng hết
     Promise.allSettled([
       getUsers({ size: 9999 }),
       getAdminDocuments({ size: 9999 }),

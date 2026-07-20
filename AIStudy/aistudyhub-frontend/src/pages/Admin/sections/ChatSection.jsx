@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getAdminChats } from "../../../apis/adminApi";
 import { AdminPagination } from "../shared/AdminPagination";
 
+// Chỉ giữ lại id + nội dung tin nhắn — API không trả thêm thông tin nào khác hữu ích cho bảng admin hiện tại
 function mapChatAdmin(c) {
   return {
     id: c.id,
@@ -11,6 +12,7 @@ function mapChatAdmin(c) {
 
 const CHAT_PAGE_SIZE = 10;
 
+// Bảng xem toàn bộ tin nhắn chat AI trên hệ thống — chỉ để giám sát nội dung, chưa có thao tác xoá/ẩn tin nhắn
 export default function ChatSection() {
   const [chats, setChats] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -39,6 +41,7 @@ export default function ChatSection() {
     currentPage * CHAT_PAGE_SIZE,
   );
 
+  // Reset về trang 1 mỗi khi đổi từ khoá tìm kiếm, tránh đứng ở trang trống nếu kết quả lọc ít hơn
   useEffect(() => {
     setPage(1);
   }, [search]);

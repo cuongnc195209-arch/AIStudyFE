@@ -2,6 +2,7 @@ import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import './HomePage.css'
 
+// Toàn bộ nội dung trang landing đều là dữ liệu tĩnh (không gọi API) — chỉ khai báo mảng rồi map ra JSX
 const STATS = [
   { value: '2,500+', label: 'Sinh viên' },
   { value: '10K+', label: 'Tài liệu' },
@@ -27,6 +28,7 @@ const TESTIMONIALS = [
 export default function HomePage() {
   const navigate = useNavigate()
 
+  // Cuộn mượt tới section theo id khi bấm menu (Tính năng/Đánh giá/Bắt đầu)
   const scrollTo = (id) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
 
   return (

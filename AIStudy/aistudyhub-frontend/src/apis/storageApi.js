@@ -18,6 +18,7 @@ export async function getMyStorageUsage() {
   return getStorageUsage();
 }
 
+// Đổi số byte thành chuỗi dễ đọc (KB/MB/GB...) bằng công thức log cơ số 1024
 export function formatBytes(bytes = 0) {
   const value = Number(bytes || 0);
 
@@ -33,6 +34,7 @@ export function formatBytes(bytes = 0) {
   return `${formatted.toFixed(formatted >= 10 ? 1 : 2)} ${units[safeIndex]}`;
 }
 
+// Chuẩn hoá + bổ sung field hiển thị sẵn (usedText/totalText) từ response storage thô
 export function normalizeStorageUsage(storage) {
   if (!storage) {
     return {

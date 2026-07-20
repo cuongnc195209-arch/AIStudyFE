@@ -3,6 +3,9 @@ import { useState } from "react";
 import { updateAdminConfig } from "../../../apis/adminApi";
 import { SUBJECTS } from "../shared/mockData";
 
+// Form cấu hình hệ thống. Lưu ý: state config luôn khởi tạo giá trị rỗng/0 — không có useEffect nào
+// gọi API để load cấu hình HIỆN TẠI từ backend, nên mỗi lần vào trang admin sẽ thấy form trống,
+// dù trước đó đã lưu cấu hình khác.
 export default function ConfigSection({ onToast }) {
   const [config, setConfig] = useState({
     maxDailyChatTokens: 0,
@@ -54,6 +57,8 @@ export default function ConfigSection({ onToast }) {
     }
   }
 
+  // Danh sách môn học ở đây chỉ sửa trong state local (subjects) — KHÔNG có nút lưu riêng
+  // và không thấy gửi lên API nào, nên thay đổi sẽ mất khi rời trang.
   function addSubject() {
     const s = newSubject.trim();
     if (s && !subjects.includes(s)) {

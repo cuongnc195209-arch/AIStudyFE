@@ -17,6 +17,7 @@ export default function ForgotPasswordPage() {
 
     try {
       await forgotPassword(email);
+      // Không cần đọc response — chỉ cần API không lỗi là coi như thành công, chuyển sang màn "đã gửi email"
       setSent(true);
     } catch (err) {
       setError(
@@ -47,6 +48,7 @@ export default function ForgotPasswordPage() {
               </div>
             </div>
 
+            {/* Sau khi gửi thành công, thay toàn bộ form bằng màn hình xác nhận */}
             {sent ? (
               <div style={{ textAlign: "center" }}>
                 <div style={{

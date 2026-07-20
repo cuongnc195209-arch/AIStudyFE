@@ -4,7 +4,10 @@ import { updateProfile, changePassword } from '../../apis/authApi'
 import { getDocuments } from '../../apis/documentApi'
 import './SettingsPage.css'
 
-/* ── Nav sections ── */
+/* ── Nav sections ──
+   Chỉ 2 mục được đưa vào nav thật sự. Các component NotificationsSection, StorageSection,
+   AccountSection bên dưới đã viết đầy đủ code nhưng KHÔNG có mục nào trỏ tới id 'notifications' /
+   'storage' / 'account' ở đây, và cũng không có trong SECTION_MAP cuối file => "mồ côi", không vào được từ UI. */
 const SECTIONS = [
   { id: 'profile',       icon: '👤', label: 'Hồ sơ cá nhân' },
   { id: 'security',      icon: '🔒', label: 'Bảo mật' },
@@ -19,7 +22,7 @@ function Toast({ message, onDone }) {
   )
 }
 
-/* ── Section: Profile ── */
+/* ── Section: Profile ── Sửa thông tin cá nhân, đổi avatar (chỉ preview local, chưa upload lên server) */
 function ProfileSection({ onSave }) {
   const fileRef = useRef()
   const storedUser = JSON.parse(localStorage.getItem('user') || '{}')
@@ -39,12 +42,14 @@ function ProfileSection({ onSave }) {
   const userId = storedUser.id || storedUser.userId || storedUser.user_id || ''
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
+  // Sao chép User ID để người khác dùng khi share tài liệu (xem ShareModal ở DocumentsPage)
   function handleCopyId() {
     navigator.clipboard.writeText(userId)
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
   }
 
+  // Chỉ tạo Object URL để xem trước ảnh — chưa có bước upload file avatar lên backend
   function handleAvatarChange(e) {
     const file = e.target.files[0]
     if (!file) return
@@ -150,7 +155,7 @@ function ProfileSection({ onSave }) {
   )
 }
 
-/* ── Section: Security ── */
+/* ── Section: Security ── Đổi mật khẩu (gọi API thật) + danh sách phiên đăng nhập (SESSIONS chỉ là dữ liệu giả, không có API) */
 function SecuritySection({ onSave }) {
   const [form, setForm] = useState({ current: '', newPw: '', confirm: '' })
   const [show, setShow] = useState({ current: false, newPw: false, confirm: false })
@@ -239,7 +244,8 @@ function SecuritySection({ onSave }) {
   )
 }
 
-/* ── Section: Notifications ── */
+/* ── Section: Notifications ── (mồ côi — xem ghi chú ở SECTIONS phía trên) Bật/tắt loại thông báo,
+   nhưng nút "Lưu cài đặt" chỉ gọi onSave hiện toast, không có API lưu — mọi thay đổi mất khi reload */
 function NotificationsSection({ onSave }) {
   const [settings, setSettings] = useState({
     uploadSuccess:  { label: 'Upload tài liệu thành công', enabled: true },
@@ -300,7 +306,8 @@ function NotificationsSection({ onSave }) {
   )
 }
 
-/* ── Section: Storage ── */
+/* ── Section: Storage ── (mồ côi — xem ghi chú ở SECTIONS phía trên) Vòng tròn % dung lượng đã dùng,
+   tính từ tổng fileSize của getDocuments() giống cách AppLayout làm */
 const EXT_COLORS = {
   pdf: '#ef4444', ppt: '#f97316', pptx: '#f97316',
   doc: '#3b82f6', docx: '#3b82f6',
@@ -442,7 +449,8 @@ function StorageSection() {
   )
 }
 
-/* ── Section: Membership ── */
+/* ── Section: Membership ── Bảng 2 gói Free/Premium, export riêng vì PremiumPage.jsx cũng dùng lại.
+   Hoàn toàn là UI demo: nút "Nâng cấp" không có onClick, chưa nối cổng thanh toán nào. */
 export function MembershipSection() {
   const PLANS = [
     {
@@ -532,7 +540,8 @@ export function MembershipSection() {
   )
 }
 
-/* ── Section: Account ── */
+/* ── Section: Account ── (mồ côi — xem ghi chú ở SECTIONS phía trên) Xuất dữ liệu + xoá tài khoản,
+   nút "Xác nhận xoá" chỉ alert demo, KHÔNG thực sự xoá gì (xem comment trong onClick bên dưới) */
 function AccountSection({ onSave }) {
   const [deleteInput, setDeleteInput] = useState('')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -616,6 +625,8 @@ export default function SettingsPage() {
     setToast(msg)
   }
 
+  // Chỉ 2 section thật sự render được — muốn bật lại Notifications/Storage/Account
+  // thì phải thêm entry vào SECTIONS phía trên VÀ vào map này
   const SECTION_MAP = {
     profile:       <ProfileSection       onSave={showToast} />,
     security:      <SecuritySection      onSave={showToast} />,

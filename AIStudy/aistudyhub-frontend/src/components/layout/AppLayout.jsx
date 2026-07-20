@@ -17,6 +17,7 @@ const MODERATION_ITEM = {
   label: "Kiểm duyệt Tài liệu",
 };
 
+// Đọc role hiện tại từ localStorage, chuẩn hoá kiểu như PrivateRoute (bỏ tiền tố ROLE_)
 function getCurrentRole() {
   return (localStorage.getItem("role") || "")
     .replace("ROLE_", "")
@@ -32,15 +33,18 @@ function formatStorage(bytes) {
 
 const TOTAL_QUOTA = 5 * 1073741824; // 5 GB
 
+// Layout chung cho các trang user thường (Dashboard, Chatbot, Documents, Forum...):
+// sidebar bên trái + <main>{children}</main> chứa nội dung trang thật sự
 export default function AppLayout({ children }) {
-  const [collapsed, setCollapsed] = useState(false);
-  const [usedBytes, setUsedBytes] = useState(null);
-  const [role] = useState(getCurrentRole);
+  const [collapsed, setCollapsed] = useState(false); // sidebar thu gọn hay mở rộng
+  const [usedBytes, setUsedBytes] = useState(null); // tổng dung lượng tài liệu đã dùng
+  const [role] = useState(getCurrentRole); // chỉ đọc 1 lần lúc mount, không phản ứng nếu role đổi giữa chừng
 
   const navigate = useNavigate();
 
+  // Gọi API lấy toàn bộ tài liệu rồi cộng dồn fileSize để hiện thanh dung lượng ở footer sidebar
   useEffect(() => {
-    let cancelled = false;
+    let cancelled = false; // tránh setState sau khi component đã unmount
 
     getDocuments()
       .then((res) => {
@@ -60,6 +64,7 @@ export default function AppLayout({ children }) {
     };
   }, []);
 
+  // Đăng xuất: hiện chỉ xoá token khỏi localStorage rồi điều hướng, chưa gọi API logout thật ở backend
   const handleLogout = async () => {
     try {
       // Nếu sau này có API logout thì gọi ở đây
@@ -108,6 +113,7 @@ export default function AppLayout({ children }) {
             </NavLink>
           ))}
 
+          {/* Mục Kiểm duyệt chỉ hiện với role MODERATOR */}
           {role === "MODERATOR" && (
             <NavLink
               to={MODERATION_ITEM.to}
@@ -126,6 +132,7 @@ export default function AppLayout({ children }) {
             </NavLink>
           )}
 
+          {/* Mục Premium luôn hiện, không điều kiện theo role */}
           <NavLink
             to={PREMIUM_ITEM.to}
             className={({ isActive }) =>
@@ -182,6 +189,7 @@ export default function AppLayout({ children }) {
         </div>
       </aside>
 
+      {/* Nội dung trang thật sự (Dashboard/Chatbot/Documents...) được truyền vào từ page component */}
       <main className="app-main">{children}</main>
     </div>
   );

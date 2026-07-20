@@ -13,6 +13,7 @@ function formatSize(bytes) {
   return `${bytes} B`;
 }
 
+// Số phiên chat AI lấy từ localStorage (ChatbotPage tự lưu session ở đó), không có API riêng đếm số phiên
 function getChatSessionCount() {
   try {
     const sessions = JSON.parse(localStorage.getItem("chatSessions")) || [];
@@ -42,6 +43,8 @@ export default function DashboardPage() {
   const [totalBytes, setTotalBytes] = useState(0);
   const [docsThisWeek, setDocsThisWeek] = useState(0);
 
+  // Gọi API lấy toàn bộ tài liệu 1 lần, rồi tự tính các thống kê (tổng số, tổng dung lượng, số tài liệu tuần này)
+  // ở phía client thay vì có endpoint thống kê riêng từ backend
   useEffect(() => {
     let cancelled = false;
 
@@ -56,7 +59,7 @@ export default function DashboardPage() {
         setDocCount(list.length);
         setTotalBytes(list.reduce((s, d) => s + (Number(d.fileSize) || 0), 0));
 
-        const oneWeekAgo = nowTime - 7 * 86400000;
+        const oneWeekAgo = nowTime - 7 * 86400000; // mốc 7 ngày trước (ms)
 
         setDocsThisWeek(
           list.filter((d) => {
@@ -105,6 +108,7 @@ export default function DashboardPage() {
     [docCount, docsThisWeek, totalBytes, chatCount],
   );
 
+  // Lời chào thay đổi theo giờ hiện tại: sáng/chiều/tối
   const greeting =
     currentHour < 12
       ? "Chào buổi sáng"
@@ -297,6 +301,7 @@ export default function DashboardPage() {
           ))}
         </div>
 
+        {/* Tái sử dụng nguyên component DocumentsSection từ trang Documents — Dashboard chỉ thêm phần thống kê phía trên */}
         <DocumentsSection />
       </div>
     </AppLayout>

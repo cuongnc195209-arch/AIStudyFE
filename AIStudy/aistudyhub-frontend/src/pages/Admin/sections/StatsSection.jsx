@@ -1,5 +1,6 @@
 import { MONTH_USERS, MONTH_REVENUE, MONTH_LABELS } from "../shared/mockData";
 
+// Biểu đồ cột tự vẽ bằng CSS thuần (chiều cao cột = % theo giá trị lớn nhất) — không dùng thư viện chart nào
 function BarChart({ data, labels, color, unit = "" }) {
   const max = Math.max(...data);
   return (
@@ -28,6 +29,8 @@ function BarChart({ data, labels, color, unit = "" }) {
   );
 }
 
+// TOÀN BỘ dữ liệu ở trang này là mock cứng (kể cả MONTH_USERS/MONTH_REVENUE import từ shared/mockData.js)
+// — chưa có API thống kê thật nào được gọi ở đây.
 export default function StatsSection() {
   const PLAN_DIST = [
     { label: "Miễn phí", count: 2401, pct: 84, color: "#6b7280" },

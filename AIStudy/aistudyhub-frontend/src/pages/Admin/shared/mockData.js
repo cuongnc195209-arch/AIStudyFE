@@ -1,3 +1,5 @@
+// Toàn bộ file này là dữ liệu giả (hardcode) — dùng để vẽ StatsSection và làm danh sách môn học khởi tạo
+// cho ConfigSection, không lấy từ API nào.
 export const SUBJECTS = [
   "Lập trình Web",
   "Cơ sở dữ liệu",
@@ -14,6 +16,7 @@ export const EXT_COLOR = {
   IMG: "#10b981",
 };
 
+// Dữ liệu giả cho 2 biểu đồ cột ở StatsSection: số user mới và doanh thu theo từng tháng trong năm
 export const MONTH_USERS = [12, 19, 15, 28, 24, 38, 31, 45, 42, 58, 51, 67];
 export const MONTH_REVENUE = [
   0, 0, 990, 1980, 2970, 4950, 3960, 6930, 5940, 8910, 7920, 12870,

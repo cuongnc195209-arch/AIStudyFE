@@ -9,6 +9,7 @@ import "../Admin/AdminDashboardPage.css";
 
 const PAGE_SIZE = 9999;
 
+// Bóc list ra khỏi response backend — thử nhiều hình dạng khác nhau (mảng thẳng, {content}, {data}, {data.content})
 function getListFromResponse(res) {
   if (Array.isArray(res)) return res;
   if (Array.isArray(res?.content)) return res.content;
@@ -37,6 +38,7 @@ function formatDate(value) {
   return date.toLocaleDateString("vi-VN");
 }
 
+// Chuẩn hoá status tài liệu — bỏ các tiền tố STATUS_/PUBLIC_ mà backend có thể trả kèm
 function normalizeStatus(value) {
   return String(value || "")
     .trim()
@@ -92,6 +94,7 @@ export default function ModerationPage() {
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
 
+  // PAGE_SIZE = 9999 => coi như lấy hết 1 lần, không phân trang thật ở đây
   const fetchPendingDocuments = useCallback(async () => {
     const res = await getPendingPublicDocuments({
       page: 0,
@@ -172,6 +175,8 @@ export default function ModerationPage() {
     });
   }, [documents, search]);
 
+  // Duyệt/từ chối tài liệu: luôn hỏi xác nhận bằng SweetAlert2 trước khi gọi API,
+  // sau khi thành công thì xoá tài liệu đó khỏi danh sách local (không cần load lại toàn bộ)
   async function handleReview(doc, decision) {
     if (!doc.documentId) {
       await Swal.fire({

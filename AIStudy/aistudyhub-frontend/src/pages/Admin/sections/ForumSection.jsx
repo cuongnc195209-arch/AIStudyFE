@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { ConfirmModal } from "../shared/ConfirmModal";
 
+// Kiểm duyệt report vi phạm ở forum — CHƯA NỐI API: "reports" luôn khởi tạo mảng rỗng và
+// không có useEffect nào gọi API để load, nên UI luôn hiện "Tất cả nội dung đã được kiểm duyệt"
 export default function ForumSection({ onToast }) {
   const [reports, setReports] = useState([]);
   const [confirm, setConfirm] = useState(null);
@@ -10,6 +12,7 @@ export default function ForumSection({ onToast }) {
     onToast("Đã bỏ cờ — nội dung tiếp tục hiển thị");
   }
 
+  // Cũng chỉ xoá ở state local — chưa gọi API xoá bài đăng/bình luận hay gửi cảnh báo thật tới người dùng
   function handleDelete() {
     setReports((rs) => rs.filter((r) => r.id !== confirm.id));
     onToast(`Đã xóa nội dung vi phạm và cảnh báo người dùng`);

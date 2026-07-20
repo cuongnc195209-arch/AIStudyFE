@@ -17,6 +17,8 @@ import {
 } from "../../apis/documentApi";
 import "./DocumentsPage.css";
 
+// Suy ra loại file hiển thị (PDF/PPT/DOC/IMG) từ mimeType hoặc đuôi tên file —
+// vì backend không trả field "ext" thống nhất, phải tự đoán từ nhiều field khác nhau
 function normalizeExt(d) {
   const raw = String(d.fileType || d.ext || d.mimeType || "").toLowerCase();
   const fileName = String(d.documentName || d.name || "").toLowerCase();
@@ -58,6 +60,7 @@ function normalizeExt(d) {
   return String(d.ext || d.fileType || "PDF").toUpperCase();
 }
 
+// Chuẩn hoá 1 document thô từ backend thành object đầy đủ field UI cần (sizeMB, privacy, tags...)
 function mapDoc(d) {
   const isPublic =
     d.isPublic === true ||
@@ -141,6 +144,7 @@ function relativeDate(dateStr) {
   return new Date(dateStr).toLocaleDateString("vi-VN");
 }
 
+// Sắp xếp danh sách tài liệu theo tiêu chí chọn ở toolbar (mới nhất/cũ nhất/tên/dung lượng)
 function sortDocs(docs, sort) {
   return [...docs].sort((a, b) => {
     if (sort === "newest") return new Date(b.date) - new Date(a.date);
@@ -152,6 +156,7 @@ function sortDocs(docs, sort) {
   });
 }
 
+// Modal upload tài liệu — có 4 bước (step state): chọn file -> điền form -> đang upload -> xong
 function UploadModal({ onClose, onSuccess }) {
   const [step, setStep] = useState("drop");
   const [file, setFile] = useState(null);
@@ -237,6 +242,8 @@ function UploadModal({ onClose, onSuccess }) {
 
       let savedForUi = saved;
 
+      // Upload luôn tạo tài liệu ở trạng thái riêng tư trước; nếu người dùng chọn "public"
+      // thì gọi thêm API toggle riêng — tài liệu public sẽ ở trạng thái PENDING chờ admin duyệt
       if (meta.privacy === "public") {
         const toggleResult = await toggleDocumentPublicStatus(savedId, true);
 
@@ -419,6 +426,7 @@ function UploadModal({ onClose, onSuccess }) {
   );
 }
 
+// Modal sửa tên tài liệu, tag (chỉ lưu ở client, không có API riêng cho tag) và trạng thái công khai
 function EditModal({ doc, onClose, onSave }) {
   const [meta, setMeta] = useState({
     name: doc.name,
@@ -512,6 +520,7 @@ function EditModal({ doc, onClose, onSave }) {
   );
 }
 
+// Modal chia sẻ tài liệu cho user khác — người chia sẻ phải dán đúng User ID (không có tìm kiếm theo email/tên)
 function ShareModal({ doc, onClose, onSubmit }) {
   const [targetUserId, setTargetUserId] = useState("");
   const [permissionType, setPermissionType] = useState("view");
@@ -591,6 +600,7 @@ function ShareModal({ doc, onClose, onSubmit }) {
   );
 }
 
+// Modal xác nhận xoá tài liệu — component riêng, không dùng chung ConfirmModal của khu vực Admin
 function DeleteConfirm({ doc, onClose, onConfirm }) {
   return (
     <div
@@ -628,6 +638,8 @@ function DeleteConfirm({ doc, onClose, onConfirm }) {
   );
 }
 
+// Modal xem trước tài liệu — mỗi loại file render 1 kiểu khác nhau:
+// ảnh => <img>, PDF => <iframe>, DOC/DOCX => convert sang HTML bằng thư viện docx-preview (renderAsync bên dưới)
 function PreviewModal({ doc, previewUrl, previewBlob, previewError, onClose }) {
   const isImage = doc.ext === "IMG";
   const isPdf = doc.ext === "PDF";
@@ -752,6 +764,7 @@ function PreviewModal({ doc, previewUrl, previewBlob, previewError, onClose }) {
   );
 }
 
+// Thẻ tài liệu dạng lưới (view "grid"). readOnly=true khi ở tab "được chia sẻ" => ẩn nút sửa/chia sẻ/xoá
 function DocCard({
   doc,
   readOnly,
@@ -858,6 +871,7 @@ function DocCard({
   );
 }
 
+// Hàng tài liệu dạng danh sách (view "list") — cùng logic với DocCard, chỉ khác layout hiển thị
 function DocRow({
   doc,
   readOnly,
@@ -953,6 +967,8 @@ function DocRow({
   );
 }
 
+// Component chính, export riêng (không default) để DashboardPage cũng nhúng lại được ở dưới phần thống kê.
+// Quản lý toàn bộ state: 2 tab (tài liệu của tôi / được chia sẻ), tìm kiếm, lọc, sort, và 5 modal thao tác.
 export function DocumentsSection() {
   const [tab, setTab] = useState("mine");
   const [docs, setDocs] = useState([]);
@@ -1003,6 +1019,8 @@ export function DocumentsSection() {
   useEffect(() => {
     if (!ENABLE_SHARED_TAB || loadingDocs) return;
 
+    // Backend không có endpoint riêng "tài liệu được chia sẻ với tôi" — nên gọi searchDocuments("")
+    // (trả về mọi tài liệu user có quyền truy cập) rồi tự lọc ra những cái KHÔNG public và KHÔNG phải của mình
     async function loadSharedDocuments() {
       try {
         setLoadingShared(true);
@@ -1104,6 +1122,8 @@ export function DocumentsSection() {
     }
   }
 
+  // Nếu tài liệu đã share cho user này trước đó, backend trả lỗi 400 "đã được chia sẻ"
+  // => tự động fallback sang gọi API update quyền thay vì báo lỗi cho người dùng
   async function handleShareSubmit(id, targetUserId, permissionType) {
     try {
       await shareDocument(id, targetUserId, permissionType);
@@ -1457,6 +1477,7 @@ export function DocumentsSection() {
   );
 }
 
+// Trang /documents thật sự chỉ là DocumentsSection bọc trong AppLayout
 export default function DocumentsPage() {
   return (
     <AppLayout>

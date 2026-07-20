@@ -26,6 +26,7 @@ function timeAgo(iso) {
 }
 
 /* ── Doc Picker Modal ── */
+// Modal chọn tài liệu để "ghim" vào phiên chat — AI sẽ trả lời dựa trên nội dung các tài liệu này
 function DocPicker({ allDocs, selected, onClose, onConfirm }) {
   const [search, setSearch] = useState("");
   const [picked, setPicked] = useState(selected.map((d) => d.id));
@@ -122,6 +123,7 @@ function DocPicker({ allDocs, selected, onClose, onConfirm }) {
 }
 
 /* ── Message bubble ── */
+// 1 bong bóng chat — tự parse Markdown đơn giản (**in đậm**, dòng bắt đầu bằng "> " thành blockquote)
 function Message({ msg }) {
   const isUser = msg.role === "user";
 
@@ -171,6 +173,8 @@ function TypingIndicator() {
 }
 
 /* ── Main Page ── */
+// Danh sách phiên chat (tên, tài liệu ghim, tin nhắn) chỉ lưu ở localStorage —
+// không có API backend để list lại các session cũ, nên mất nếu xoá localStorage/đổi trình duyệt
 function loadSessionsFromStorage() {
   try {
     return JSON.parse(localStorage.getItem("chatSessions")) || [];
@@ -196,6 +200,7 @@ export default function ChatbotPage() {
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
+  // Backend có thể trả sessionId theo nhiều hình dạng khác nhau (kể cả nhúng trong 1 câu text)
   function extractSessionId(result) {
     if (typeof result === "string") {
       const match = result.match(/Session ID:\s*([a-f0-9-]+)/i);
@@ -215,6 +220,8 @@ export default function ChatbotPage() {
     saveSessionsToStorage(sessions);
   }, [sessions]);
 
+  // Khi chuyển sang 1 session chưa có tin nhắn nào ở local (messages rỗng), thử tải lịch sử từ backend
+  // — trường hợp session được tạo ở phiên trình duyệt khác nhưng cùng account
   useEffect(() => {
     if (!activeId) return;
     const session = sessions.find((s) => s.id === activeId);
@@ -263,6 +270,8 @@ export default function ChatbotPage() {
     }
   }
 
+  // Tạo session mới: gọi API tạo session ở backend; nếu API lỗi vẫn tạo session tạm ở local
+  // (dùng Date.now() làm id) để người dùng không bị chặn thao tác, dù tin nhắn sẽ không đồng bộ được
   async function handleNewSession() {
     try {
       const result = await startChatSession({ documentIds: [] });
@@ -330,6 +339,8 @@ export default function ChatbotPage() {
     inputRef.current?.focus();
   }
 
+  // Gửi tin nhắn: cập nhật UI với tin nhắn user ngay lập tức (optimistic update),
+  // rồi mới gọi API và chờ phản hồi AI để thêm vào cuối
   async function handleSend() {
     const text = input.trim();
     if (!text || loading) return;
@@ -414,6 +425,7 @@ export default function ChatbotPage() {
     setEditingName(null);
   }
 
+  // Câu hỏi gợi ý hiện khi phiên chat chưa có tin nhắn nào
   const SUGGESTIONS = [
     "Tóm tắt nội dung chính của tài liệu?",
     "Giải thích khái niệm khó nhất trong chương này?",

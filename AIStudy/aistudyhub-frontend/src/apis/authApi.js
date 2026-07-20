@@ -6,6 +6,8 @@ import api, {
   setCurrentUser,
 } from "./api";
 
+// Chuẩn hoá response login/register (backend có thể trả token dưới nhiều tên field khác nhau)
+// thành 1 hình dạng thống nhất { accessToken, refreshToken, user, ... }
 function normalizeAuthResponse(response) {
   const authData = response?.data ? response.data : response;
 
@@ -28,6 +30,7 @@ function normalizeAuthResponse(response) {
   };
 }
 
+// Sau khi chuẩn hoá, lưu token + user vào localStorage — dùng chung cho login và register
 function saveAuthResponse(response) {
   const authData = normalizeAuthResponse(response);
 
@@ -47,6 +50,7 @@ function saveAuthResponse(response) {
   return authData;
 }
 
+// POST /auth/login — dùng rawRequest vì cần đọc nguyên response (không unwrap) trước khi normalize
 export async function login({ email, password, deviceInfo }) {
   const response = await rawRequest("/auth/login", {
     method: "POST",
@@ -87,6 +91,7 @@ export async function register({
   return saveAuthResponse(response);
 }
 
+// POST /auth/refresh — lấy accessToken mới bằng refreshToken hiện có (chưa được gọi tự động ở đâu trong app)
 export async function refreshAccessToken() {
   const refreshToken = getRefreshToken();
 
@@ -164,6 +169,7 @@ export async function resetPassword({ token, newPassword }) {
   });
 }
 
+// Hàm tiện ích kiểm tra đăng nhập nhanh (không dùng ở đâu trong code hiện tại, nhưng để sẵn cho sau)
 export function isLoggedIn() {
   return Boolean(localStorage.getItem("accessToken"));
 }

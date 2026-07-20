@@ -32,6 +32,7 @@ export default function RegisterPage() {
     e.preventDefault();
     setError("");
 
+    // Validate phía client trước khi gọi API — backend cũng validate lại nhưng kiểm tra sớm ở đây để UX nhanh hơn
     if (!registerData.agreeTerms) {
       setError("Bạn cần đồng ý với điều khoản sử dụng.");
       return;
@@ -54,11 +55,12 @@ export default function RegisterPage() {
         fullName: registerData.name,
         email: registerData.email,
         password: registerData.password,
-        role: "CUSTOMER",
+        role: "CUSTOMER", // luôn tạo tài khoản CUSTOMER — role ADMIN/MODERATOR chỉ gán được từ trang admin
       });
 
       console.log("Register result:", result);
 
+      // Không tự đăng nhập luôn sau khi đăng ký — bắt người dùng quay lại trang login
       alert("Đăng ký thành công. Vui lòng đăng nhập.");
       navigate("/login");
     } catch (err) {

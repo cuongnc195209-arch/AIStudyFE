@@ -14,16 +14,20 @@ import PrivateRoute from "./routes/PrivateRoute";
 
 function App() {
   return (
+    // BrowserRouter dùng URL thật của trình duyệt (không phải dạng #hash)
     <BrowserRouter>
       <Routes>
+        {/* ── Route công khai — không cần đăng nhập ── */}
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
+        {/* ── Route riêng tư — bọc PrivateRoute để bắt buộc đăng nhập (và đúng role nếu có truyền allowedRoles) ── */}
         <Route
           path="/dashboard"
           element={
+            // Liệt kê hết role hiện có => bất kỳ ai đã đăng nhập đều vào được
             <PrivateRoute
               allowedRoles={["CUSTOMER", "ADMIN", "TEACHER", "MODERATOR"]}
             >
@@ -35,6 +39,7 @@ function App() {
         <Route
           path="/moderation"
           element={
+            // Trang duyệt tài liệu pending — chỉ MODERATOR và ADMIN
             <PrivateRoute allowedRoles={["MODERATOR", "ADMIN"]}>
               <ModerationPage />
             </PrivateRoute>
@@ -44,6 +49,7 @@ function App() {
         <Route
           path="/chatbot"
           element={
+            // Không truyền allowedRoles => chỉ cần có token, không giới hạn role
             <PrivateRoute>
               <ChatbotPage />
             </PrivateRoute>
@@ -80,6 +86,8 @@ function App() {
         <Route
           path="/admin/*"
           element={
+            // "/*" => mọi path con (/admin/users, /admin/documents...) đều render AdminDashboardPage;
+            // việc chuyển section bên trong khu vực admin do chính AdminDashboardPage tự quản lý, không khai báo route con ở đây
             <PrivateRoute allowedRoles={["ADMIN"]}>
               <AdminDashboardPage />
             </PrivateRoute>

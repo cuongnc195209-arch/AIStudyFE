@@ -4,6 +4,7 @@ import { deleteDocument } from "../../../apis/documentApi";
 import { ConfirmModal } from "../shared/ConfirmModal";
 import { EXT_COLOR } from "../shared/mockData";
 
+// Chuẩn hoá tài liệu cho bảng admin — gộp DOCX->DOC, PPTX->PPT, JPG/PNG->IMG để khớp với EXT_COLOR
 function mapDocAdmin(d, index = 0) {
   const rawExt = String(d.fileType || d.ext || "PDF").toUpperCase();
   let ext = rawExt;
@@ -31,6 +32,7 @@ function mapDocAdmin(d, index = 0) {
   };
 }
 
+// Bảng tài liệu toàn hệ thống — admin chỉ xoá được, nút "Xem" chưa gắn hành vi gì (không có onClick)
 export default function DocumentsSection({ onToast }) {
   const [docs, setDocs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -63,6 +65,7 @@ export default function DocumentsSection({ onToast }) {
     return matchSearch && matchExt;
   });
 
+  // Xoá thật ở backend (khác UsersSection.doAction — action "delete" ở đó chỉ xoá local)
   async function handleDelete() {
     try {
       await deleteDocument(confirm.id);

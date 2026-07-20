@@ -3,6 +3,8 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { clearAuthStorage } from "../../apis/api";
 import "./AdminLayout.css";
 
+// 7 mục menu admin — mỗi id khớp với 1 key trong SECTION_MAP của AdminDashboardPage.jsx
+// Lưu ý: comment "tạm ẩn" ở mục config đã lỗi thời — mục này thực tế KHÔNG bị ẩn, vẫn hiện bình thường
 const NAV_ITEMS = [
   { id: "overview", icon: "📊", label: "Tổng quan" },
   { id: "users", icon: "👥", label: "Người dùng" },
@@ -13,10 +15,13 @@ const NAV_ITEMS = [
    { id: "config", icon: "⚙️", label: "Cấu hình hệ thống" }, // tạm ẩn
 ];
 
+// Layout riêng cho khu vực /admin/*. Khác AppLayout ở chỗ dùng button + callback onNavigate
+// thay vì <NavLink to>, vì admin không có route con riêng — section active nằm ở state của AdminDashboardPage
 export default function AdminLayout({ activeSection, onNavigate, children }) {
   const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
 
+  // Giống hệt logic đăng xuất ở AppLayout — chỉ xoá localStorage, chưa gọi API logout thật
   const handleLogout = async () => {
     try {
       // Nếu có gọi API logout thì gọi ở đây

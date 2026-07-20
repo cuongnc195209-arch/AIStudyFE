@@ -1,3 +1,6 @@
+// Chuẩn hoá 1 user thô từ backend thành object thống nhất cho bảng admin — dùng chung bởi
+// UsersSection và OverviewSection. Backend trả field role/status ở nhiều hình dạng khác nhau
+// (role, userRole, roles[], authorities[]...) nên phải thử lần lượt để tìm giá trị đúng.
 export function mapUser(u, index = 0) {
   const rawStatus = (u.accountStatus || "").toUpperCase();
   const status =

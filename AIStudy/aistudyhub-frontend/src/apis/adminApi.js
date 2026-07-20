@@ -1,5 +1,7 @@
 import api from "./api";
 
+// Các hàm trong file này chỉ dành cho khu vực /admin — gọi tới nhóm endpoint /admin/*
+
 export async function getUsers({ key = "", page = 0, size = 10 } = {}) {
   return api.get("/admin/account", {
     key,
@@ -57,6 +59,7 @@ export async function getPendingPublicDocuments({ page = 0, size = 10 } = {}) {
   return getAdminDocuments({ page, size });
 }
 
+// Trùng logic với documentApi.reviewDocument — giữ bản riêng ở đây để adminApi độc lập, không phụ thuộc documentApi
 export async function reviewDocument(documentId, decision) {
   const cleanDecision = String(decision || "")
     .trim()
@@ -81,6 +84,7 @@ export async function rejectDocument(documentId) {
   return reviewDocument(documentId, "DENY");
 }
 
+// Lưu cấu hình hệ thống (giới hạn upload, định dạng file cho phép...) — dùng bởi ConfigSection
 export async function updateAdminConfig(payload) {
   return api.put("/admin/config", payload);
 }
