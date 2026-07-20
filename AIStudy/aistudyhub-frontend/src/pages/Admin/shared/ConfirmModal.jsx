@@ -1,3 +1,4 @@
+//Modal xác nhận hành động dùng chung (xác nhận xóa, khóa tài khoản...).
 export function ConfirmModal({ title, desc, danger, onConfirm, onClose }) {
   return (
     <div
