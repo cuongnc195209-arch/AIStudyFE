@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AppLayout from "../../components/layout/AppLayout";
 import { getDocuments } from "../../apis/documentApi";
+import { getTotalQuota } from "../../apis/storageApi";
 import { DocumentsSection } from "../Documents/DocumentsPage";
 import "./DashboardPage.css";
 
@@ -40,11 +41,12 @@ export default function DashboardPage() {
   const [chatCount] = useState(() => getChatSessionCount());
 
   const [docCount, setDocCount] = useState(0);
-  const [totalBytes, setTotalBytes] = useState(0);
   const [docsThisWeek, setDocsThisWeek] = useState(0);
+  const [totalBytes, setTotalBytes] = useState(0);
+  const [quotaBytes, setQuotaBytes] = useState(5 * 1073741824); // fallback 5GB nếu BE chưa trả totalQuota
 
-  // Gọi API lấy toàn bộ tài liệu 1 lần, rồi tự tính các thống kê (tổng số, tổng dung lượng, số tài liệu tuần này)
-  // ở phía client thay vì có endpoint thống kê riêng từ backend
+  // Gọi API lấy toàn bộ tài liệu 1 lần, rồi tự tính các thống kê (tổng số, tổng dung lượng đã dùng,
+  // số tài liệu tuần này) ở phía client — BE không có endpoint trả dung lượng đã dùng
   useEffect(() => {
     let cancelled = false;
 
@@ -81,6 +83,31 @@ export default function DashboardPage() {
     };
   }, [nowTime]);
 
+  // Tổng quota (dung lượng tối đa) lấy từ BE — /v1/documents/get-storage chỉ trả 1 số byte
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchQuota() {
+      try {
+        const total = await getTotalQuota();
+
+        if (!cancelled && total > 0) {
+          setQuotaBytes(total);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error("Dashboard load total quota error:", err);
+        }
+      }
+    }
+
+    fetchQuota();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const stats = useMemo(
     () => [
       {
@@ -94,7 +121,7 @@ export default function DashboardPage() {
         icon: "💾",
         label: "Dung lượng",
         value: formatSize(totalBytes),
-        sub: `${((totalBytes / (5 * 1073741824)) * 100).toFixed(0)}% / 5 GB`,
+        sub: `${((totalBytes / quotaBytes) * 100).toFixed(0)}% / ${formatSize(quotaBytes)}`,
         color: "purple",
       },
       {
@@ -105,7 +132,7 @@ export default function DashboardPage() {
         color: "green",
       },
     ],
-    [docCount, docsThisWeek, totalBytes, chatCount],
+    [docCount, docsThisWeek, totalBytes, quotaBytes, chatCount],
   );
 
   // Lời chào thay đổi theo giờ hiện tại: sáng/chiều/tối

@@ -1,21 +1,15 @@
 import api from "./api";
 
 /**
- * Lấy dung lượng storage của user hiện tại.
+ * Lấy tổng dung lượng (quota) được cấp cho user hiện tại, tính bằng byte.
  *
- * BE:
- * GET /api/v1/storage/usage
+ * BE: GET /api/v1/documents/get-storage
+ * Response thực tế chỉ là 1 số nguyên (vd: 5368709120 = 5GB), không phải object
+ * {used, total} — endpoint này KHÔNG trả số đã dùng, chỉ trả tổng quota.
  */
-export async function getStorageUsage() {
-  return api.get("/v1/storage/usage");
-}
-
-export async function getCloudStorageUsage() {
-  return getStorageUsage();
-}
-
-export async function getMyStorageUsage() {
-  return getStorageUsage();
+export async function getTotalQuota() {
+  const result = await api.get("/v1/documents/get-storage");
+  return Number(result) || 0;
 }
 
 // Đổi số byte thành chuỗi dễ đọc (KB/MB/GB...) bằng công thức log cơ số 1024
@@ -34,39 +28,24 @@ export function formatBytes(bytes = 0) {
   return `${formatted.toFixed(formatted >= 10 ? 1 : 2)} ${units[safeIndex]}`;
 }
 
-// Chuẩn hoá + bổ sung field hiển thị sẵn (usedText/totalText) từ response storage thô
-export function normalizeStorageUsage(storage) {
-  if (!storage) {
-    return {
-      userId: null,
-      usedQuota: 0,
-      totalQuota: 0,
-      usagePercentage: "0%",
-      usedText: "0 B",
-      totalText: "0 B",
-    };
-  }
+// Gộp usedBytes (tính tay từ tổng fileSize danh sách tài liệu) với totalQuota lấy từ BE
+// thành 1 object tiện hiển thị (usedText/totalText/usagePercentage)
+export function normalizeStorageUsage(usedBytes = 0, totalBytes = 0) {
+  const usedQuota = Number(usedBytes) || 0;
+  const totalQuota = Number(totalBytes) || 0;
 
   return {
-    ...storage,
-    usedQuota: Number(storage.usedQuota || 0),
-    totalQuota: Number(storage.totalQuota || 0),
-    usagePercentage: storage.usagePercentage || "0%",
-    usedText: formatBytes(storage.usedQuota || 0),
-    totalText: formatBytes(storage.totalQuota || 0),
+    usedQuota,
+    totalQuota,
+    usagePercentage:
+      totalQuota > 0 ? `${((usedQuota / totalQuota) * 100).toFixed(0)}%` : "0%",
+    usedText: formatBytes(usedQuota),
+    totalText: formatBytes(totalQuota),
   };
 }
 
-export async function getNormalizedStorageUsage() {
-  const storage = await getStorageUsage();
-  return normalizeStorageUsage(storage);
-}
-
 const storageApi = {
-  getStorageUsage,
-  getCloudStorageUsage,
-  getMyStorageUsage,
-  getNormalizedStorageUsage,
+  getTotalQuota,
   normalizeStorageUsage,
   formatBytes,
 };
