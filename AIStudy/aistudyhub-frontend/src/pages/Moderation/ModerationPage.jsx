@@ -9,7 +9,6 @@ import "../Admin/AdminDashboardPage.css";
 
 const PAGE_SIZE = 9999;
 
-// Bóc list ra khỏi response backend — thử nhiều hình dạng khác nhau (mảng thẳng, {content}, {data}, {data.content})
 function getListFromResponse(res) {
   if (Array.isArray(res)) return res;
   if (Array.isArray(res?.content)) return res.content;
@@ -38,7 +37,6 @@ function formatDate(value) {
   return date.toLocaleDateString("vi-VN");
 }
 
-// Chuẩn hoá status tài liệu — bỏ các tiền tố STATUS_/PUBLIC_ mà backend có thể trả kèm
 function normalizeStatus(value) {
   return String(value || "")
     .trim()
@@ -47,43 +45,52 @@ function normalizeStatus(value) {
     .toUpperCase();
 }
 
-function getDocStatus(d) {
+function getDocStatus(doc) {
   return normalizeStatus(
-    d.status ||
-      d.publicStatus ||
-      d.statusPublicDoc ||
-      d.statusPublic ||
-      d.reviewStatus ||
-      d.approvalStatus ||
-      d.documentStatus,
+    doc.status ||
+      doc.publicStatus ||
+      doc.statusPublicDoc ||
+      doc.statusPublic ||
+      doc.reviewStatus ||
+      doc.approvalStatus ||
+      doc.documentStatus,
   );
 }
 
-function mapPendingDocument(d, index = 0) {
-  const documentId = d.documentId || d.id || d.document_id || d.uuid;
-  const name = d.documentName || d.name || d.title || "Untitled";
-  const createdAt = d.createdAt || d.created_at || d.uploadedAt || d.sharedAt;
-  const status = getDocStatus(d);
+function mapPendingDocument(doc, index = 0) {
+  const documentId = doc.documentId || doc.document_id || doc.id || doc.uuid;
+
+  const name =
+    doc.documentName ||
+    doc.document_name ||
+    doc.name ||
+    doc.title ||
+    "Untitled";
+
+  const createdAt =
+    doc.createdAt || doc.created_at || doc.uploadedAt || doc.sharedAt;
+
+  const status = getDocStatus(doc);
 
   return {
     id: documentId || `${name}-${createdAt || index}`,
     documentId,
     name,
     owner:
-      d.userFullName ||
-      d.ownerName ||
-      d.uploadedBy ||
-      d.userName ||
-      d.fullName ||
-      d.userEmail ||
-      d.email ||
+      doc.userName ||
+      doc.userFullName ||
+      doc.ownerName ||
+      doc.uploadedBy ||
+      doc.fullName ||
+      doc.userEmail ||
+      doc.email ||
       "—",
-    subject: d.subjectCode || d.subject || d.categoryName || "—",
-    fileType: String(d.fileType || d.ext || "FILE").toUpperCase(),
-    fileSize: formatFileSize(d.fileSize),
+    subject: doc.subjectCode || doc.subject || doc.categoryName || "—",
+    fileType: String(doc.fileType || doc.ext || "FILE").toUpperCase(),
+    fileSize: formatFileSize(doc.fileSize),
     createdAt,
-    status: status || "UNKNOWN",
-    description: d.description || "",
+    status: status || "PENDING",
+    description: doc.description || "",
   };
 }
 
@@ -94,7 +101,6 @@ export default function ModerationPage() {
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
 
-  // PAGE_SIZE = 9999 => coi như lấy hết 1 lần, không phân trang thật ở đây
   const fetchPendingDocuments = useCallback(async () => {
     const res = await getPendingPublicDocuments({
       page: 0,
@@ -104,15 +110,19 @@ export default function ModerationPage() {
     const list = getListFromResponse(res);
 
     /*
-      Quan trọng:
-      API đã gọi /api/admin/document?status=PENDING
-      nên BE đã lọc pending rồi.
-      FE không filter thêm .filter(isPendingDocument),
-      vì nếu BE chưa trả status đúng field thì FE sẽ tự xóa hết danh sách.
+      API đúng phải gọi:
+      GET /api/admin/document?status=PENDING&page=0&size=9999
+
+      Nếu BE đã trả status, FE chỉ lấy status PENDING.
+      Nếu BE chưa trả status nhưng endpoint đã lọc PENDING, FE vẫn hiển thị để tránh mất dữ liệu.
     */
-    return list
-      .filter((doc) => getDocStatus(doc) === "PENDING")
-      .map((doc, index) => mapPendingDocument(doc, index));
+    const hasStatusField = list.some((doc) => getDocStatus(doc));
+
+    const pendingList = hasStatusField
+      ? list.filter((doc) => getDocStatus(doc) === "PENDING")
+      : list;
+
+    return pendingList.map((doc, index) => mapPendingDocument(doc, index));
   }, []);
 
   useEffect(() => {
@@ -175,8 +185,6 @@ export default function ModerationPage() {
     });
   }, [documents, search]);
 
-  // Duyệt/từ chối tài liệu: luôn hỏi xác nhận bằng SweetAlert2 trước khi gọi API,
-  // sau khi thành công thì xoá tài liệu đó khỏi danh sách local (không cần load lại toàn bộ)
   async function handleReview(doc, decision) {
     if (!doc.documentId) {
       await Swal.fire({
