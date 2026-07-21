@@ -20,7 +20,7 @@ function mapDocAdmin(d, index = 0) {
       `${d.documentName || d.name || "document"}-${d.createdAt || d.date || index}`,
     name: d.documentName || d.name || "Untitled",
     ext,
-    owner: d.ownerName || d.uploadedBy || d.userName || "—",
+    owner: d.userFullName || d.userEmail || "—",
     subject: d.subject || "Tài liệu",
     size: d.fileSize
       ? d.fileSize >= 1048576
