@@ -35,7 +35,7 @@ export default function OverviewSection() {
     Promise.allSettled([
       getUsers({ size: 9999 }),
       getAdminDocuments({ size: 9999 }),
-      getAdminStorage(),
+      getAdminStorage({ size: 9999 }),
       getAdminChats({ size: 9999 }),
     ]).then(([usersRes, docsRes, storageRes, chatsRes]) => {
       if (usersRes.status === "fulfilled") {
@@ -69,14 +69,10 @@ export default function OverviewSection() {
 
       if (storageRes.status === "fulfilled") {
         const res = storageRes.value;
-        const data =
-          typeof res === "object" && res !== null ? res?.data || res : {};
-        const totalBytes =
-          data.totalUsedBytes ??
-          data.usedBytes ??
-          data.totalSize ??
-          data.usedStorage ??
-          null;
+        const list = res?.content || res?.data || res || [];
+        const totalBytes = Array.isArray(list)
+          ? list.reduce((sum, item) => sum + (item.usedQuota || 0), 0)
+          : null;
         setStorageUsed(totalBytes);
       }
 

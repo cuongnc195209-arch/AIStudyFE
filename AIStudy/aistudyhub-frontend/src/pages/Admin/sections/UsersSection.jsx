@@ -12,6 +12,8 @@ const USERS_PAGE_SIZE = 10;
 
 // Quản lý danh sách user: khoá/mở khoá, đổi role. Tải hết user (size 9999) rồi tự phân trang
 // ở client bằng AdminPagination — không phân trang thật ở phía backend.
+// Cột "Gói" luôn hiển thị "Miễn phí" — backend chưa có field/API cho gói thành viên (Premium/Free)
+// của từng user, xem MembershipSection trong SettingsPage.jsx (cũng là UI demo, chưa nối API).
 export default function UsersSection({ onToast }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -154,6 +156,7 @@ export default function UsersSection({ onToast }) {
               <th>Người dùng</th>
               <th>Tham gia</th>
               <th>Vai trò</th>
+              <th>Gói</th>
               <th>Trạng thái</th>
               <th>Thao tác</th>
             </tr>
@@ -204,6 +207,7 @@ export default function UsersSection({ onToast }) {
                     <option value="ADMIN">👑 Admin</option>
                   </select>
                 </td>
+                <td className="td-secondary">Miễn phí</td>
                 <td>
                   <span className={`status-badge status-${u.status}`}>
                     {u.status === "active" ? "● Hoạt động" : "● Đã khóa"}

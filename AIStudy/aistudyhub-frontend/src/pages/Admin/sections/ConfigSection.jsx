@@ -17,6 +17,14 @@ export default function ConfigSection({ onToast }) {
   const [subjects, setSubjects] = useState(SUBJECTS);
   const [newSubject, setNewSubject] = useState("");
 
+  // Cấu hình riêng cho gói Premium — chưa có API backend nào cho việc này (xem MembershipSection
+  // trong SettingsPage.jsx, PLANS ở đó vẫn đang hardcode cứng). State này chỉ lưu ở client,
+  // chưa gửi lên đâu cả — cần backend có endpoint quản lý gói Premium rồi mới nối dữ liệu thật.
+  const [premiumConfig, setPremiumConfig] = useState({
+    storageQuotaGb: 50,
+    maxFileSizeMb: 100,
+    maxDailyChatTokens: 0,
+  });
   const ALL_FORMATS = [
     "PDF",
     "DOCX",
@@ -100,7 +108,7 @@ export default function ConfigSection({ onToast }) {
               <span className="config-unit">MB</span>
             </div>
             <p className="config-hint">
-              Áp dụng cho tất cả người dùng gói Free và Premium
+              Áp dụng cho người dùng gói Free
             </p>
           </div>
           <div className="config-item">
@@ -160,6 +168,65 @@ export default function ConfigSection({ onToast }) {
               {fmt}
             </label>
           ))}
+        </div>
+      </div>
+
+      {/* Premium plan config — local-only, chưa nối API backend */}
+      <div className="config-section">
+        <h3 className="config-section-title">Cấu hình gói Premium</h3>
+        <div className="config-grid">
+          <div className="config-item">
+            <label>Dung lượng lưu trữ Premium</label>
+            <div className="config-input-row">
+              <input
+                type="number"
+                min={1}
+                value={premiumConfig.storageQuotaGb}
+                onChange={(e) =>
+                  setPremiumConfig((c) => ({
+                    ...c,
+                    storageQuotaGb: +e.target.value,
+                  }))
+                }
+              />
+              <span className="config-unit">GB</span>
+            </div>
+          </div>
+          <div className="config-item">
+            <label>Dung lượng tối đa mỗi file (Premium)</label>
+            <div className="config-input-row">
+              <input
+                type="number"
+                min={1}
+                value={premiumConfig.maxFileSizeMb}
+                onChange={(e) =>
+                  setPremiumConfig((c) => ({
+                    ...c,
+                    maxFileSizeMb: +e.target.value,
+                  }))
+                }
+              />
+              <span className="config-unit">MB</span>
+            </div>
+          </div>
+          <div className="config-item">
+            <label>Giới hạn token chat AI Premium / ngày</label>
+            <div className="config-input-row">
+              <input
+                type="number"
+                min={0}
+                value={premiumConfig.maxDailyChatTokens}
+                onChange={(e) =>
+                  setPremiumConfig((c) => ({
+                    ...c,
+                    maxDailyChatTokens: +e.target.value,
+                  }))
+                }
+              />
+              <span className="config-unit">token/ngày</span>
+            </div>
+            <p className="config-hint">0 = không giới hạn</p>
+          </div>
         </div>
       </div>
 
