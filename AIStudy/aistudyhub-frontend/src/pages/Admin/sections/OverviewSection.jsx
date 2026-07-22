@@ -21,16 +21,11 @@ export default function OverviewSection() {
   const [loading, setLoading] = useState(true);
   const [recentUsers, setRecentUsers] = useState([]);
   const [totalUsers, setTotalUsers] = useState(0);
-  const [usersThisWeek, setUsersThisWeek] = useState(0);
   const [totalDocs, setTotalDocs] = useState(0);
-  const [docsThisWeek, setDocsThisWeek] = useState(0);
   const [storageUsed, setStorageUsed] = useState(null);
   const [totalAiMessages, setTotalAiMessages] = useState(0);
 
   useEffect(() => {
-    const now = Date.now();
-    const oneWeekAgo = now - 7 * 86400000;
-
     // allSettled thay vì Promise.all — nếu 1 API lỗi thì các API khác vẫn tính được, không throw dừng hết
     Promise.allSettled([
       getUsers({ size: 9999 }),
@@ -47,11 +42,6 @@ export default function OverviewSection() {
         const nonAdmin = mapped.filter((u) => u.role !== "ADMIN");
 
         setTotalUsers(res?.totalElements || nonAdmin.length);
-        setUsersThisWeek(
-          nonAdmin.filter(
-            (u) => u.joined && new Date(u.joined).getTime() >= oneWeekAgo,
-          ).length,
-        );
         setRecentUsers(nonAdmin.slice(0, 5));
       }
 
@@ -60,11 +50,6 @@ export default function OverviewSection() {
         const data = res?.content || res?.data || res || [];
         const docList = Array.isArray(data) ? data : [];
         setTotalDocs(res?.totalElements || docList.length);
-        setDocsThisWeek(
-          docList.filter(
-            (d) => new Date(d.createdAt || d.date || 0).getTime() >= oneWeekAgo,
-          ).length,
-        );
       }
 
       if (storageRes.status === "fulfilled") {
@@ -91,24 +76,12 @@ export default function OverviewSection() {
       icon: "👥",
       label: "Tổng người dùng",
       value: loading ? "..." : totalUsers.toLocaleString(),
-      trend: loading
-        ? "Đang tải..."
-        : usersThisWeek > 0
-          ? `+${usersThisWeek} tuần này`
-          : "Tuần này: 0",
-      trendUp: usersThisWeek > 0,
       color: "blue",
     },
     {
       icon: "📁",
       label: "Tài liệu hệ thống",
       value: loading ? "..." : totalDocs.toLocaleString(),
-      trend: loading
-        ? "Đang tải..."
-        : docsThisWeek > 0
-          ? `+${docsThisWeek} tuần này`
-          : "Tuần này: 0",
-      trendUp: docsThisWeek > 0,
       color: "purple",
     },
     {
@@ -119,28 +92,18 @@ export default function OverviewSection() {
         : storageUsed != null
           ? formatStorage(storageUsed)
           : "—",
-      trend: loading
-        ? "Đang tải..."
-        : storageUsed != null
-          ? "Toàn hệ thống"
-          : "BE chưa trả dữ liệu",
-      trendUp: null,
       color: "orange",
     },
     {
       icon: "💰",
       label: "Doanh thu tháng",
       value: "—",
-      trend: "Chưa có API",
-      trendUp: null,
       color: "green",
     },
     {
       icon: "💬",
       label: "Câu hỏi AI",
       value: loading ? "..." : totalAiMessages.toLocaleString(),
-      trend: loading ? "Đang tải..." : "Tổng tin nhắn toàn hệ thống",
-      trendUp: null,
       color: "teal",
     },
   ];
@@ -160,12 +123,6 @@ export default function OverviewSection() {
             <div className="astat-body">
               <div className="astat-value">{s.value}</div>
               <div className="astat-label">{s.label}</div>
-              <div
-                className={`astat-trend${s.trendUp === true ? " trend-up" : s.trendUp === false ? " trend-warn" : ""}`}
-              >
-                {s.trendUp === true ? "↑" : s.trendUp === false ? "⚠" : "•"}{" "}
-                {s.trend}
-              </div>
             </div>
           </div>
         ))}
