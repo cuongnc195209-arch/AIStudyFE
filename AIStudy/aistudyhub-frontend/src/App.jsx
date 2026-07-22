@@ -11,6 +11,8 @@ import ModerationPage from "./pages/Moderation/ModerationPage";
 import SettingsPage from "./pages/Settings/SettingsPage";
 import AdminDashboardPage from "./pages/Admin/AdminDashboardPage";
 import PrivateRoute from "./routes/PrivateRoute";
+import VerifyEmailOtpPage from "./pages/Auth/VerifyEmailOtpPage";
+import ForgotPasswordOtpPage from "./pages/Auth/ForgotPasswordOtpPage";
 
 function App() {
   return (
@@ -93,6 +95,9 @@ function App() {
             </PrivateRoute>
           }
         />
+
+        <Route path="/verify-email" element={<VerifyEmailOtpPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordOtpPage />} />
       </Routes>
     </BrowserRouter>
   );

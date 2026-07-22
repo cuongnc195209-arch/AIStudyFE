@@ -6,8 +6,7 @@ import api, {
   setCurrentUser,
 } from "./api";
 
-// Chuẩn hoá response login/register (backend có thể trả token dưới nhiều tên field khác nhau)
-// thành 1 hình dạng thống nhất { accessToken, refreshToken, user, ... }
+// Chuẩn hoá response login/register
 function normalizeAuthResponse(response) {
   const authData = response?.data ? response.data : response;
 
@@ -30,7 +29,7 @@ function normalizeAuthResponse(response) {
   };
 }
 
-// Sau khi chuẩn hoá, lưu token + user vào localStorage — dùng chung cho login và register
+// Lưu token + user sau login/register
 function saveAuthResponse(response) {
   const authData = normalizeAuthResponse(response);
 
@@ -38,10 +37,14 @@ function saveAuthResponse(response) {
     return response;
   }
 
-  setAuthTokens({
-    accessToken: authData.accessToken,
-    refreshToken: authData.refreshToken,
-  });
+  // Register sau khi có email verification có thể trả accessToken = null.
+  // Vì vậy chỉ lưu token khi BE thật sự trả token.
+  if (authData.accessToken || authData.refreshToken) {
+    setAuthTokens({
+      accessToken: authData.accessToken,
+      refreshToken: authData.refreshToken,
+    });
+  }
 
   if (authData.user) {
     setCurrentUser(authData.user);
@@ -50,7 +53,7 @@ function saveAuthResponse(response) {
   return authData;
 }
 
-// POST /auth/login — dùng rawRequest vì cần đọc nguyên response (không unwrap) trước khi normalize
+// POST /auth/login
 export async function login({ email, password, deviceInfo }) {
   const response = await rawRequest("/auth/login", {
     method: "POST",
@@ -64,6 +67,7 @@ export async function login({ email, password, deviceInfo }) {
   return saveAuthResponse(response);
 }
 
+// POST /auth/register
 export async function register({
   email,
   password,
@@ -91,7 +95,32 @@ export async function register({
   return saveAuthResponse(response);
 }
 
-// POST /auth/refresh — lấy accessToken mới bằng refreshToken hiện có (chưa được gọi tự động ở đâu trong app)
+// GET /auth/verify-email?token=...
+export async function verifyEmail(token) {
+  if (!token) {
+    throw new Error("Thiếu token xác thực email");
+  }
+
+  return rawRequest(`/auth/verify-email?token=${encodeURIComponent(token)}`, {
+    method: "GET",
+  });
+}
+
+// POST /auth/resend-verification?email=...
+export async function resendVerificationEmail(email) {
+  if (!email) {
+    throw new Error("Thiếu email để gửi lại mã xác thực");
+  }
+
+  return rawRequest(
+    `/auth/resend-verification?email=${encodeURIComponent(email)}`,
+    {
+      method: "POST",
+    },
+  );
+}
+
+// POST /auth/refresh
 export async function refreshAccessToken() {
   const refreshToken = getRefreshToken();
 
@@ -109,6 +138,7 @@ export async function refreshAccessToken() {
   return saveAuthResponse(response);
 }
 
+// POST /auth/logout
 export async function logout() {
   const refreshToken = getRefreshToken();
 
@@ -125,6 +155,7 @@ export async function logout() {
   return true;
 }
 
+// GET /auth/me
 export async function getProfile() {
   const profile = await api.get("/auth/me");
 
@@ -139,6 +170,7 @@ export async function getMe() {
   return getProfile();
 }
 
+// PUT /auth/profile
 export async function updateProfile(profileData) {
   const profile = await api.put("/auth/profile", profileData);
 
@@ -149,6 +181,7 @@ export async function updateProfile(profileData) {
   return profile;
 }
 
+// PUT /auth/change-password
 export async function changePassword({ currentPassword, newPassword }) {
   return api.put("/auth/change-password", {
     currentPassword,
@@ -156,20 +189,39 @@ export async function changePassword({ currentPassword, newPassword }) {
   });
 }
 
-export async function forgotPassword(email) {
+// POST /auth/forgot-password
+// Cho phép gọi cả 2 kiểu:
+// forgotPassword("abc@gmail.com")
+// hoặc forgotPassword({ email: "abc@gmail.com" })
+export async function forgotPassword(input) {
+  const email = typeof input === "string" ? input : input?.email;
+
+  if (!email) {
+    throw new Error("Thiếu email để đặt lại mật khẩu");
+  }
+
   return api.post("/auth/forgot-password", {
     email,
   });
 }
 
+// POST /auth/reset-password
 export async function resetPassword({ token, newPassword }) {
+  if (!token) {
+    throw new Error("Thiếu token đặt lại mật khẩu");
+  }
+
+  if (!newPassword) {
+    throw new Error("Thiếu mật khẩu mới");
+  }
+
   return api.post("/auth/reset-password", {
     token,
     newPassword,
   });
 }
 
-// Hàm tiện ích kiểm tra đăng nhập nhanh (không dùng ở đâu trong code hiện tại, nhưng để sẵn cho sau)
+// Kiểm tra đăng nhập nhanh
 export function isLoggedIn() {
   return Boolean(localStorage.getItem("accessToken"));
 }
@@ -191,6 +243,8 @@ export function getStoredUser() {
 const authApi = {
   login,
   register,
+  verifyEmail,
+  resendVerificationEmail,
   refreshAccessToken,
   logout,
   getProfile,
