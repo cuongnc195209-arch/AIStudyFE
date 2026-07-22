@@ -7,7 +7,6 @@ import OverviewSection from "./sections/OverviewSection";
 import UsersSection from "./sections/UsersSection";
 import DocumentsSection from "./sections/DocumentsSection";
 import ChatSection from "./sections/ChatSection";
-import ForumSection from "./sections/ForumSection";
 import StatsSection from "./sections/StatsSection";
 import ConfigSection from "./sections/ConfigSection";
 import "./AdminDashboardPage.css";
@@ -118,7 +117,6 @@ export default function AdminDashboardPage() {
     users: <UsersSection onToast={showToast} />,
     documents: <DocumentsSection onToast={showToast} />,
     chat: <ChatSection />,
-    forum: <ForumSection onToast={showToast} />,
     stats: <StatsSection />,
     config: <ConfigSection onToast={showToast} />,
   };
@@ -137,7 +135,6 @@ export default function AdminDashboardPage() {
                   users: "Người dùng",
                   documents: "Tài liệu",
                   chat: "Chat AI",
-                  forum: "Kiểm duyệt Forum",
                   stats: "Thống kê",
                   config: "Cấu hình",
                 }[section]
