@@ -10,10 +10,6 @@ export async function getUsers({ key = "", page = 0, size = 10 } = {}) {
   });
 }
 
-export async function getAdminUsers({ key = "", page = 0, size = 10 } = {}) {
-  return getUsers({ key, page, size });
-}
-
 export async function updateUserStatus(userId, status) {
   if (!userId) {
     throw new Error("Thiếu userId");
@@ -49,23 +45,6 @@ export async function updateUserRole(userId, role) {
       role: cleanRole,
     },
   });
-}
-
-export async function getAdminDocuments({
-  page = 0,
-  size = 10,
-  status = "",
-} = {}) {
-  const queryParams = {
-    page,
-    size,
-  };
-
-  if (status) {
-    queryParams.status = status;
-  }
-
-  return api.get("/admin/document", queryParams);
 }
 
 export async function getPendingPublicDocuments({ page = 0, size = 10 } = {}) {
@@ -131,6 +110,35 @@ export async function updateAdminConfig(payload) {
 
 export async function updatePremiumConfig(payload) {
   return api.put("/admin/config-member", payload);
+}
+
+export async function getAdminUsers({ page = 0, size = 9999, key = "" } = {}) {
+  return api.get("/admin/account", {
+    params: {
+      page,
+      size,
+      key,
+    },
+  });
+}
+
+export async function getAdminDocuments({
+  page = 0,
+  size = 9999,
+  status,
+} = {}) {
+  const params = {
+    page,
+    size,
+  };
+
+  if (status) {
+    params.status = status;
+  }
+
+  return api.get("/admin/document", {
+    params,
+  });
 }
 
 const adminApi = {

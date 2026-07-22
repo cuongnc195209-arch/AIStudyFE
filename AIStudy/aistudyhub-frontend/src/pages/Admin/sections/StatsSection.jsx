@@ -1,27 +1,280 @@
-import { MONTH_USERS, MONTH_REVENUE, MONTH_LABELS } from "../shared/mockData";
+import { useEffect, useMemo, useState } from "react";
+import { getAdminDocuments, getAdminUsers } from "../../../apis/adminApi";
 
-// Biểu đồ cột tự vẽ bằng CSS thuần (chiều cao cột = % theo giá trị lớn nhất) — không dùng thư viện chart nào
-function BarChart({ data, labels, color, unit = "" }) {
-  const max = Math.max(...data);
+const CURRENT_YEAR = new Date().getFullYear();
+
+const MONTHS = Array.from({ length: 12 }, (_, index) => ({
+  index,
+  label: `T${index + 1}`,
+}));
+
+const FILE_TYPES = ["PDF", "PPT", "DOC", "IMG"];
+
+const FILE_COLOR = {
+  PDF: "#ef4444",
+  PPT: "#f97316",
+  DOC: "#3b82f6",
+  IMG: "#10b981",
+};
+
+const PLAN_COLOR = {
+  FREE: "#6b7280",
+  PREMIUM: "#0066ff",
+};
+
+/*
+ * Nếu BE chưa có bảng thanh toán/doanh thu,
+ * doanh thu sẽ tính tạm từ số user Premium mới trong tháng.
+ * Đơn vị: nghìn đồng.
+ *
+ * Ví dụ giá Premium 49.000đ thì để 49.
+ * Chưa có giá thì để 0.
+ */
+const PREMIUM_PRICE_THOUSAND_VND = 0;
+
+function getListFromResponse(res) {
+  if (Array.isArray(res)) return res;
+  if (Array.isArray(res?.content)) return res.content;
+  if (Array.isArray(res?.data?.content)) return res.data.content;
+  if (Array.isArray(res?.data)) return res.data;
+  return [];
+}
+
+function getCreatedAt(item) {
+  return item.createdAt || item.created_at || item.date || item.joinedAt || "";
+}
+
+function getMonthIndex(value) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  if (date.getFullYear() !== CURRENT_YEAR) {
+    return null;
+  }
+
+  return date.getMonth();
+}
+
+function normalizeFileType(doc) {
+  const raw = String(
+    doc.fileType ||
+      doc.ext ||
+      doc.extension ||
+      doc.mimeType ||
+      doc.documentName ||
+      doc.name ||
+      "",
+  ).toUpperCase();
+
+  const name = String(doc.documentName || doc.name || "").toUpperCase();
+
+  if (raw.includes("PDF") || name.endsWith(".PDF")) return "PDF";
+
+  if (
+    raw.includes("PPT") ||
+    raw.includes("POWERPOINT") ||
+    name.endsWith(".PPT") ||
+    name.endsWith(".PPTX")
+  ) {
+    return "PPT";
+  }
+
+  if (
+    raw.includes("DOC") ||
+    raw.includes("WORD") ||
+    name.endsWith(".DOC") ||
+    name.endsWith(".DOCX")
+  ) {
+    return "DOC";
+  }
+
+  if (
+    raw.includes("IMG") ||
+    raw.includes("IMAGE") ||
+    raw.includes("JPG") ||
+    raw.includes("JPEG") ||
+    raw.includes("PNG") ||
+    name.endsWith(".JPG") ||
+    name.endsWith(".JPEG") ||
+    name.endsWith(".PNG")
+  ) {
+    return "IMG";
+  }
+
+  return "OTHER";
+}
+
+function normalizePlan(user) {
+  const raw = String(
+    user.plan ||
+      user.subscriptionPlan ||
+      user.subscription ||
+      user.membership ||
+      user.memberType ||
+      user.packageName ||
+      user.planName ||
+      "",
+  ).toUpperCase();
+
+  if (
+    raw.includes("PREMIUM") ||
+    raw.includes("PRO") ||
+    raw.includes("PAID") ||
+    raw.includes("VIP")
+  ) {
+    return "PREMIUM";
+  }
+
+  return "FREE";
+}
+
+function resolveRevenueAmount(user) {
+  const rawAmount =
+    user.paymentAmount ||
+    user.amountPaid ||
+    user.revenue ||
+    user.planPrice ||
+    user.price ||
+    user.subscriptionPrice ||
+    null;
+
+  const amount = Number(rawAmount || 0);
+
+  if (Number.isFinite(amount) && amount > 0) {
+    /*
+     * Nếu BE trả VND, đổi sang nghìn đồng.
+     * Nếu BE đã trả nghìn đồng, số nhỏ vẫn giữ nguyên.
+     */
+    return amount > 1000 ? amount / 1000 : amount;
+  }
+
+  const plan = normalizePlan(user);
+
+  if (plan === "PREMIUM") {
+    return PREMIUM_PRICE_THOUSAND_VND;
+  }
+
+  return 0;
+}
+
+function formatNumber(value) {
+  return Number(value || 0).toLocaleString("vi-VN");
+}
+
+function formatRevenue(value) {
+  const amount = Number(value || 0);
+
+  if (amount >= 1000) {
+    return `${(amount / 1000).toFixed(1)}M`;
+  }
+
+  return `${Math.round(amount)}K`;
+}
+
+function getPercent(value, total) {
+  if (!total) {
+    return 0;
+  }
+
+  return Math.round((value / total) * 100);
+}
+
+function StatBarChart({ title, rightText, data, color }) {
+  const maxValue = Math.max(...data.map((item) => item.value), 1);
+
   return (
-    <div className="bar-chart">
-      <div className="bars">
-        {data.map((v, i) => (
-          <div key={i} className="bar-col">
-            <div className="bar-value-label">
-              {v > 0 ? (unit === "₫" ? (v / 1000).toFixed(0) + "K" : v) : ""}
+    <div className="admin-stat-card">
+      <div className="admin-stat-card-head">
+        <h3>{title}</h3>
+        <span>{rightText}</span>
+      </div>
+
+      <div className="admin-month-chart">
+        {data.map((item) => {
+          const height = Math.max(4, (item.value / maxValue) * 100);
+
+          return (
+            <div key={item.label} className="admin-month-item">
+              <span className="admin-month-value">
+                {item.shortLabel || item.value}
+              </span>
+
+              <div className="admin-month-bar-wrap">
+                <div
+                  className="admin-month-bar"
+                  style={{
+                    height: `${height}%`,
+                    background: color,
+                  }}
+                />
+              </div>
+
+              <span className="admin-month-label">{item.label}</span>
             </div>
-            <div className="bar-track">
-              <div
-                className="bar-fill"
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function PlanDistribution({ freeCount, premiumCount }) {
+  const total = freeCount + premiumCount;
+
+  const plans = [
+    {
+      key: "FREE",
+      label: "Miễn phí",
+      count: freeCount,
+      percent: getPercent(freeCount, total),
+    },
+    {
+      key: "PREMIUM",
+      label: "Premium",
+      count: premiumCount,
+      percent: getPercent(premiumCount, total),
+    },
+  ];
+
+  return (
+    <div className="admin-stat-card">
+      <div className="admin-stat-card-head">
+        <h3>Phân bổ gói thành viên</h3>
+        <span>{formatNumber(total)} người dùng</span>
+      </div>
+
+      <div className="admin-progress-list">
+        {plans.map((plan) => (
+          <div key={plan.key} className="admin-progress-row">
+            <div className="admin-progress-label">
+              <span
+                className="admin-progress-dot"
                 style={{
-                  height: max > 0 ? `${(v / max) * 100}%` : "0%",
-                  background: color,
+                  background: PLAN_COLOR[plan.key],
                 }}
-                title={`${labels[i]}: ${v}${unit}`}
+              />
+
+              <span>{plan.label}</span>
+            </div>
+
+            <div className="admin-progress-track">
+              <div
+                className="admin-progress-fill"
+                style={{
+                  width: `${plan.percent}%`,
+                  background: PLAN_COLOR[plan.key],
+                }}
               />
             </div>
-            <div className="bar-label">{labels[i]}</div>
+
+            <strong>{plan.percent}%</strong>
+
+            <span className="admin-progress-count">
+              {formatNumber(plan.count)}
+            </span>
           </div>
         ))}
       </div>
@@ -29,100 +282,197 @@ function BarChart({ data, labels, color, unit = "" }) {
   );
 }
 
-// TOÀN BỘ dữ liệu ở trang này là mock cứng (kể cả MONTH_USERS/MONTH_REVENUE import từ shared/mockData.js)
-// — chưa có API thống kê thật nào được gọi ở đây.
-export default function StatsSection() {
-  const PLAN_DIST = [
-    { label: "Miễn phí", count: 2401, pct: 84, color: "#6b7280" },
-    { label: "Premium", count: 389, pct: 14, color: "#0066ff" },
-    { label: "Nhóm", count: 57, pct: 2, color: "#7c3aed" },
-  ];
-  const DOC_TYPES = [
-    { label: "PDF", count: 9842, pct: 53, color: "#ef4444" },
-    { label: "PPT", count: 4218, pct: 23, color: "#f97316" },
-    { label: "DOC", count: 3104, pct: 17, color: "#3b82f6" },
-    { label: "IMG", count: 1228, pct: 7, color: "#10b981" },
-  ];
+function FileTypeDistribution({ docs }) {
+  const total = docs.length;
+
+  const data = FILE_TYPES.map((type) => {
+    const count = docs.filter((doc) => normalizeFileType(doc) === type).length;
+
+    return {
+      type,
+      count,
+      percent: getPercent(count, total),
+    };
+  });
 
   return (
-    <div className="admin-section">
-      <div className="admin-section-head">
-        <h2>Thống kê & Báo cáo</h2>
-        <p>Dữ liệu năm 2026</p>
+    <div className="admin-stat-card">
+      <div className="admin-stat-card-head">
+        <h3>Loại tài liệu phổ biến</h3>
+        <span>{formatNumber(total)} tài liệu</span>
       </div>
 
-      <div className="stats-charts-grid">
-        {/* Users chart */}
-        <div className="admin-card">
-          <div className="admin-card-head">
-            <h3>Người dùng mới theo tháng</h3>
-            <span className="card-meta">Tổng 2,847 người dùng</span>
-          </div>
-          <BarChart data={MONTH_USERS} labels={MONTH_LABELS} color="#0066ff" />
-        </div>
+      <div className="admin-progress-list">
+        {data.map((item) => (
+          <div key={item.type} className="admin-progress-row">
+            <div className="admin-progress-label">
+              <span
+                className="admin-progress-dot"
+                style={{
+                  background: FILE_COLOR[item.type],
+                }}
+              />
 
-        {/* Revenue chart */}
-        <div className="admin-card">
-          <div className="admin-card-head">
-            <h3>Doanh thu theo tháng</h3>
-            <span className="card-meta">Đơn vị: nghìn đồng</span>
-          </div>
-          <BarChart
-            data={MONTH_REVENUE}
-            labels={MONTH_LABELS}
-            color="#059669"
-            unit="₫"
-          />
-        </div>
-      </div>
+              <span>{item.type}</span>
+            </div>
 
-      <div className="stats-dist-grid">
-        {/* Plan distribution */}
-        <div className="admin-card">
-          <div className="admin-card-head">
-            <h3>Phân bổ gói thành viên</h3>
-          </div>
-          <div className="dist-list">
-            {PLAN_DIST.map((p) => (
-              <div key={p.label} className="dist-row">
-                <div className="dist-dot" style={{ background: p.color }} />
-                <span className="dist-label">{p.label}</span>
-                <div className="dist-bar-track">
-                  <div
-                    className="dist-bar-fill"
-                    style={{ width: `${p.pct}%`, background: p.color }}
-                  />
-                </div>
-                <span className="dist-pct">{p.pct}%</span>
-                <span className="dist-count">{p.count.toLocaleString()}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+            <div className="admin-progress-track">
+              <div
+                className="admin-progress-fill"
+                style={{
+                  width: `${item.percent}%`,
+                  background: FILE_COLOR[item.type],
+                }}
+              />
+            </div>
 
-        {/* Document types */}
-        <div className="admin-card">
-          <div className="admin-card-head">
-            <h3>Loại tài liệu phổ biến</h3>
+            <strong>{item.percent}%</strong>
+
+            <span className="admin-progress-count">
+              {formatNumber(item.count)}
+            </span>
           </div>
-          <div className="dist-list">
-            {DOC_TYPES.map((p) => (
-              <div key={p.label} className="dist-row">
-                <div className="dist-dot" style={{ background: p.color }} />
-                <span className="dist-label">{p.label}</span>
-                <div className="dist-bar-track">
-                  <div
-                    className="dist-bar-fill"
-                    style={{ width: `${p.pct}%`, background: p.color }}
-                  />
-                </div>
-                <span className="dist-pct">{p.pct}%</span>
-                <span className="dist-count">{p.count.toLocaleString()}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        ))}
       </div>
     </div>
+  );
+}
+
+export default function StatsSection() {
+  const [users, setUsers] = useState([]);
+  const [documents, setDocuments] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadStatsData() {
+      setLoading(true);
+
+      try {
+        const [userRes, docRes] = await Promise.all([
+          getAdminUsers({
+            page: 0,
+            size: 9999,
+          }),
+          getAdminDocuments({
+            page: 0,
+            size: 9999,
+          }),
+        ]);
+
+        if (cancelled) {
+          return;
+        }
+
+        setUsers(getListFromResponse(userRes));
+        setDocuments(getListFromResponse(docRes));
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Load admin stats error:", error);
+          setUsers([]);
+          setDocuments([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadStatsData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const userMonthlyData = useMemo(() => {
+    const monthly = Array(12).fill(0);
+
+    users.forEach((user) => {
+      const monthIndex = getMonthIndex(getCreatedAt(user));
+
+      if (monthIndex !== null) {
+        monthly[monthIndex] += 1;
+      }
+    });
+
+    return MONTHS.map((month) => ({
+      label: month.label,
+      value: monthly[month.index],
+      shortLabel: monthly[month.index],
+    }));
+  }, [users]);
+
+  const revenueMonthlyData = useMemo(() => {
+    const monthly = Array(12).fill(0);
+
+    users.forEach((user) => {
+      const monthIndex = getMonthIndex(getCreatedAt(user));
+
+      if (monthIndex !== null) {
+        monthly[monthIndex] += resolveRevenueAmount(user);
+      }
+    });
+
+    return MONTHS.map((month) => ({
+      label: month.label,
+      value: monthly[month.index],
+      shortLabel: formatRevenue(monthly[month.index]),
+    }));
+  }, [users]);
+
+  const totalUsersThisYear = userMonthlyData.reduce(
+    (sum, item) => sum + item.value,
+    0,
+  );
+
+  const totalRevenueThisYear = revenueMonthlyData.reduce(
+    (sum, item) => sum + item.value,
+    0,
+  );
+
+  const freeCount = users.filter(
+    (user) => normalizePlan(user) === "FREE",
+  ).length;
+
+  const premiumCount = users.filter(
+    (user) => normalizePlan(user) === "PREMIUM",
+  ).length;
+
+  return (
+    <section className="admin-stats-section">
+      <div className="admin-section-head">
+        <div>
+          <h2>Thống kê & Báo cáo</h2>
+
+          <p>
+            Dữ liệu năm {CURRENT_YEAR}
+            {loading ? " · Đang tải..." : ""}
+          </p>
+        </div>
+      </div>
+
+      <div className="admin-stats-grid">
+        <StatBarChart
+          title="Người dùng mới theo tháng"
+          rightText={`Tổng ${formatNumber(totalUsersThisYear)} người dùng`}
+          data={userMonthlyData}
+          color="#0066ff"
+        />
+
+        <StatBarChart
+          title="Doanh thu theo tháng"
+          rightText={`Tổng ${formatRevenue(totalRevenueThisYear)} · nghìn đồng`}
+          data={revenueMonthlyData}
+          color="#059669"
+        />
+
+        <PlanDistribution freeCount={freeCount} premiumCount={premiumCount} />
+
+        <FileTypeDistribution docs={documents} />
+      </div>
+    </section>
   );
 }
