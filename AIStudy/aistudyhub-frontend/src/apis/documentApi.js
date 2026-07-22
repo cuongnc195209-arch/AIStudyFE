@@ -47,56 +47,6 @@ function normalizeSubjectCode(subjectCode) {
 }
 
 // Tách tên file gốc từ header Content-Disposition mà backend trả về khi tải file
-function getFileNameFromDisposition(
-  contentDisposition,
-  fallbackName = "document",
-) {
-  if (!contentDisposition) {
-    return fallbackName;
-  }
-
-  const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
-
-  if (utf8Match?.[1]) {
-    try {
-      return decodeURIComponent(utf8Match[1]);
-    } catch {
-      return utf8Match[1];
-    }
-  }
-
-  const normalMatch = contentDisposition.match(/filename="?([^"]+)"?/i);
-
-  if (normalMatch?.[1]) {
-    return normalMatch[1];
-  }
-
-  return fallbackName;
-}
-
-// Biến response blob thô thành object tiện dùng: tạo sẵn Object URL để hiện ảnh/PDF/tải xuống
-function createBlobResult(response, fallbackName = "document") {
-  const blob = response?.blob instanceof Blob ? response.blob : response;
-
-  if (!(blob instanceof Blob)) {
-    throw new Error("Không nhận được dữ liệu file hợp lệ từ server");
-  }
-
-  const fileName = getFileNameFromDisposition(
-    response?.contentDisposition,
-    fallbackName,
-  );
-
-  const url = URL.createObjectURL(blob);
-
-  blob.blob = blob;
-  blob.url = url;
-  blob.contentType = response?.contentType || blob.type;
-  blob.contentDisposition = response?.contentDisposition || null;
-  blob.fileName = fileName;
-
-  return blob;
-}
 
 export async function getDocuments() {
   return api.get("/v1/documents/all");
@@ -179,13 +129,29 @@ export async function reviewDocument(documentId, decision) {
 }
 
 export async function previewDocumentFile(documentId) {
-  const response = await api.blob(`/v1/documents/${documentId}/preview-file`);
-  return createBlobResult(response, `preview-${documentId}`);
+  if (!documentId) {
+    throw new Error("Thiếu documentId");
+  }
+
+  const blob = await api.blob(`/v1/documents/${documentId}/preview-file`);
+
+  return {
+    blob,
+    url: URL.createObjectURL(blob),
+  };
 }
 
 export async function downloadDocumentFile(documentId) {
-  const response = await api.blob(`/v1/documents/${documentId}/download`);
-  return createBlobResult(response, `document-${documentId}`);
+  if (!documentId) {
+    throw new Error("Thiếu documentId");
+  }
+
+  const blob = await api.blob(`/v1/documents/${documentId}/download`);
+
+  return {
+    blob,
+    url: URL.createObjectURL(blob),
+  };
 }
 
 // Tải file về máy: tạo thẻ <a download> ẩn, click giả lập rồi dọn dẹp Object URL

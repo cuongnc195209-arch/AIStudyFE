@@ -147,7 +147,9 @@
   border: 1px solid #e5e7eb;
   border-radius: 16px;
   padding: 6px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.12),
+    0 4px 12px rgba(0, 0, 0, 0.06);
   opacity: 0;
   visibility: hidden;
   transform: translateY(-8px) scale(0.97);
@@ -314,7 +316,9 @@
   gap: 14px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   border: 1px solid #f3f4f6;
-  transition: transform 0.15s, box-shadow 0.15s;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s;
 }
 
 .stat-card:hover {
@@ -332,10 +336,18 @@
   flex-shrink: 0;
 }
 
-.stat-blue .stat-icon-wrap  { background: #eff4ff; }
-.stat-purple .stat-icon-wrap { background: #f5f3ff; }
-.stat-green .stat-icon-wrap  { background: #f0fdf4; }
-.stat-orange .stat-icon-wrap { background: #fff7ed; }
+.stat-blue .stat-icon-wrap {
+  background: #eff4ff;
+}
+.stat-purple .stat-icon-wrap {
+  background: #f5f3ff;
+}
+.stat-green .stat-icon-wrap {
+  background: #f0fdf4;
+}
+.stat-orange .stat-icon-wrap {
+  background: #fff7ed;
+}
 
 .stat-body {
   flex: 1;
@@ -362,10 +374,18 @@
   color: #9ca3af;
 }
 
-.stat-blue  .stat-value { color: #0066ff; }
-.stat-purple .stat-value { color: #7c3aed; }
-.stat-green  .stat-value { color: #16a34a; }
-.stat-orange .stat-value { color: #ea580c; }
+.stat-blue .stat-value {
+  color: #0066ff;
+}
+.stat-purple .stat-value {
+  color: #7c3aed;
+}
+.stat-green .stat-value {
+  color: #16a34a;
+}
+.stat-orange .stat-value {
+  color: #ea580c;
+}
 
 /* ── Section header ── */
 .section-header {
@@ -397,7 +417,10 @@
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s,
+    border-color 0.15s;
   text-align: center;
 }
 
@@ -428,21 +451,45 @@
   color: #9ca3af;
 }
 
-.qa-upload { border-top: 3px solid #0066ff; }
-.qa-upload .qa-icon-wrap { background: #eff4ff; }
-.qa-upload:hover { box-shadow: 0 10px 28px rgba(0, 102, 255, 0.12); }
+.qa-upload {
+  border-top: 3px solid #0066ff;
+}
+.qa-upload .qa-icon-wrap {
+  background: #eff4ff;
+}
+.qa-upload:hover {
+  box-shadow: 0 10px 28px rgba(0, 102, 255, 0.12);
+}
 
-.qa-chat { border-top: 3px solid #7c3aed; }
-.qa-chat .qa-icon-wrap { background: #f5f3ff; }
-.qa-chat:hover { box-shadow: 0 10px 28px rgba(124, 58, 237, 0.12); }
+.qa-chat {
+  border-top: 3px solid #7c3aed;
+}
+.qa-chat .qa-icon-wrap {
+  background: #f5f3ff;
+}
+.qa-chat:hover {
+  box-shadow: 0 10px 28px rgba(124, 58, 237, 0.12);
+}
 
-.qa-forum { border-top: 3px solid #059669; }
-.qa-forum .qa-icon-wrap { background: #f0fdf4; }
-.qa-forum:hover { box-shadow: 0 10px 28px rgba(5, 150, 105, 0.12); }
+.qa-forum {
+  border-top: 3px solid #059669;
+}
+.qa-forum .qa-icon-wrap {
+  background: #f0fdf4;
+}
+.qa-forum:hover {
+  box-shadow: 0 10px 28px rgba(5, 150, 105, 0.12);
+}
 
-.qa-courses { border-top: 3px solid #ea580c; }
-.qa-courses .qa-icon-wrap { background: #fff7ed; }
-.qa-courses:hover { box-shadow: 0 10px 28px rgba(234, 88, 12, 0.12); }
+.qa-courses {
+  border-top: 3px solid #ea580c;
+}
+.qa-courses .qa-icon-wrap {
+  background: #fff7ed;
+}
+.qa-courses:hover {
+  box-shadow: 0 10px 28px rgba(234, 88, 12, 0.12);
+}
 
 /* ── Two-column main grid ── */
 .dash-grid {
@@ -766,5 +813,65 @@
 
   .dash-topbar {
     flex-direction: column;
+  }
+}
+
+.upload-progress-track {
+  width: 100%;
+  height: 9px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  overflow: hidden;
+  position: relative;
+}
+
+.upload-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    #0066ff 0%,
+    #3b82f6 35%,
+    #60a5fa 50%,
+    #3b82f6 65%,
+    #0066ff 100%
+  );
+  background-size: 200% 100%;
+  animation: uploadProgressMove 1.1s linear infinite;
+  transition: width 0.35s ease;
+  position: relative;
+}
+
+.upload-progress-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.55),
+    transparent
+  );
+  transform: translateX(-100%);
+  animation: uploadProgressShine 1.2s ease-in-out infinite;
+}
+
+@keyframes uploadProgressMove {
+  from {
+    background-position: 200% 0;
+  }
+
+  to {
+    background-position: 0 0;
+  }
+}
+
+@keyframes uploadProgressShine {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
   }
 }

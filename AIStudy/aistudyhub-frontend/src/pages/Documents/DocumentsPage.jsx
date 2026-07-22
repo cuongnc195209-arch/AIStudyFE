@@ -238,7 +238,25 @@ function UploadModal({ onClose, onSuccess }) {
 
     setError("");
     setStep("uploading");
-    setProgress(40);
+    setProgress(10);
+
+    const progressTimer = window.setInterval(() => {
+      setProgress((currentProgress) => {
+        if (currentProgress >= 90) {
+          return currentProgress;
+        }
+
+        if (currentProgress < 55) {
+          return currentProgress + 7;
+        }
+
+        if (currentProgress < 78) {
+          return currentProgress + 4;
+        }
+
+        return currentProgress + 2;
+      });
+    }, 350);
 
     try {
       const result = await createDocument({
@@ -269,6 +287,7 @@ function UploadModal({ onClose, onSuccess }) {
           };
       }
 
+      window.clearInterval(progressTimer);
       setProgress(100);
       setStep("done");
 
@@ -276,7 +295,9 @@ function UploadModal({ onClose, onSuccess }) {
         onSuccess(mapDoc(savedForUi));
       }, 600);
     } catch (err) {
+      window.clearInterval(progressTimer);
       console.error("Upload failed:", err);
+      setProgress(0);
       setStep("form");
       setError(err?.message || "Upload thất bại. Vui lòng thử lại.");
     }
@@ -418,13 +439,13 @@ function UploadModal({ onClose, onSuccess }) {
           <div className="modal-body upload-progress-wrap">
             <div className="upload-progress-icon">📤</div>
             <p className="up-title">Đang upload tài liệu...</p>
-            <div className="progress-track">
+            <div className="upload-progress-track">
               <div
-                className="progress-fill"
+                className="upload-progress-fill"
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <p className="up-percent">{Math.round(progress)}%</p>
+            <p className="upload-progress-percent">{Math.round(progress)}%</p>
           </div>
         )}
 

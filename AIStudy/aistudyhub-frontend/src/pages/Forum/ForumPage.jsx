@@ -11,12 +11,22 @@ import "./ForumPage.css";
 
 const SUBJECTS = [
   "Tất cả",
-  "Lập trình Web",
-  "Cơ sở dữ liệu",
-  "Trí tuệ nhân tạo",
-  "Mạng máy tính",
-  "Giải tích",
-  "Vật lý đại cương",
+  "PRF192",
+  "MAE101",
+  "CSI104",
+  "CEA201",
+  "PRO192",
+  "MAD101",
+  "OSG202",
+  "CSD201",
+  "DBI202",
+  "LAB211",
+  "PRJ301",
+  "MAS291",
+  "SWR302",
+  "SWT301",
+  "PRN212",
+  "OTHER",
 ];
 
 const FILE_TYPES = ["Tất cả", "PDF", "PPT", "DOC", "IMG"];
@@ -24,7 +34,6 @@ const FILE_TYPES = ["Tất cả", "PDF", "PPT", "DOC", "IMG"];
 const SORT_OPTIONS = [
   { value: "newest", label: "Mới nhất" },
   { value: "oldest", label: "Cũ nhất" },
-  { value: "rating", label: "Đánh giá cao" },
   { value: "downloads", label: "Tải nhiều" },
 ];
 
@@ -39,19 +48,6 @@ const EXT_COLOR = {
   JPEG: "#10b981",
   PNG: "#10b981",
 };
-
-function showToast({ icon = "success", title, text }) {
-  Swal.fire({
-    toast: true,
-    position: "top-end",
-    icon,
-    title,
-    text,
-    showConfirmButton: false,
-    timer: 2200,
-    timerProgressBar: true,
-  });
-}
 
 const HOT_TAGS = [
   "OOP",
@@ -74,11 +70,26 @@ const REPORT_REASONS = [
   "Khác",
 ];
 
+function showToast({ icon = "success", title, text }) {
+  Swal.fire({
+    toast: true,
+    position: "top-end",
+    icon,
+    title,
+    text,
+    showConfirmButton: false,
+    timer: 2200,
+    timerProgressBar: true,
+  });
+}
+
 function normalizeExt(d) {
   const raw = String(d.fileType || d.ext || d.mimeType || "").toLowerCase();
   const fileName = String(d.documentName || d.name || "").toLowerCase();
 
-  if (raw.includes("pdf") || fileName.endsWith(".pdf")) return "PDF";
+  if (raw.includes("pdf") || fileName.endsWith(".pdf")) {
+    return "PDF";
+  }
 
   if (
     raw.includes("ppt") ||
@@ -127,16 +138,38 @@ function isPublicDocument(d) {
   );
 }
 
-// Chuẩn hoá tài liệu public thành "bài đăng" forum (thêm author, rating, commentCount...)
+function resolveAuthorName(d) {
+  return (
+    d.userFullName ||
+    d.ownerName ||
+    d.fullName ||
+    d.authorName ||
+    d.uploaderName ||
+    d.userName ||
+    d.owner ||
+    d.author ||
+    d.userEmail ||
+    d.email ||
+    "Ẩn danh"
+  );
+}
+
+function resolveSubject(d) {
+  return (
+    d.subjectCode || d.subject || d.categoryName || d.category || "Tài liệu"
+  );
+}
+
 function mapDoc(d) {
   const isPublic = isPublicDocument(d);
   const ext = normalizeExt(d);
+  const author = resolveAuthorName(d);
 
   return {
     id: d.id || d.documentId || d.document_id,
     name: d.documentName || d.name || "Untitled",
     ext,
-    subject: d.subject || "Tài liệu",
+    subject: resolveSubject(d),
     sizeMB: d.fileSize ? Number((Number(d.fileSize) / 1048576).toFixed(2)) : 0,
     fileSize: d.fileSize || 0,
     date: d.createdAt
@@ -145,78 +178,75 @@ function mapDoc(d) {
     tags: Array.isArray(d.tags) ? d.tags : [],
     privacy: isPublic ? "public" : "private",
     isPublic,
-    downloads: d.downloads || 0,
+    downloads: d.downloads || d.downloadCount || 0,
     description: d.description || d.textContent || "",
-    author: d.authorName || d.uploaderName || d.userName || "Ẩn danh",
-    authorAvatar: d.authorAvatar || null,
-    rating: d.averageRating || d.rating || 0,
-    ratingCount: d.ratingCount || 0,
-    commentCount: d.commentCount || 0,
+    author,
+    authorAvatar: d.authorAvatar || getInitials(author),
   };
 }
 
 function sizeLabel(mb) {
-  if (!mb || Number(mb) <= 0) return "0 KB";
+  if (!mb || Number(mb) <= 0) {
+    return "0 KB";
+  }
+
   return mb >= 1 ? `${mb} MB` : `${(mb * 1024).toFixed(0)} KB`;
 }
 
 function relativeDate(dateStr, nowTime) {
   const time = new Date(dateStr).getTime();
 
-  if (Number.isNaN(time)) return "";
+  if (Number.isNaN(time)) {
+    return "";
+  }
 
   const diff = Math.floor((nowTime - time) / 86400000);
 
-  if (diff <= 0) return "Hôm nay";
-  if (diff === 1) return "Hôm qua";
-  if (diff < 7) return `${diff} ngày trước`;
-  if (diff < 30) return `${Math.floor(diff / 7)} tuần trước`;
+  if (diff <= 0) {
+    return "Hôm nay";
+  }
+
+  if (diff === 1) {
+    return "Hôm qua";
+  }
+
+  if (diff < 7) {
+    return `${diff} ngày trước`;
+  }
+
+  if (diff < 30) {
+    return `${Math.floor(diff / 7)} tuần trước`;
+  }
 
   return new Date(dateStr).toLocaleDateString("vi-VN");
 }
 
 function getInitials(name) {
-  if (!name) return "?";
+  if (!name) {
+    return "?";
+  }
 
   return name
     .split(" ")
-    .map((w) => w[0])
+    .filter(Boolean)
+    .map((word) => word[0])
     .slice(-2)
     .join("")
     .toUpperCase();
 }
 
-// Component đánh giá sao dùng chung cho cả hiển thị (readonly) và chấm điểm (click để chọn số sao)
-function StarRating({ value, onChange, readonly = false, size = 20 }) {
-  const [hover, setHover] = useState(0);
-
-  return (
-    <div className="star-rating" style={{ fontSize: size }}>
-      {[1, 2, 3, 4, 5].map((star) => (
-        <span
-          key={star}
-          className={`star ${star <= (hover || value) ? "star--filled" : ""} ${
-            readonly ? "star--readonly" : ""
-          }`}
-          onClick={() => !readonly && onChange?.(star)}
-          onMouseEnter={() => !readonly && setHover(star)}
-          onMouseLeave={() => !readonly && setHover(0)}
-        >
-          ★
-        </span>
-      ))}
-    </div>
-  );
-}
-
-// Modal báo cáo vi phạm — submit chỉ log ra console + alert, CHƯA có API gửi report lên backend
 function ReportModal({ doc, onClose, onSubmit }) {
   const [reason, setReason] = useState(REPORT_REASONS[0]);
   const [detail, setDetail] = useState("");
 
   function handleSubmit(e) {
     e.preventDefault();
-    onSubmit({ docId: doc.id, reason, detail });
+
+    onSubmit({
+      docId: doc.id,
+      reason,
+      detail,
+    });
   }
 
   return (
@@ -268,8 +298,8 @@ function ReportModal({ doc, onClose, onSubmit }) {
                 fontSize: "0.87rem",
               }}
             >
-              {REPORT_REASONS.map((r) => (
-                <option key={r}>{r}</option>
+              {REPORT_REASONS.map((item) => (
+                <option key={item}>{item}</option>
               ))}
             </select>
           </div>
@@ -284,7 +314,7 @@ function ReportModal({ doc, onClose, onSubmit }) {
                 marginBottom: 6,
               }}
             >
-              Chi tiết (tùy chọn)
+              Chi tiết
             </label>
 
             <textarea
@@ -320,35 +350,7 @@ function ReportModal({ doc, onClose, onSubmit }) {
   );
 }
 
-// Modal chi tiết bài đăng: xem trước, tải xuống, đánh giá sao, bình luận.
-// QUAN TRỌNG: rating và comment CHỈ lưu ở localStorage theo key riêng từng doc (doc-comments-<id>, doc-ratings-<id>)
-function DocDetailModal({ doc, nowTime, onClose, onRate, onReport }) {
-  const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
-
-  const userName =
-    storedUser.fullName || storedUser.name || storedUser.email || "Bạn";
-
-  const storedUserId =
-    storedUser.id || storedUser.userId || storedUser.email || "anonymous";
-
-  const [comments, setComments] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem(`doc-comments-${doc.id}`)) || [];
-    } catch {
-      return [];
-    }
-  });
-
-  const [commentInput, setCommentInput] = useState("");
-
-  const [ratings, setRatings] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem(`doc-ratings-${doc.id}`)) || [];
-    } catch {
-      return [];
-    }
-  });
-
+function DocDetailModal({ doc, nowTime, onClose, onReport }) {
   const [previewUrl, setPreviewUrl] = useState("");
   const [previewBlob, setPreviewBlob] = useState(null);
   const [previewError, setPreviewError] = useState("");
@@ -357,17 +359,11 @@ function DocDetailModal({ doc, nowTime, onClose, onRate, onReport }) {
 
   const docxContainerRef = useRef(null);
 
-  const myRatingEntry = ratings.find((r) => r.userId === storedUserId);
-  const myRating = myRatingEntry?.stars || 0;
+  const ext = String(doc.ext || "").toUpperCase();
 
-  const avgRating =
-    ratings.length > 0
-      ? ratings.reduce((s, r) => s + r.stars, 0) / ratings.length
-      : 0;
-
-  const isImage = ["IMG", "JPG", "JPEG", "PNG"].includes(doc.ext);
-  const isPdf = doc.ext === "PDF";
-  const isDoc = doc.ext === "DOC" || doc.ext === "DOCX";
+  const isImage = ["IMG", "JPG", "JPEG", "PNG"].includes(ext);
+  const isPdf = ext === "PDF";
+  const isDoc = ext === "DOC" || ext === "DOCX";
 
   useEffect(() => {
     return () => {
@@ -404,61 +400,6 @@ function DocDetailModal({ doc, nowTime, onClose, onRate, onReport }) {
     };
   }, [showPreview, isDoc, previewBlob]);
 
-  function handleAddComment() {
-    const text = commentInput.trim();
-
-    if (!text) return;
-
-    const newComment = {
-      id: Date.now(),
-      author: userName,
-      avatar: getInitials(userName),
-      content: text,
-      time: "Vừa xong",
-      likes: 0,
-      liked: false,
-    };
-
-    const updated = [...comments, newComment];
-
-    setComments(updated);
-    localStorage.setItem(`doc-comments-${doc.id}`, JSON.stringify(updated));
-    setCommentInput("");
-  }
-
-  function toggleLikeComment(id) {
-    const updated = comments.map((c) =>
-      c.id === id
-        ? {
-            ...c,
-            liked: !c.liked,
-            likes: c.liked ? c.likes - 1 : c.likes + 1,
-          }
-        : c,
-    );
-
-    setComments(updated);
-    localStorage.setItem(`doc-comments-${doc.id}`, JSON.stringify(updated));
-  }
-
-  function handleRate(stars) {
-    const newEntry = {
-      userId: storedUserId,
-      author: userName,
-      avatar: getInitials(userName),
-      stars,
-      time: "Vừa xong",
-    };
-
-    const updated = myRatingEntry
-      ? ratings.map((r) => (r.userId === storedUserId ? newEntry : r))
-      : [...ratings, newEntry];
-
-    setRatings(updated);
-    localStorage.setItem(`doc-ratings-${doc.id}`, JSON.stringify(updated));
-    onRate?.(doc.id, stars);
-  }
-
   async function handlePreview() {
     setShowPreview(true);
     setPreviewUrl("");
@@ -483,7 +424,9 @@ function DocDetailModal({ doc, nowTime, onClose, onRate, onReport }) {
     try {
       const result = await downloadDocumentFile(doc.id);
 
-      const url = result?.url || URL.createObjectURL(result);
+      const blob = result?.blob instanceof Blob ? result.blob : result;
+      const url = result?.url || URL.createObjectURL(blob);
+
       const a = document.createElement("a");
 
       a.href = url;
@@ -521,7 +464,9 @@ function DocDetailModal({ doc, nowTime, onClose, onRate, onReport }) {
               {doc.ext}
             </span>
 
-            <span className="post-subject-badge">{doc.subject}</span>
+            <span className="post-subject-badge">
+              {doc.subject || "Tài liệu"}
+            </span>
           </div>
 
           <button className="modal-close" onClick={onClose}>
@@ -539,33 +484,32 @@ function DocDetailModal({ doc, nowTime, onClose, onRate, onReport }) {
               </div>
 
               <div>
-                <p className="author-name">{doc.author}</p>
+                <p className="author-name">{doc.author || "Ẩn danh"}</p>
                 <p className="post-time">{relativeDate(doc.date, nowTime)}</p>
               </div>
             </div>
 
             <div className="post-detail-stats">
               <span>{sizeLabel(doc.sizeMB)}</span>
-              <span>💬 {comments.length}</span>
-              <span>⬇️ {doc.downloads}</span>
+              <span>⬇️ {doc.downloads || 0}</span>
             </div>
           </div>
 
           {doc.description && (
             <div className="post-detail-content">
-              {doc.description.split("\n").map((line, i) => (
-                <p key={i} className="content-line">
+              {doc.description.split("\n").map((line, index) => (
+                <p key={index} className="content-line">
                   {line}
                 </p>
               ))}
             </div>
           )}
 
-          {doc.tags.length > 0 && (
+          {doc.tags?.length > 0 && (
             <div className="post-tags-row">
-              {doc.tags.map((t) => (
-                <span key={t} className="tag">
-                  #{t}
+              {doc.tags.map((tag) => (
+                <span key={tag} className="tag">
+                  #{tag}
                 </span>
               ))}
             </div>
@@ -653,134 +597,12 @@ function DocDetailModal({ doc, nowTime, onClose, onRate, onReport }) {
               🚩 Báo cáo
             </button>
           </div>
-
-          <div className="rating-section">
-            <h3 className="comments-title">
-              Đánh giá tài liệu ({ratings.length})
-            </h3>
-
-            {ratings.length > 0 && (
-              <div className="rating-summary">
-                <StarRating value={Math.round(avgRating)} readonly size={20} />
-
-                <span className="rating-avg-text">
-                  {avgRating.toFixed(1)}/5 · {ratings.length} đánh giá
-                </span>
-              </div>
-            )}
-
-            <div className="rating-row">
-              <span className="rating-your-label">Đánh giá của bạn:</span>
-
-              <StarRating value={myRating} onChange={handleRate} size={22} />
-
-              <span className="rating-label">
-                {myRating > 0 ? `${myRating}/5 sao` : "Nhấn để đánh giá"}
-              </span>
-            </div>
-
-            {ratings.length > 0 && (
-              <div className="ratings-list">
-                {ratings.map((r) => (
-                  <div key={r.userId} className="rating-item">
-                    <div
-                      className="comment-avatar"
-                      style={{
-                        background:
-                          r.userId === storedUserId
-                            ? "linear-gradient(135deg, #0066ff, #0052cc)"
-                            : "linear-gradient(135deg, #7c3aed, #a855f7)",
-                      }}
-                    >
-                      {r.avatar}
-                    </div>
-
-                    <div className="rating-item-body">
-                      <div className="rating-item-header">
-                        <span className="comment-author">
-                          {r.author}
-                          {r.userId === storedUserId ? " (Bạn)" : ""}
-                        </span>
-
-                        <StarRating value={r.stars} readonly size={14} />
-
-                        <span className="comment-time">{r.time}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="comments-section">
-            <h3 className="comments-title">Bình luận ({comments.length})</h3>
-
-            {comments.length === 0 && (
-              <p className="no-comments">
-                Chưa có bình luận. Hãy là người đầu tiên!
-              </p>
-            )}
-
-            {comments.map((cm) => (
-              <div key={cm.id} className="comment-item">
-                <div className="comment-avatar">{cm.avatar}</div>
-
-                <div className="comment-body">
-                  <div className="comment-header">
-                    <span className="comment-author">{cm.author}</span>
-                    <span className="comment-time">{cm.time}</span>
-                  </div>
-
-                  <p className="comment-text">{cm.content}</p>
-
-                  <button
-                    className={`comment-like-btn${cm.liked ? " liked" : ""}`}
-                    onClick={() => toggleLikeComment(cm.id)}
-                  >
-                    ❤️ {cm.likes}
-                  </button>
-                </div>
-              </div>
-            ))}
-
-            <div className="add-comment">
-              <div className="comment-avatar own-avatar">
-                {getInitials(userName)}
-              </div>
-
-              <div className="comment-input-wrap">
-                <textarea
-                  className="comment-textarea"
-                  rows={2}
-                  placeholder="Viết bình luận..."
-                  value={commentInput}
-                  onChange={(e) => setCommentInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      handleAddComment();
-                    }
-                  }}
-                />
-
-                <button
-                  className="comment-send-btn"
-                  onClick={handleAddComment}
-                  disabled={!commentInput.trim()}
-                >
-                  Gửi
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
   );
 }
 
-// Thẻ bài đăng trong feed — click vào mở DocDetailModal
 function PublicDocCard({ doc, nowTime, onOpen }) {
   return (
     <div className="post-card" onClick={() => onOpen(doc)}>
@@ -814,9 +636,9 @@ function PublicDocCard({ doc, nowTime, onOpen }) {
 
       {doc.tags.length > 0 && (
         <div className="post-tags-row">
-          {doc.tags.slice(0, 3).map((t) => (
-            <span key={t} className="tag">
-              #{t}
+          {doc.tags.slice(0, 3).map((tag) => (
+            <span key={tag} className="tag">
+              #{tag}
             </span>
           ))}
 
@@ -826,26 +648,17 @@ function PublicDocCard({ doc, nowTime, onOpen }) {
         </div>
       )}
 
-      <div className="doc-card-rating-row">
-        <StarRating value={Math.round(doc.rating)} readonly size={14} />
-
-        {doc.ratingCount > 0 && (
-          <span className="rating-count">({doc.ratingCount})</span>
-        )}
-      </div>
-
       <div className="post-card-footer">
         <div className="post-author">
           <div className="author-avatar author-avatar--sm">
             {doc.authorAvatar || getInitials(doc.author)}
           </div>
 
-          <span className="author-name-sm">{doc.author}</span>
+          <span className="author-name-sm">{doc.author || "Ẩn danh"}</span>
         </div>
 
         <div className="post-stats">
-          <span className="stat-btn">💬 {doc.commentCount}</span>
-          <span className="stat-btn">⬇️ {doc.downloads}</span>
+          <span className="stat-btn">⬇️ {doc.downloads || 0}</span>
           <span className="stat-btn">{sizeLabel(doc.sizeMB)}</span>
         </div>
       </div>
@@ -856,10 +669,12 @@ function PublicDocCard({ doc, nowTime, onOpen }) {
 export default function ForumPage() {
   const [docs, setDocs] = useState([]);
   const [loading, setLoading] = useState(true);
+
   const [search, setSearch] = useState("");
   const [subject, setSubject] = useState("Tất cả");
   const [fileType, setFileType] = useState("Tất cả");
   const [sortBy, setSortBy] = useState("newest");
+
   const [detailDoc, setDetailDoc] = useState(null);
   const [reportDoc, setReportDoc] = useState(null);
   const [nowTime] = useState(() => Date.now());
@@ -872,13 +687,17 @@ export default function ForumPage() {
         const result = await getPublicDocuments();
         const data = result?.data || result || [];
 
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
 
         const publicDocs = Array.isArray(data) ? data.map(mapDoc) : [];
 
         setDocs(publicDocs);
       } catch (err) {
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
 
         console.error("Load public docs error:", err);
         setDocs([]);
@@ -897,54 +716,47 @@ export default function ForumPage() {
   }, []);
 
   const filtered = [...docs]
-    .filter((d) => {
+    .filter((doc) => {
       const q = search.toLowerCase();
 
       const matchSearch =
         !q ||
-        d.name.toLowerCase().includes(q) ||
-        d.subject.toLowerCase().includes(q) ||
-        d.description.toLowerCase().includes(q) ||
-        d.tags.some((t) => t.toLowerCase().includes(q));
+        doc.name.toLowerCase().includes(q) ||
+        doc.subject.toLowerCase().includes(q) ||
+        doc.description.toLowerCase().includes(q) ||
+        doc.tags.some((tag) => tag.toLowerCase().includes(q));
 
-      const matchSubject = subject === "Tất cả" || d.subject === subject;
-      const matchType = fileType === "Tất cả" || d.ext === fileType;
+      const matchSubject = subject === "Tất cả" || doc.subject === subject;
+      const matchType = fileType === "Tất cả" || doc.ext === fileType;
 
       return matchSearch && matchSubject && matchType;
     })
     .sort((a, b) => {
-      if (sortBy === "newest") return new Date(b.date) - new Date(a.date);
-      if (sortBy === "oldest") return new Date(a.date) - new Date(b.date);
-      if (sortBy === "rating") return b.rating - a.rating;
-      if (sortBy === "downloads") return b.downloads - a.downloads;
+      if (sortBy === "newest") {
+        return new Date(b.date) - new Date(a.date);
+      }
+
+      if (sortBy === "oldest") {
+        return new Date(a.date) - new Date(b.date);
+      }
+
+      if (sortBy === "downloads") {
+        return b.downloads - a.downloads;
+      }
 
       return 0;
     });
 
-  // TODO: chưa gọi API thật — hiện chỉ log console và hiển thị toast, report chưa được lưu ở backend
   function handleReport(submission) {
     console.log("Report submitted:", submission);
+
     showToast({
       icon: "success",
       title: "Đã gửi báo cáo",
       text: "Cảm ơn bạn đã góp phần cải thiện cộng đồng.",
     });
-    setReportDoc(null);
-  }
 
-  // Cập nhật rating hiển thị ở feed (chỉ optimistic, số liệu thật nằm trong localStorage của DocDetailModal)
-  function handleRate(docId, stars) {
-    setDocs((prev) =>
-      prev.map((d) =>
-        d.id === docId
-          ? {
-              ...d,
-              rating: stars,
-              ratingCount: d.ratingCount + 1,
-            }
-          : d,
-      ),
-    );
+    setReportDoc(null);
   }
 
   return (
@@ -990,8 +802,8 @@ export default function ForumPage() {
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
               >
-                {SUBJECTS.map((s) => (
-                  <option key={s}>{s}</option>
+                {SUBJECTS.map((item) => (
+                  <option key={item}>{item}</option>
                 ))}
               </select>
 
@@ -1000,8 +812,8 @@ export default function ForumPage() {
                 value={fileType}
                 onChange={(e) => setFileType(e.target.value)}
               >
-                {FILE_TYPES.map((t) => (
-                  <option key={t}>{t}</option>
+                {FILE_TYPES.map((item) => (
+                  <option key={item}>{item}</option>
                 ))}
               </select>
 
@@ -1010,9 +822,9 @@ export default function ForumPage() {
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
               >
-                {SORT_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
+                {SORT_OPTIONS.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.label}
                   </option>
                 ))}
               </select>
@@ -1095,27 +907,29 @@ export default function ForumPage() {
               <h3 className="widget-title">Loại file</h3>
 
               <div className="widget-categories">
-                {FILE_TYPES.map((t) => (
+                {FILE_TYPES.map((item) => (
                   <button
-                    key={t}
+                    key={item}
                     className={`widget-cat-btn${
-                      fileType === t ? " widget-cat-btn--active" : ""
+                      fileType === item ? " widget-cat-btn--active" : ""
                     }`}
-                    onClick={() => setFileType(t === fileType ? "Tất cả" : t)}
+                    onClick={() =>
+                      setFileType(item === fileType ? "Tất cả" : item)
+                    }
                   >
-                    {t !== "Tất cả" && (
+                    {item !== "Tất cả" && (
                       <span
                         className="widget-cat-dot"
-                        style={{ background: EXT_COLOR[t] || "#6b7280" }}
+                        style={{ background: EXT_COLOR[item] || "#6b7280" }}
                       />
                     )}
 
-                    {t}
+                    {item}
 
                     <span className="widget-cat-count">
-                      {t === "Tất cả"
+                      {item === "Tất cả"
                         ? docs.length
-                        : docs.filter((d) => d.ext === t).length}
+                        : docs.filter((doc) => doc.ext === item).length}
                     </span>
                   </button>
                 ))}
@@ -1141,6 +955,7 @@ export default function ForumPage() {
             <div className="sidebar-widget widget-cta">
               <div className="cta-icon">📤</div>
               <h3>Chia sẻ tài liệu?</h3>
+
               <p>Upload tài liệu công khai để giúp đỡ các bạn sinh viên khác</p>
             </div>
           </aside>
@@ -1152,7 +967,6 @@ export default function ForumPage() {
           doc={detailDoc}
           nowTime={nowTime}
           onClose={() => setDetailDoc(null)}
-          onRate={handleRate}
           onReport={(doc) => {
             setDetailDoc(null);
             setReportDoc(doc);

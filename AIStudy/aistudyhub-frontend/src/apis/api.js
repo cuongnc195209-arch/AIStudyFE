@@ -79,7 +79,10 @@ function buildUrl(endpoint, queryParams) {
   const cleanBaseUrl = API_BASE_URL.replace(/\/$/, "");
   const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
 
-  const url = new URL(`${cleanBaseUrl}${cleanEndpoint}`, window.location.origin);
+  const url = new URL(
+    `${cleanBaseUrl}${cleanEndpoint}`,
+    window.location.origin,
+  );
 
   if (queryParams && typeof queryParams === "object") {
     Object.entries(queryParams).forEach(([key, value]) => {
@@ -298,6 +301,18 @@ const api = {
       method: "DELETE",
       ...options,
       unwrap: true,
+    });
+  },
+
+  blob(endpoint, options = {}) {
+    return rawRequest(endpoint, {
+      method: "GET",
+      ...options,
+      headers: {
+        Accept: "application/octet-stream",
+        ...(options.headers || {}),
+      },
+      unwrap: false,
     });
   },
 };
