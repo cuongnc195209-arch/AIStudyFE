@@ -41,7 +41,7 @@ export default function OverviewSection() {
           : [];
         const nonAdmin = mapped.filter((u) => u.role !== "ADMIN");
 
-        setTotalUsers(res?.totalElements || nonAdmin.length);
+        setTotalUsers(nonAdmin.length);
         setRecentUsers(nonAdmin.slice(0, 5));
       }
 
