@@ -2,22 +2,22 @@ import api from "./api";
 
 // Danh sách môn học cố định (mã môn theo chương trình FPT) dùng cho dropdown chọn môn khi upload
 export const SUBJECT_OPTIONS = [
-  { value: "PRF192", label: "Lập trình cơ bản" },
-  { value: "MAE101", label: "Toán cao cấp" },
-  { value: "CEA201", label: "Tin học đại cương" },
-  { value: "CSI104", label: "Nhập môn khoa học máy tính" },
-  { value: "PRO192", label: "Lập trình hướng đối tượng" },
-  { value: "MAD101", label: "Toán rời rạc" },
-  { value: "OSG202", label: "Hệ điều hành" },
-  { value: "CSD201", label: "Cấu trúc dữ liệu và giải thuật" },
-  { value: "DBI202", label: "Cơ sở dữ liệu" },
-  { value: "LAB211", label: "Java Lab" },
-  { value: "PRJ301", label: "Lập trình Web" },
-  { value: "MAS291", label: "Xác suất thống kê" },
-  { value: "SWR302", label: "Yêu cầu phần mềm" },
-  { value: "SWT301", label: "Kiểm thử phần mềm" },
-  { value: "PRN212", label: ".NET / C#" },
-  { value: "OTHER", label: "Khác" },
+  { value: "PRF192", label: "PRF192" },
+  { value: "MAE101", label: "MAE101" },
+  { value: "CSI104", label: "CSI104" },
+  { value: "CEA201", label: "CEA201" },
+  { value: "PRO192", label: "PRO192" },
+  { value: "MAD101", label: "MAD101" },
+  { value: "OSG202", label: "OSG202" },
+  { value: "CSD201", label: "CSD201" },
+  { value: "DBI202", label: "DBI202" },
+  { value: "LAB211", label: "LAB211" },
+  { value: "PRJ301", label: "PRJ301" },
+  { value: "MAS291", label: "MAS291" },
+  { value: "SWR302", label: "SWR302" },
+  { value: "SWT301", label: "SWT301" },
+  { value: "PRN212", label: "PRN212" },
+  { value: "OTHER", label: "OTHER" },
 ];
 
 const SUBJECT_LABEL_BY_CODE = SUBJECT_OPTIONS.reduce((map, item) => {

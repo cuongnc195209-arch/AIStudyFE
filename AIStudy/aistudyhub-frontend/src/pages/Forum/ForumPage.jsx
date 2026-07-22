@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import AppLayout from "../../components/layout/AppLayout";
 import Swal from "sweetalert2";
+import { renderAsync } from "docx-preview";
 import {
   getPublicDocuments,
   previewDocumentFile,
@@ -321,7 +322,6 @@ function ReportModal({ doc, onClose, onSubmit }) {
 
 // Modal chi tiết bài đăng: xem trước, tải xuống, đánh giá sao, bình luận.
 // QUAN TRỌNG: rating và comment CHỈ lưu ở localStorage theo key riêng từng doc (doc-comments-<id>, doc-ratings-<id>)
-// — không có API backend, nên dữ liệu này biến mất nếu đổi trình duyệt hoặc xoá localStorage.
 function DocDetailModal({ doc, nowTime, onClose, onRate, onReport }) {
   const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
 
@@ -350,8 +350,12 @@ function DocDetailModal({ doc, nowTime, onClose, onRate, onReport }) {
   });
 
   const [previewUrl, setPreviewUrl] = useState("");
+  const [previewBlob, setPreviewBlob] = useState(null);
   const [previewError, setPreviewError] = useState("");
+  const [docxError, setDocxError] = useState("");
   const [showPreview, setShowPreview] = useState(false);
+
+  const docxContainerRef = useRef(null);
 
   const myRatingEntry = ratings.find((r) => r.userId === storedUserId);
   const myRating = myRatingEntry?.stars || 0;
@@ -360,6 +364,45 @@ function DocDetailModal({ doc, nowTime, onClose, onRate, onReport }) {
     ratings.length > 0
       ? ratings.reduce((s, r) => s + r.stars, 0) / ratings.length
       : 0;
+
+  const isImage = ["IMG", "JPG", "JPEG", "PNG"].includes(doc.ext);
+  const isPdf = doc.ext === "PDF";
+  const isDoc = doc.ext === "DOC" || doc.ext === "DOCX";
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
+  useEffect(() => {
+    if (!showPreview || !isDoc || !previewBlob || !docxContainerRef.current) {
+      return;
+    }
+
+    let cancelled = false;
+
+    setDocxError("");
+    docxContainerRef.current.innerHTML = "";
+
+    renderAsync(previewBlob, docxContainerRef.current, undefined, {
+      ignoreWidth: true,
+      ignoreHeight: true,
+      className: "docx",
+    }).catch(() => {
+      if (!cancelled) {
+        setDocxError(
+          "Không thể hiển thị file Word này. Nếu đây là file .doc cũ, vui lòng tải xuống để xem.",
+        );
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [showPreview, isDoc, previewBlob]);
 
   function handleAddComment() {
     const text = commentInput.trim();
@@ -419,31 +462,41 @@ function DocDetailModal({ doc, nowTime, onClose, onRate, onReport }) {
   async function handlePreview() {
     setShowPreview(true);
     setPreviewUrl("");
+    setPreviewBlob(null);
     setPreviewError("");
+    setDocxError("");
 
     try {
-      const blob = await previewDocumentFile(doc.id);
-      const url = URL.createObjectURL(blob);
+      const result = await previewDocumentFile(doc.id);
+
+      const blob = result?.blob instanceof Blob ? result.blob : result;
+      const url = result?.url || URL.createObjectURL(blob);
+
+      setPreviewBlob(blob);
       setPreviewUrl(url);
-    } catch {
-      setPreviewError("Không thể tải xem trước.");
+    } catch (err) {
+      setPreviewError(err?.message || "Không thể tải xem trước tài liệu.");
     }
   }
 
   async function handleDownload() {
     try {
-      const blob = await downloadDocumentFile(doc.id);
-      const url = URL.createObjectURL(blob);
+      const result = await downloadDocumentFile(doc.id);
+
+      const url = result?.url || URL.createObjectURL(result);
       const a = document.createElement("a");
 
       a.href = url;
-      a.download = `${doc.name}.${doc.ext.toLowerCase()}`;
+      a.download =
+        result?.fileName || `${doc.name}.${String(doc.ext).toLowerCase()}`;
 
       document.body.appendChild(a);
       a.click();
       a.remove();
 
-      URL.revokeObjectURL(url);
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 1000);
     } catch (err) {
       showToast({
         icon: "error",
@@ -452,8 +505,6 @@ function DocDetailModal({ doc, nowTime, onClose, onRate, onReport }) {
       });
     }
   }
-
-  const isImage = ["IMG", "JPG", "JPEG", "PNG"].includes(doc.ext);
 
   return (
     <div
@@ -527,9 +578,10 @@ function DocDetailModal({ doc, nowTime, onClose, onRate, onReport }) {
                 border: "1px solid #e5e7eb",
                 borderRadius: 12,
                 background: "#f9fafb",
-                overflow: "hidden",
-                minHeight: 200,
-                display: "flex",
+                overflow: isDoc ? "auto" : "hidden",
+                minHeight: 220,
+                maxHeight: isDoc ? "60vh" : undefined,
+                display: isDoc ? "block" : "flex",
                 alignItems: "center",
                 justifyContent: "center",
               }}
@@ -546,20 +598,39 @@ function DocDetailModal({ doc, nowTime, onClose, onRate, onReport }) {
                   alt={doc.name}
                   style={{
                     maxWidth: "100%",
-                    maxHeight: "50vh",
+                    maxHeight: "55vh",
                     objectFit: "contain",
                   }}
                 />
-              ) : (
+              ) : isPdf ? (
                 <iframe
                   src={previewUrl}
                   title={doc.name}
                   style={{
                     width: "100%",
-                    height: "50vh",
+                    height: "55vh",
                     border: "none",
                   }}
                 />
+              ) : isDoc ? (
+                docxError ? (
+                  <p style={{ color: "#ef4444", padding: 32 }}>{docxError}</p>
+                ) : (
+                  <div
+                    ref={docxContainerRef}
+                    className="docx-preview-container"
+                    style={{
+                      padding: 16,
+                      background: "#ffffff",
+                      width: "100%",
+                    }}
+                  />
+                )
+              ) : (
+                <p style={{ color: "#6b7280", padding: 32 }}>
+                  Loại file này chưa hỗ trợ xem trước. Vui lòng tải xuống để xem
+                  tài liệu.
+                </p>
               )}
             </div>
           )}
