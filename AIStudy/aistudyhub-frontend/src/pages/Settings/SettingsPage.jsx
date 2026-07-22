@@ -235,11 +235,10 @@ export function MembershipSection() {
       color: '#6b7280',
       features: [
         '5 GB lưu trữ',
-        '20 câu hỏi AI/ngày',
+        '20.000 token AI/ngày',
         'Upload tối đa 10 MB/file',
-        'Diễn đàn cơ bản',
       ],
-      missing: ['Khóa học Premium', 'AI không giới hạn'],
+      missing: [],
     },
     {
       id: 'premium',
@@ -250,11 +249,9 @@ export function MembershipSection() {
       color: '#0066ff',
       badge: 'Phổ biến nhất',
       features: [
-        '50 GB lưu trữ',
-        'AI không giới hạn',
+        '10 GB lưu trữ',
+        '50.000 token AI/ngày',
         'Upload tối đa 100 MB/file',
-        'Truy cập tất cả khóa học',
-        'Ưu tiên hỗ trợ',
       ],
       missing: [],
     },
