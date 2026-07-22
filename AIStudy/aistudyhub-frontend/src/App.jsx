@@ -96,7 +96,6 @@ function App() {
         />
 
         <Route path="/verify-email" element={<VerifyEmailOtpPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordOtpPage />} />
       </Routes>
     </BrowserRouter>
   );

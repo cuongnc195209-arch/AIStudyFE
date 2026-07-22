@@ -13,6 +13,8 @@ const PUBLIC_PATHS = [
   "/auth/register",
   "/auth/forgot-password",
   "/auth/reset-password",
+  "/auth/verify-email",
+  "/auth/resend-verification",
   "/auth/refresh",
   "/v1/documents/public",
 ];

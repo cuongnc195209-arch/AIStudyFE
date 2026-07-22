@@ -95,13 +95,13 @@ export async function register({
   return saveAuthResponse(response);
 }
 
-// GET /auth/verify-email?token=...
-export async function verifyEmail(token) {
-  if (!token) {
-    throw new Error("Thiếu token xác thực email");
+// GET /auth/verify-email?token=...  // token field currently carries the 6-digit OTP
+export async function verifyEmail(otp) {
+  if (!otp) {
+    throw new Error("Thiếu OTP xác thực email");
   }
 
-  return rawRequest(`/auth/verify-email?token=${encodeURIComponent(token)}`, {
+  return rawRequest(`/auth/verify-email?token=${encodeURIComponent(otp)}`, {
     method: "GET",
   });
 }

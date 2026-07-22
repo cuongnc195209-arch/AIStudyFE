@@ -98,6 +98,19 @@ export default function ModerationPage() {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState(null);
+
+  function showToast({ icon = "success", title, text }) {
+    Swal.fire({
+      toast: true,
+      position: "top-end",
+      icon,
+      title,
+      text,
+      showConfirmButton: false,
+      timer: 2200,
+      timerProgressBar: true,
+    });
+  }
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
 
@@ -187,12 +200,10 @@ export default function ModerationPage() {
 
   async function handleReview(doc, decision) {
     if (!doc.documentId) {
-      await Swal.fire({
+      showToast({
+        icon: "error",
         title: "Thiếu thông tin tài liệu",
         text: "BE chưa trả documentId nên không thể duyệt tài liệu này.",
-        icon: "error",
-        confirmButtonText: "Đóng",
-        confirmButtonColor: "#2563eb",
       });
 
       return;
@@ -231,26 +242,20 @@ export default function ModerationPage() {
 
       setDocuments((prev) => prev.filter((item) => item.id !== doc.id));
 
-      await Swal.fire({
+      showToast({
+        icon: "success",
         title: isAccept ? "Đã duyệt tài liệu" : "Đã từ chối tài liệu",
         text: isAccept
           ? "Tài liệu đã được chấp nhận và có thể hiển thị công khai."
           : "Tài liệu đã bị từ chối.",
-        icon: "success",
-        confirmButtonText: "OK",
-        confirmButtonColor: "#2563eb",
-        timer: 1800,
-        timerProgressBar: true,
       });
     } catch (err) {
       console.error("Review document error:", err);
 
-      await Swal.fire({
+      showToast({
+        icon: "error",
         title: "Thao tác thất bại",
         text: err?.message || "Không thể duyệt tài liệu. Vui lòng thử lại.",
-        icon: "error",
-        confirmButtonText: "Đóng",
-        confirmButtonColor: "#2563eb",
       });
     } finally {
       setProcessingId(null);

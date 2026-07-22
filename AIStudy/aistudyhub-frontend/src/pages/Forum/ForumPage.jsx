@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import AppLayout from "../../components/layout/AppLayout";
+import Swal from "sweetalert2";
 import {
   getPublicDocuments,
   previewDocumentFile,
@@ -37,6 +38,19 @@ const EXT_COLOR = {
   JPEG: "#10b981",
   PNG: "#10b981",
 };
+
+function showToast({ icon = "success", title, text }) {
+  Swal.fire({
+    toast: true,
+    position: "top-end",
+    icon,
+    title,
+    text,
+    showConfirmButton: false,
+    timer: 2200,
+    timerProgressBar: true,
+  });
+}
 
 const HOT_TAGS = [
   "OOP",
@@ -430,8 +444,12 @@ function DocDetailModal({ doc, nowTime, onClose, onRate, onReport }) {
       a.remove();
 
       URL.revokeObjectURL(url);
-    } catch {
-      alert("Không thể tải tài liệu.");
+    } catch (err) {
+      showToast({
+        icon: "error",
+        title: "Không thể tải tài liệu",
+        text: err?.message || "Vui lòng thử lại sau.",
+      });
     }
   }
 
@@ -832,10 +850,14 @@ export default function ForumPage() {
       return 0;
     });
 
-  // TODO: chưa gọi API thật — chỉ log console + hiện alert cho có UX, report không thực sự được lưu
+  // TODO: chưa gọi API thật — hiện chỉ log console và hiển thị toast, report chưa được lưu ở backend
   function handleReport(submission) {
     console.log("Report submitted:", submission);
-    alert("Đã gửi báo cáo. Cảm ơn bạn!");
+    showToast({
+      icon: "success",
+      title: "Đã gửi báo cáo",
+      text: "Cảm ơn bạn đã góp phần cải thiện cộng đồng.",
+    });
     setReportDoc(null);
   }
 

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { renderAsync } from "docx-preview";
 import AppLayout from "../../components/layout/AppLayout";
+import Swal from "sweetalert2";
 import {
   SUBJECT_OPTIONS,
   getSubjectLabel,
@@ -92,6 +93,19 @@ function mapDoc(d) {
     textContent: d.textContent || d.description || "",
     permissionType: d.permissionType || "",
   };
+}
+
+function showToast({ icon = "success", title, text }) {
+  Swal.fire({
+    toast: true,
+    position: "top-end",
+    icon,
+    title,
+    text,
+    showConfirmButton: false,
+    timer: 2200,
+    timerProgressBar: true,
+  });
 }
 
 const ENABLE_SHARED_TAB = true;
@@ -1116,9 +1130,18 @@ export function DocumentsSection() {
       );
 
       setEditDoc(null);
+      showToast({
+        icon: "success",
+        title: "Cập nhật thành công",
+        text: "Thông tin tài liệu đã được lưu.",
+      });
     } catch (err) {
       console.error("Update document error:", err);
-      alert("Cập nhật thất bại. Vui lòng thử lại.");
+      showToast({
+        icon: "error",
+        title: "Cập nhật thất bại",
+        text: err?.message || "Vui lòng thử lại.",
+      });
     }
   }
 
@@ -1147,9 +1170,18 @@ export function DocumentsSection() {
       setDocs((prev) => prev.filter((doc) => doc.id !== id));
       setSharedDocs((prev) => prev.filter((doc) => doc.id !== id));
       setDeleteDoc(null);
+      showToast({
+        icon: "success",
+        title: "Đã xóa tài liệu",
+        text: "Tài liệu đã được xóa khỏi danh sách.",
+      });
     } catch (err) {
       console.error("Delete document error:", err);
-      alert("Xóa thất bại. Vui lòng thử lại.");
+      showToast({
+        icon: "error",
+        title: "Xóa thất bại",
+        text: err?.message || "Vui lòng thử lại.",
+      });
     }
   }
 
@@ -1187,11 +1219,21 @@ export function DocumentsSection() {
       setTimeout(() => {
         URL.revokeObjectURL(fileUrl);
       }, 1000);
+
+      showToast({
+        icon: "success",
+        title: "Đang tải tài liệu",
+        text: doc.name || "Tệp đã được gửi tới trình duyệt.",
+      });
     } catch (err) {
       console.error("Download document error:", err);
-      alert(
-        "Không thể tải tài liệu. Hãy kiểm tra file có tồn tại trên Supabase Storage không.",
-      );
+      showToast({
+        icon: "error",
+        title: "Không thể tải tài liệu",
+        text:
+          err?.message ||
+          "Hãy kiểm tra file có tồn tại trên Supabase Storage không.",
+      });
     }
   }
 
