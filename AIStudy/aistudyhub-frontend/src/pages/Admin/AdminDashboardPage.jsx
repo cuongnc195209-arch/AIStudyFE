@@ -10,6 +10,7 @@ import ChatSection from "./sections/ChatSection";
 import StatsSection from "./sections/StatsSection";
 import ConfigSection from "./sections/ConfigSection";
 import "./AdminDashboardPage.css";
+import ReportsSection from "./sections/ReportsSection";
 
 function isEmailLike(value) {
   return typeof value === "string" && value.includes("@");
@@ -155,6 +156,7 @@ export default function AdminDashboardPage() {
     overview: <OverviewSection />,
     users: <UsersSection onToast={showToast} />,
     documents: <DocumentsSection onToast={showToast} />,
+    reports: <ReportsSection onToast={showToast} />,
     chat: <ChatSection />,
     stats: <StatsSection />,
     config: <ConfigSection onToast={showToast} />,
@@ -172,6 +174,7 @@ export default function AdminDashboardPage() {
                   overview: "Tổng quan",
                   users: "Người dùng",
                   documents: "Tài liệu",
+                  reports: "Báo cáo",
                   chat: "Chat AI",
                   stats: "Thống kê",
                   config: "Cấu hình",

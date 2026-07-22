@@ -8,6 +8,10 @@ import {
   downloadDocumentFile,
 } from "../../apis/documentApi";
 import "./ForumPage.css";
+import {
+  createDocumentReport,
+  REPORT_REASON_OPTIONS,
+} from "../../apis/reportApi";
 
 const SUBJECTS = [
   "Tất cả",
@@ -60,14 +64,6 @@ const HOT_TAGS = [
   "Node.js",
   "Docker",
   "Git",
-];
-
-const REPORT_REASONS = [
-  "Nội dung vi phạm bản quyền",
-  "Nội dung không phù hợp",
-  "Spam hoặc quảng cáo",
-  "Thông tin sai lệch",
-  "Khác",
 ];
 
 function showToast({ icon = "success", title, text }) {
@@ -236,16 +232,30 @@ function getInitials(name) {
 }
 
 function ReportModal({ doc, onClose, onSubmit }) {
-  const [reason, setReason] = useState(REPORT_REASONS[0]);
+  const [reason, setReason] = useState(REPORT_REASON_OPTIONS[0].code);
   const [detail, setDetail] = useState("");
+
+  const selectedReason = REPORT_REASON_OPTIONS.find(
+    (item) => item.code === reason,
+  );
 
   function handleSubmit(e) {
     e.preventDefault();
 
+    if (reason === "OTHER" && !detail.trim()) {
+      showToast({
+        icon: "warning",
+        title: "Thiếu mô tả",
+        text: "Khi chọn lý do khác, bạn cần nhập mô tả chi tiết.",
+      });
+
+      return;
+    }
+
     onSubmit({
-      docId: doc.id,
+      documentId: doc.id,
       reason,
-      detail,
+      description: detail,
     });
   }
 
@@ -298,8 +308,10 @@ function ReportModal({ doc, onClose, onSubmit }) {
                 fontSize: "0.87rem",
               }}
             >
-              {REPORT_REASONS.map((item) => (
-                <option key={item}>{item}</option>
+              {REPORT_REASON_OPTIONS.map((item) => (
+                <option key={item.code} value={item.code}>
+                  {item.description}
+                </option>
               ))}
             </select>
           </div>
@@ -314,14 +326,14 @@ function ReportModal({ doc, onClose, onSubmit }) {
                 marginBottom: 6,
               }}
             >
-              Chi tiết
+              Chi tiết {selectedReason?.code === "OTHER" ? "*" : ""}
             </label>
 
             <textarea
               value={detail}
               onChange={(e) => setDetail(e.target.value)}
               rows={3}
-              placeholder="Mô tả thêm..."
+              placeholder="Mô tả thêm vấn đề của tài liệu..."
               style={{
                 width: "100%",
                 padding: "10px 12px",
@@ -747,16 +759,30 @@ export default function ForumPage() {
       return 0;
     });
 
-  function handleReport(submission) {
-    console.log("Report submitted:", submission);
+  async function handleReport(submission) {
+    try {
+      await createDocumentReport({
+        documentId: submission.documentId,
+        reason: submission.reason,
+        description: submission.description,
+      });
 
-    showToast({
-      icon: "success",
-      title: "Đã gửi báo cáo",
-      text: "Cảm ơn bạn đã góp phần cải thiện cộng đồng.",
-    });
+      showToast({
+        icon: "success",
+        title: "Đã gửi báo cáo",
+        text: "Báo cáo của bạn đã được gửi tới Admin/Moderator.",
+      });
 
-    setReportDoc(null);
+      setReportDoc(null);
+    } catch (err) {
+      console.error("Create report error:", err);
+
+      showToast({
+        icon: "error",
+        title: "Không thể gửi báo cáo",
+        text: err?.message || err?.data?.message || "Vui lòng thử lại sau.",
+      });
+    }
   }
 
   return (

@@ -1872,3 +1872,70 @@
     text-align: left;
   }
 }
+
+.report-section {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.report-reason-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #ea580c;
+  font-size: 13px;
+  font-weight: 800;
+  max-width: 260px;
+  line-height: 1.35;
+}
+
+.td-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ta-btn {
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 8px 11px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    transform 0.16s ease;
+}
+
+.ta-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.ta-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ta-view {
+  color: #2563eb;
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.ta-delete {
+  color: #dc2626;
+  background: #fff1f2;
+  border-color: #fecdd3;
+}
+
+.ta-unlock {
+  color: #059669;
+  background: #ecfdf5;
+  border-color: #bbf7d0;
+}

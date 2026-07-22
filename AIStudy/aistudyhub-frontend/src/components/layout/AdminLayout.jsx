@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { clearAuthStorage } from "../../apis/api";
 import "./AdminLayout.css";
 
@@ -9,9 +9,10 @@ const NAV_ITEMS = [
   { id: "overview", icon: "📊", label: "Tổng quan" },
   { id: "users", icon: "👥", label: "Người dùng" },
   { id: "documents", icon: "📁", label: "Tài liệu" },
+  { id: "reports", icon: "🚩", label: "Báo cáo" },
   { id: "chat", icon: "💬", label: "Chat AI" },
   { id: "stats", icon: "📈", label: "Thống kê" },
-   { id: "config", icon: "⚙️", label: "Cấu hình hệ thống" }, // tạm ẩn
+  { id: "config", icon: "⚙️", label: "Cấu hình hệ thống" },
 ];
 
 // Layout riêng cho khu vực /admin/*. Khác AppLayout ở chỗ dùng button + callback onNavigate

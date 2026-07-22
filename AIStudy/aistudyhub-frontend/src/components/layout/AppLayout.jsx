@@ -23,6 +23,12 @@ const MODERATION_ITEM = {
   label: "Kiểm duyệt Tài liệu",
 };
 
+const REPORT_ITEM = {
+  to: "/reports",
+  icon: "🚩",
+  label: "Báo cáo Tài liệu",
+};
+
 function getCurrentRole() {
   return (localStorage.getItem("role") || "")
     .replace("ROLE_", "")
@@ -219,6 +225,22 @@ export default function AppLayout({ children }) {
                 <span className="sidebar-link-label">
                   {MODERATION_ITEM.label}
                 </span>
+              )}
+            </NavLink>
+          )}
+
+          {role === "MODERATOR" && (
+            <NavLink
+              to={REPORT_ITEM.to}
+              className={({ isActive }) =>
+                `sidebar-link${isActive ? " sidebar-link--active" : ""}`
+              }
+              title={collapsed ? REPORT_ITEM.label : undefined}
+            >
+              <span className="sidebar-link-icon">{REPORT_ITEM.icon}</span>
+
+              {!collapsed && (
+                <span className="sidebar-link-label">{REPORT_ITEM.label}</span>
               )}
             </NavLink>
           )}

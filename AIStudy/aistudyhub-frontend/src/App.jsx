@@ -13,6 +13,7 @@ import PrivateRoute from "./routes/PrivateRoute";
 import VerifyEmailOtpPage from "./pages/Auth/VerifyEmailOtpPage";
 import ForgotPasswordOtpPage from "./pages/Auth/ForgotPasswordOtpPage";
 import PremiumCheckoutPage from "./pages/Premium/PremiumCheckoutPage";
+import ReportsPage from "./pages/Reports/ReportsPage";
 
 function App() {
   return (
@@ -44,6 +45,15 @@ function App() {
             // Trang duyệt tài liệu pending — chỉ MODERATOR và ADMIN
             <PrivateRoute allowedRoles={["MODERATOR", "ADMIN"]}>
               <ModerationPage />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/reports"
+          element={
+            <PrivateRoute allowedRoles={["MODERATOR", "ADMIN"]}>
+              <ReportsPage />
             </PrivateRoute>
           }
         />
