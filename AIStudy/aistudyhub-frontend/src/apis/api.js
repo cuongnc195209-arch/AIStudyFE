@@ -46,6 +46,11 @@ export function clearAuthTokens() {
   localStorage.removeItem(USER_KEY);
 }
 
+// Giữ lại tên cũ để các component như AppLayout.jsx không bị lỗi import
+export function clearAuthStorage() {
+  clearAuthTokens();
+}
+
 export function setCurrentUser(user) {
   if (user) {
     localStorage.setItem(USER_KEY, JSON.stringify(user));
