@@ -17,22 +17,57 @@ function getListFromResponse(res) {
   return [];
 }
 
-function formatFileSize(bytes) {
-  const value = Number(bytes || 0);
+function getFileIcon(fileType) {
+  const type = String(fileType || "").toUpperCase();
 
-  if (!value) return "—";
-  if (value < 1024) return `${value} B`;
-  if (value < 1024 * 1024) return `${(value / 1024).toFixed(0)} KB`;
+  if (type.includes("PDF")) {
+    return "📕";
+  }
 
-  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+  if (type.includes("DOC") || type.includes("WORD")) {
+    return "📘";
+  }
+
+  if (type.includes("PPT")) {
+    return "📙";
+  }
+
+  if (
+    type.includes("PNG") ||
+    type.includes("JPG") ||
+    type.includes("JPEG") ||
+    type.includes("IMG")
+  ) {
+    return "🖼️";
+  }
+
+  return "📄";
+}
+
+function formatFileSize(size) {
+  const bytes = Number(size || 0);
+
+  if (!bytes) {
+    return "—";
+  }
+
+  if (bytes >= 1024 * 1024) {
+    return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+  }
+
+  return `${Math.round(bytes / 1024)} KB`;
 }
 
 function formatDate(value) {
-  if (!value) return "—";
+  if (!value) {
+    return "—";
+  }
 
   const date = new Date(value);
 
-  if (Number.isNaN(date.getTime())) return "—";
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
 
   return date.toLocaleDateString("vi-VN");
 }
@@ -57,39 +92,43 @@ function getDocStatus(doc) {
   );
 }
 
+function getSenderName(doc) {
+  return (
+    doc.userFullName ||
+    doc.ownerName ||
+    doc.fullName ||
+    doc.authorName ||
+    doc.uploaderName ||
+    doc.userName ||
+    doc.userEmail ||
+    doc.email ||
+    "—"
+  );
+}
+
 function mapPendingDocument(doc, index = 0) {
-  const documentId = doc.documentId || doc.document_id || doc.id || doc.uuid;
+  const documentName = doc.documentName || doc.name || doc.title || "Untitled";
 
-  const name =
-    doc.documentName ||
-    doc.document_name ||
-    doc.name ||
-    doc.title ||
-    "Untitled";
+  const documentId =
+    doc.documentId ||
+    doc.id ||
+    doc.document_id ||
+    doc.documentID ||
+    `${documentName}-${index}`;
 
-  const createdAt =
-    doc.createdAt || doc.created_at || doc.uploadedAt || doc.sharedAt;
-
-  const status = getDocStatus(doc);
+  const fileType = String(
+    doc.fileType || doc.ext || doc.extension || "FILE",
+  ).toUpperCase();
 
   return {
-    id: documentId || `${name}-${createdAt || index}`,
+    id: documentId,
     documentId,
-    name,
-    owner:
-      doc.userName ||
-      doc.userFullName ||
-      doc.ownerName ||
-      doc.uploadedBy ||
-      doc.fullName ||
-      doc.userEmail ||
-      doc.email ||
-      "—",
-    subject: doc.subjectCode || doc.subject || doc.categoryName || "—",
-    fileType: String(doc.fileType || doc.ext || "FILE").toUpperCase(),
-    fileSize: formatFileSize(doc.fileSize),
-    createdAt,
-    status: status || "PENDING",
+    name: documentName,
+    sender: getSenderName(doc),
+    fileType,
+    fileSize: doc.fileSize || doc.file_size || 0,
+    createdAt: doc.createdAt || doc.created_at || doc.date || "",
+    status: getDocStatus(doc) || "PENDING",
     description: doc.description || "",
   };
 }
@@ -98,6 +137,8 @@ export default function ModerationPage() {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState(null);
+  const [search, setSearch] = useState("");
+  const [error, setError] = useState("");
 
   function showToast({ icon = "success", title, text }) {
     Swal.fire({
@@ -111,8 +152,6 @@ export default function ModerationPage() {
       timerProgressBar: true,
     });
   }
-  const [search, setSearch] = useState("");
-  const [error, setError] = useState("");
 
   const fetchPendingDocuments = useCallback(async () => {
     const res = await getPendingPublicDocuments({
@@ -122,13 +161,6 @@ export default function ModerationPage() {
 
     const list = getListFromResponse(res);
 
-    /*
-      API đúng phải gọi:
-      GET /api/admin/document?status=PENDING&page=0&size=9999
-
-      Nếu BE đã trả status, FE chỉ lấy status PENDING.
-      Nếu BE chưa trả status nhưng endpoint đã lọc PENDING, FE vẫn hiển thị để tránh mất dữ liệu.
-    */
     const hasStatusField = list.some((doc) => getDocStatus(doc));
 
     const pendingList = hasStatusField
@@ -143,20 +175,26 @@ export default function ModerationPage() {
 
     fetchPendingDocuments()
       .then((pendingDocs) => {
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
 
         setDocuments(pendingDocs);
         setError("");
       })
       .catch((err) => {
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
 
         console.error("Load pending documents error:", err);
         setDocuments([]);
         setError(err?.message || "Không thể tải danh sách tài liệu chờ duyệt.");
       })
       .finally(() => {
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
 
         setLoading(false);
       });
@@ -185,13 +223,14 @@ export default function ModerationPage() {
   const filteredDocuments = useMemo(() => {
     const q = search.trim().toLowerCase();
 
-    if (!q) return documents;
+    if (!q) {
+      return documents;
+    }
 
     return documents.filter((doc) => {
       return (
         doc.name.toLowerCase().includes(q) ||
-        doc.owner.toLowerCase().includes(q) ||
-        doc.subject.toLowerCase().includes(q) ||
+        doc.sender.toLowerCase().includes(q) ||
         doc.fileType.toLowerCase().includes(q) ||
         doc.status.toLowerCase().includes(q)
       );
@@ -233,7 +272,9 @@ export default function ModerationPage() {
       focusCancel: true,
     });
 
-    if (!result.isConfirmed) return;
+    if (!result.isConfirmed) {
+      return;
+    }
 
     setProcessingId(doc.id);
 
@@ -246,8 +287,8 @@ export default function ModerationPage() {
         icon: "success",
         title: isAccept ? "Đã duyệt tài liệu" : "Đã từ chối tài liệu",
         text: isAccept
-          ? "Tài liệu đã được chấp nhận và có thể hiển thị công khai."
-          : "Tài liệu đã bị từ chối.",
+          ? "Tài liệu đã được chấp nhận công khai. Email thông báo đã được gửi."
+          : "Tài liệu đã bị từ chối. Email thông báo đã được gửi.",
       });
     } catch (err) {
       console.error("Review document error:", err);
@@ -268,6 +309,7 @@ export default function ModerationPage() {
         <div className="admin-section">
           <div className="admin-section-head">
             <h2>Kiểm duyệt tài liệu</h2>
+
             <p>
               {documents.length} tài liệu đang chờ duyệt để hiển thị công khai
             </p>
@@ -279,7 +321,7 @@ export default function ModerationPage() {
 
               <input
                 className="admin-search"
-                placeholder="Tìm tài liệu, người gửi, môn học..."
+                placeholder="Tìm tài liệu, người gửi, loại file..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -311,7 +353,6 @@ export default function ModerationPage() {
                 <tr>
                   <th>Tài liệu</th>
                   <th>Người gửi</th>
-                  <th>Môn học</th>
                   <th>Loại</th>
                   <th>Kích thước</th>
                   <th>Ngày gửi</th>
@@ -325,7 +366,15 @@ export default function ModerationPage() {
                   <tr key={doc.id || `${doc.name}-${index}`}>
                     <td>
                       <div className="td-doc">
-                        <div className="td-ext">{doc.fileType}</div>
+                        <div
+                          className="td-ext"
+                          style={{
+                            background: "#f1f5f9",
+                            color: "#0f172a",
+                          }}
+                        >
+                          {getFileIcon(doc.fileType)}
+                        </div>
 
                         <div>
                           <p className="td-docname">{doc.name}</p>
@@ -337,10 +386,14 @@ export default function ModerationPage() {
                       </div>
                     </td>
 
-                    <td className="td-secondary">{doc.owner}</td>
-                    <td className="td-secondary">{doc.subject}</td>
+                    <td className="td-secondary">{doc.sender}</td>
+
                     <td className="td-secondary">{doc.fileType}</td>
-                    <td className="td-secondary">{doc.fileSize}</td>
+
+                    <td className="td-secondary">
+                      {formatFileSize(doc.fileSize)}
+                    </td>
+
                     <td className="td-secondary">
                       {formatDate(doc.createdAt)}
                     </td>
