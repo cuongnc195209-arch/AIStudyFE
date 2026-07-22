@@ -79,7 +79,7 @@ function buildUrl(endpoint, queryParams) {
   const cleanBaseUrl = API_BASE_URL.replace(/\/$/, "");
   const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
 
-  const url = new URL(`${cleanBaseUrl}${cleanEndpoint}`);
+  const url = new URL(`${cleanBaseUrl}${cleanEndpoint}`, window.location.origin);
 
   if (queryParams && typeof queryParams === "object") {
     Object.entries(queryParams).forEach(([key, value]) => {
@@ -150,7 +150,18 @@ async function parseResponse(response) {
   const contentType = response.headers.get("content-type") || "";
 
   if (contentType.includes("application/json")) {
-    return response.json();
+    const text = await response.text();
+
+    if (!text) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(text);
+    } catch {
+      // Backend đôi khi khai báo Content-Type: application/json nhưng trả về text thô
+      return text;
+    }
   }
 
   if (contentType.includes("text/")) {

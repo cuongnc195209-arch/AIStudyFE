@@ -7,6 +7,7 @@ import {
   updateSessionDocuments,
 } from "../../apis/chatbotApi";
 import { getDocuments } from "../../apis/documentApi";
+import { getCurrentUser } from "../../apis/api";
 import "./ChatbotPage.css";
 
 const EXT_COLOR = {
@@ -174,17 +175,25 @@ function TypingIndicator() {
 
 /* ── Main Page ── */
 // Danh sách phiên chat (tên, tài liệu ghim, tin nhắn) chỉ lưu ở localStorage —
-// không có API backend để list lại các session cũ, nên mất nếu xoá localStorage/đổi trình duyệt
+// không có API backend để list lại các session cũ, nên mất nếu xoá localStorage/đổi trình duyệt.
+// Key phải gắn theo user hiện tại, nếu không tài khoản khác đăng nhập cùng trình duyệt
+// sẽ đọc thấy chung 1 danh sách chat của nhau.
+function getSessionsStorageKey() {
+  const user = getCurrentUser();
+  const userKey = user?.id || user?.userId || user?.email || "guest";
+  return `chatSessions_${userKey}`;
+}
+
 function loadSessionsFromStorage() {
   try {
-    return JSON.parse(localStorage.getItem("chatSessions")) || [];
+    return JSON.parse(localStorage.getItem(getSessionsStorageKey())) || [];
   } catch {
     return [];
   }
 }
 
 function saveSessionsToStorage(sessions) {
-  localStorage.setItem("chatSessions", JSON.stringify(sessions));
+  localStorage.setItem(getSessionsStorageKey(), JSON.stringify(sessions));
 }
 
 export default function ChatbotPage() {
