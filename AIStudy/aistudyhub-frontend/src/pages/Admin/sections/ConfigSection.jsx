@@ -1,26 +1,26 @@
 //cấu hình hệ thống
 import { useState } from "react";
-import { updateAdminConfig } from "../../../apis/adminApi";
+import {
+  updateAdminConfig,
+  updatePremiumConfig,
+} from "../../../apis/adminApi";
 
 // Form cấu hình hệ thống. Lưu ý: state config luôn khởi tạo giá trị rỗng/0 — không có useEffect nào
 // gọi API để load cấu hình HIỆN TẠI từ backend, nên mỗi lần vào trang admin sẽ thấy form trống,
 // dù trước đó đã lưu cấu hình khác.
 export default function ConfigSection({ onToast }) {
   const [config, setConfig] = useState({
-    maxDailyChatTokens: 0,
-    totalStorageQuotaGb: 0,
-    maxFileSizeMb: 0,
+    maxDailyChatTokens: 20000,
+    totalStorageQuotaGb: 5,
+    maxFileSizeMb: 10,
     allowedFileTypes: [],
   });
   const [saving, setSaving] = useState(false);
 
-  // Cấu hình riêng cho gói Premium — chưa có API backend nào cho việc này (xem MembershipSection
-  // trong SettingsPage.jsx, PLANS ở đó vẫn đang hardcode cứng). State này chỉ lưu ở client,
-  // chưa gửi lên đâu cả — cần backend có endpoint quản lý gói Premium rồi mới nối dữ liệu thật.
   const [premiumConfig, setPremiumConfig] = useState({
-    storageQuotaGb: 50,
+    storageQuotaGb: 10,
     maxFileSizeMb: 100,
-    maxDailyChatTokens: 0,
+    maxDailyChatTokens: 50000,
   });
   const ALL_FORMATS = [
     "PDF",
@@ -47,13 +47,19 @@ export default function ConfigSection({ onToast }) {
   async function saveConfig() {
     setSaving(true);
     try {
-      const result = await updateAdminConfig({
+      await updateAdminConfig({
         maxDailyChatTokens: Number(config.maxDailyChatTokens),
         totalStorageQuotaGb: Number(config.totalStorageQuotaGb),
         maxFileSizeMb: Number(config.maxFileSizeMb),
         allowedFileTypes: config.allowedFileTypes.join(",").toLowerCase(),
       });
-      console.log("Update config result:", result);
+
+      await updatePremiumConfig({
+        maxDailyChatTokens: Number(premiumConfig.maxDailyChatTokens),
+        totalStorageQuotaGb: Number(premiumConfig.storageQuotaGb),
+        maxFileSizeMb: Number(premiumConfig.maxFileSizeMb),
+      });
+
       onToast("Cấu hình đã được lưu và áp dụng!");
     } catch (err) {
       onToast(`Lỗi khi lưu cấu hình: ${err?.message || err}`);
@@ -154,7 +160,7 @@ export default function ConfigSection({ onToast }) {
         </div>
       </div>
 
-      {/* Premium plan config — local-only, chưa nối API backend */}
+      {/* Premium plan config — nối /admin/config-member và /admin/config-member/price */}
       <div className="config-section">
         <h3 className="config-section-title">Cấu hình gói Premium</h3>
         <div className="config-grid">

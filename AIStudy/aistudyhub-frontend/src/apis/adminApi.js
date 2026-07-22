@@ -130,6 +130,10 @@ export async function updateAdminConfig(payload) {
   return api.put("/admin/config", payload);
 }
 
+export async function updatePremiumConfig(payload) {
+  return api.put("/admin/config-member", payload);
+}
+
 const adminApi = {
   getUsers,
   getAdminUsers,
@@ -150,6 +154,7 @@ const adminApi = {
   getAdminStorageUsages,
 
   updateAdminConfig,
+  updatePremiumConfig,
 };
 
 export default adminApi;
