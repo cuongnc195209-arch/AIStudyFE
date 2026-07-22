@@ -14,6 +14,24 @@ function formatSize(bytes) {
   return `${bytes} B`;
 }
 
+function normalizeQuotaToBytes(value) {
+  const quota = Number(value || 0);
+
+  if (!Number.isFinite(quota) || quota <= 0) {
+    return 5 * 1073741824;
+  }
+
+  /*
+   * BE đang trả 5 nghĩa là 5 GB,
+   * không phải 5 bytes.
+   */
+  if (quota <= 1000) {
+    return quota * 1073741824;
+  }
+
+  return quota;
+}
+
 // Số phiên chat AI lấy từ localStorage (ChatbotPage tự lưu session ở đó), không có API riêng đếm số phiên
 function getChatSessionCount() {
   try {
@@ -91,8 +109,8 @@ export default function DashboardPage() {
       try {
         const total = await getTotalQuota();
 
-        if (!cancelled && total > 0) {
-          setQuotaBytes(total);
+        if (!cancelled) {
+          setQuotaBytes(normalizeQuotaToBytes(total));
         }
       } catch (err) {
         if (!cancelled) {
@@ -121,7 +139,7 @@ export default function DashboardPage() {
         icon: "💾",
         label: "Dung lượng",
         value: formatSize(totalBytes),
-        sub: `${((totalBytes / quotaBytes) * 100).toFixed(0)}% / ${formatSize(quotaBytes)}`,
+        sub: `${Math.min(100, (totalBytes / quotaBytes) * 100).toFixed(1)}% / ${formatSize(quotaBytes)}`,
         color: "purple",
       },
       {
