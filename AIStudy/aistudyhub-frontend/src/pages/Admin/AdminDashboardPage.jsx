@@ -11,58 +11,117 @@ import StatsSection from "./sections/StatsSection";
 import ConfigSection from "./sections/ConfigSection";
 import "./AdminDashboardPage.css";
 
-// Component gốc render tại route "/admin/*". Tự đọc section từ URL (thay vì khai route con riêng),
-// điều phối 7 SECTION_MAP bên dưới, và quản lý toast dùng chung cho toàn khu vực admin.
+function isEmailLike(value) {
+  return typeof value === "string" && value.includes("@");
+}
+
+function getDisplayName(user) {
+  if (!user) {
+    return "Người dùng";
+  }
+
+  return (
+    [
+      user.fullName,
+      user.full_name,
+      user.displayName,
+      user.name,
+      user.username,
+      user.studentName,
+      user.studentCode,
+    ].find((value) => value && !isEmailLike(value)) || "Người dùng"
+  );
+}
+
+function getInitials(name) {
+  if (!name || name === "Người dùng") {
+    return "U";
+  }
+
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => word[0])
+    .slice(-2)
+    .join("")
+    .toUpperCase();
+}
+
+function normalizeRole(role) {
+  return String(role || "ADMIN")
+    .trim()
+    .toUpperCase()
+    .replace(/^ROLE_/, "");
+}
+
+function getRoleText(role) {
+  const cleanRole = normalizeRole(role);
+
+  if (cleanRole === "ADMIN") {
+    return "Quản trị viên";
+  }
+
+  if (cleanRole === "MODERATOR") {
+    return "Kiểm duyệt viên";
+  }
+
+  return "Người dùng";
+}
+
 export default function AdminDashboardPage() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Ví dụ path "/admin/users" => section = "users"; path "/admin" => mặc định "overview"
   const sectionFromUrl = location.pathname.split("/admin/")[1] || "overview";
   const [section, setSection] = useState(sectionFromUrl);
-
-  // Đổi section: cập nhật state để re-render VÀ đồng bộ lại URL (để refresh trang không mất section đang xem)
-  function handleNavigate(s) {
-    setSection(s);
-    navigate(s === "overview" ? "/admin" : `/admin/${s}`, { replace: true });
-  }
-
   const [toast, setToast] = useState(null);
 
   const [currentUser, setCurrentUser] = useState(() => {
-    return JSON.parse(localStorage.getItem("user") || "{}");
+    try {
+      return JSON.parse(localStorage.getItem("user") || "{}");
+    } catch {
+      return {};
+    }
   });
 
-  // Tải lại hồ sơ admin từ backend khi vào trang, rồi merge với dữ liệu cũ trong localStorage
-  // (giữ lại field cũ nếu response mới thiếu) để tránh hiện "Admin" trống trong lúc chờ API
+  function handleNavigate(s) {
+    setSection(s);
+    navigate(s === "overview" ? "/admin" : `/admin/${s}`, {
+      replace: true,
+    });
+  }
+
   useEffect(() => {
     async function loadAdminProfile() {
       try {
         const result = await getProfile();
         console.log("Admin profile result:", result);
 
-        const profileData = result.data || result;
+        const profileData = result?.data || result || {};
 
         const userData =
           profileData.user ||
           profileData.profile ||
           profileData.userProfile ||
-          profileData;
+          profileData.account ||
+          profileData ||
+          {};
 
-        const newUser = {
+        const mergedUser = {
           ...currentUser,
           ...userData,
-          fullName:
-            userData.fullName ||
-            userData.name ||
-            userData.full_name ||
-            userData.displayName ||
-            currentUser.fullName ||
-            currentUser.name ||
-            currentUser.full_name,
-          email: userData.email || currentUser.email,
+        };
+
+        const fullName = getDisplayName(mergedUser);
+
+        const newUser = {
+          ...mergedUser,
+          fullName,
+          displayName: fullName,
+          name: fullName,
+          email: mergedUser.email || currentUser.email,
           role:
-            userData.role ||
+            mergedUser.role ||
             currentUser.role ||
             localStorage.getItem("role") ||
             "ADMIN",
@@ -78,40 +137,20 @@ export default function AdminDashboardPage() {
     }
 
     loadAdminProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const displayName =
-    currentUser.fullName ||
-    currentUser.name ||
-    currentUser.full_name ||
-    currentUser.displayName ||
-    currentUser.username ||
-    "Admin";
+  const displayName = getDisplayName(currentUser);
+  const initials = getInitials(displayName);
 
-  const initials = displayName.includes("@")
-    ? displayName[0].toUpperCase()
-    : displayName
-        .split(" ")
-        .filter(Boolean)
-        .map((word) => word[0])
-        .slice(-2)
-        .join("")
-        .toUpperCase();
+  const role = currentUser.role || localStorage.getItem("role") || "ADMIN";
 
-  const role = localStorage.getItem("role") || currentUser.role || "ADMIN";
-
-  const roleText =
-    role === "ADMIN" || role === "ROLE_ADMIN"
-      ? "Quản trị viên"
-      : role === "MODERATOR" || role === "ROLE_MODERATOR"
-        ? "Kiểm duyệt viên"
-        : "Người dùng";
+  const roleText = getRoleText(role);
 
   function showToast(msg) {
     setToast(msg);
   }
 
-  // Map section id (khớp với AdminLayout NAV_ITEMS) sang component tương ứng — chỉ render 1 cái tại 1 thời điểm
   const SECTION_MAP = {
     overview: <OverviewSection />,
     users: <UsersSection onToast={showToast} />,
@@ -124,7 +163,6 @@ export default function AdminDashboardPage() {
   return (
     <AdminLayout activeSection={section} onNavigate={handleNavigate}>
       <div className="admin-page">
-        {/* Top bar */}
         <div className="admin-topbar">
           <div className="admin-topbar-left">
             <span className="admin-breadcrumb">
@@ -141,12 +179,15 @@ export default function AdminDashboardPage() {
               }
             </span>
           </div>
+
           <div className="admin-topbar-right">
             <button className="admin-notif-btn" title="Thông báo">
               🔔<span className="admin-notif-badge">3</span>
             </button>
+
             <div className="admin-user-chip">
               <div className="admin-user-avatar">{initials}</div>
+
               <div>
                 <p className="admin-user-name">{displayName}</p>
                 <p className="admin-user-role">{roleText}</p>
@@ -155,7 +196,6 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* Content */}
         {SECTION_MAP[section]}
       </div>
 

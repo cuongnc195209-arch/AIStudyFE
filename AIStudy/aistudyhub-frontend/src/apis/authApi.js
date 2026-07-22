@@ -19,7 +19,45 @@ function normalizeAuthResponse(response) {
 
   const refreshToken = authData.refreshToken || authData.refresh_token || null;
 
-  const user = authData.user || authData.profile || null;
+  const rawUser =
+    authData.user ||
+    authData.profile ||
+    authData.account ||
+    authData.userProfile ||
+    null;
+
+  const user = rawUser
+    ? {
+        ...rawUser,
+        fullName:
+          rawUser.fullName ||
+          rawUser.full_name ||
+          rawUser.displayName ||
+          rawUser.name ||
+          rawUser.username ||
+          rawUser.studentName ||
+          rawUser.studentCode ||
+          "",
+        displayName:
+          rawUser.fullName ||
+          rawUser.full_name ||
+          rawUser.displayName ||
+          rawUser.name ||
+          rawUser.username ||
+          rawUser.studentName ||
+          rawUser.studentCode ||
+          "",
+        name:
+          rawUser.fullName ||
+          rawUser.full_name ||
+          rawUser.displayName ||
+          rawUser.name ||
+          rawUser.username ||
+          rawUser.studentName ||
+          rawUser.studentCode ||
+          "",
+      }
+    : null;
 
   return {
     ...authData,
