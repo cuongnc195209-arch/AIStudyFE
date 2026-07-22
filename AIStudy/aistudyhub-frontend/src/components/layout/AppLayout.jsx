@@ -2,7 +2,12 @@ import { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { clearAuthTokens } from "../../apis/api";
 import { getDocuments } from "../../apis/documentApi";
+import { getTotalQuota } from "../../apis/storageApi";
 import "./AppLayout.css";
+
+const GB = 1073741824;
+const DEFAULT_FREE_QUOTA = 5 * GB;
+const DEFAULT_PREMIUM_QUOTA = 10 * GB;
 
 const NAV_ITEMS = [
   { to: "/dashboard", icon: "⊞", label: "Tổng quan" },
@@ -11,52 +16,105 @@ const NAV_ITEMS = [
 ];
 
 const PREMIUM_ITEM = { to: "/premium", icon: "⚡", label: "Nâng cấp Premium" };
+
 const MODERATION_ITEM = {
   to: "/moderation",
   icon: "🛡️",
   label: "Kiểm duyệt Tài liệu",
 };
 
-// Đọc role hiện tại từ localStorage, chuẩn hoá kiểu như PrivateRoute (bỏ tiền tố ROLE_)
 function getCurrentRole() {
   return (localStorage.getItem("role") || "")
     .replace("ROLE_", "")
     .toUpperCase();
 }
 
-function formatStorage(bytes) {
-  if (!bytes || bytes === 0) return "0 KB";
-  if (bytes < 1048576) return `${(bytes / 1024).toFixed(0)} KB`;
-  if (bytes < 1073741824) return `${(bytes / 1048576).toFixed(1)} MB`;
-  return `${(bytes / 1073741824).toFixed(1)} GB`;
+function getStoredUser() {
+  try {
+    return JSON.parse(localStorage.getItem("user") || "{}");
+  } catch {
+    return {};
+  }
 }
 
-const TOTAL_QUOTA = 5 * 1073741824; // 5 GB
+function isPremiumUser(user) {
+  const plan = String(
+    user?.membership ||
+      user?.plan ||
+      user?.subscriptionPlan ||
+      user?.memberType ||
+      "",
+  ).toUpperCase();
 
-// Layout chung cho các trang user thường (Dashboard, Chatbot, Documents, Forum...):
-// sidebar bên trái + <main>{children}</main> chứa nội dung trang thật sự
+  return Boolean(
+    user?.isPremium ||
+    user?.memberId ||
+    plan === "PREMIUM" ||
+    plan.includes("PREMIUM"),
+  );
+}
+
+function formatStorage(bytes) {
+  const size = Number(bytes || 0);
+
+  if (!size) return "0 KB";
+  if (size < 1048576) return `${(size / 1024).toFixed(0)} KB`;
+  if (size < 1073741824) return `${(size / 1048576).toFixed(1)} MB`;
+
+  return `${(size / 1073741824).toFixed(1)} GB`;
+}
+
+function normalizeQuotaToBytes(value, user) {
+  const quota = Number(value || 0);
+
+  if (Number.isFinite(quota) && quota > 0) {
+    /*
+     * BE trả 5 hoặc 10 nghĩa là GB.
+     * BE trả số lớn thì hiểu là bytes.
+     */
+    if (quota <= 1000) {
+      return quota * GB;
+    }
+
+    return quota;
+  }
+
+  return isPremiumUser(user) ? DEFAULT_PREMIUM_QUOTA : DEFAULT_FREE_QUOTA;
+}
+
 export default function AppLayout({ children }) {
-  const [collapsed, setCollapsed] = useState(false); // sidebar thu gọn hay mở rộng
-  const [usedBytes, setUsedBytes] = useState(null); // tổng dung lượng tài liệu đã dùng
-  const [role] = useState(getCurrentRole); // chỉ đọc 1 lần lúc mount, không phản ứng nếu role đổi giữa chừng
-
   const navigate = useNavigate();
 
-  // Gọi API lấy toàn bộ tài liệu rồi cộng dồn fileSize để hiện thanh dung lượng ở footer sidebar
+  const [collapsed, setCollapsed] = useState(false);
+  const [usedBytes, setUsedBytes] = useState(null);
+  const [quotaBytes, setQuotaBytes] = useState(DEFAULT_FREE_QUOTA);
+
+  const [role] = useState(getCurrentRole);
+  const [currentUser] = useState(getStoredUser);
+
   useEffect(() => {
-    let cancelled = false; // tránh setState sau khi component đã unmount
+    let cancelled = false;
 
     getDocuments()
       .then((res) => {
         if (cancelled) return;
+
         const list = res?.data || res || [];
         const arr = Array.isArray(list) ? list : [];
-        const total = arr.reduce((s, d) => s + (d.fileSize || 0), 0);
+
+        const total = arr.reduce(
+          (sum, document) => sum + (Number(document.fileSize) || 0),
+          0,
+        );
+
         setUsedBytes(total);
       })
       .catch((err) => {
         console.error("Load documents for storage error:", err);
-        setUsedBytes(0);
+
+        if (!cancelled) {
+          setUsedBytes(0);
+        }
       });
 
     return () => {
@@ -64,17 +122,51 @@ export default function AppLayout({ children }) {
     };
   }, []);
 
-  // Đăng xuất: hiện chỉ xoá token khỏi localStorage rồi điều hướng, chưa gọi API logout thật ở backend
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadQuota() {
+      try {
+        const total = await getTotalQuota();
+
+        if (!cancelled) {
+          setQuotaBytes(normalizeQuotaToBytes(total, currentUser));
+        }
+      } catch (err) {
+        console.error("Load sidebar quota error:", err);
+
+        if (!cancelled) {
+          setQuotaBytes(normalizeQuotaToBytes(null, currentUser));
+        }
+      }
+    }
+
+    loadQuota();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser]);
+
   const handleLogout = async () => {
     try {
-      // Nếu sau này có API logout thì gọi ở đây
+      // Sau này có API logout thì gọi ở đây.
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
       clearAuthTokens();
+
+      localStorage.removeItem("user");
+      localStorage.removeItem("role");
+
       navigate("/login", { replace: true });
     }
   };
+
+  const storagePercent =
+    usedBytes !== null && quotaBytes > 0
+      ? Math.min(100, (usedBytes / quotaBytes) * 100)
+      : 0;
 
   return (
     <div className={`app-layout ${collapsed ? "layout-collapsed" : ""}`}>
@@ -113,7 +205,6 @@ export default function AppLayout({ children }) {
             </NavLink>
           ))}
 
-          {/* Mục Kiểm duyệt chỉ hiện với role MODERATOR */}
           {role === "MODERATOR" && (
             <NavLink
               to={MODERATION_ITEM.to}
@@ -132,11 +223,12 @@ export default function AppLayout({ children }) {
             </NavLink>
           )}
 
-          {/* Mục Premium luôn hiện, không điều kiện theo role */}
           <NavLink
             to={PREMIUM_ITEM.to}
             className={({ isActive }) =>
-              `sidebar-link sidebar-link--premium${isActive ? " sidebar-link--active" : ""}`
+              `sidebar-link sidebar-link--premium${
+                isActive ? " sidebar-link--active" : ""
+              }`
             }
             title={collapsed ? PREMIUM_ITEM.label : undefined}
           >
@@ -156,7 +248,7 @@ export default function AppLayout({ children }) {
 
                 <span className="storage-value">
                   {usedBytes !== null
-                    ? `${formatStorage(usedBytes)} / 5 GB`
+                    ? `${formatStorage(usedBytes)} / ${formatStorage(quotaBytes)}`
                     : "Đang tải..."}
                 </span>
               </div>
@@ -165,10 +257,7 @@ export default function AppLayout({ children }) {
                 <div
                   className="storage-fill"
                   style={{
-                    width:
-                      usedBytes !== null
-                        ? `${Math.min(100, (usedBytes / TOTAL_QUOTA) * 100)}%`
-                        : "0%",
+                    width: `${storagePercent}%`,
                   }}
                 />
               </div>
@@ -189,7 +278,6 @@ export default function AppLayout({ children }) {
         </div>
       </aside>
 
-      {/* Nội dung trang thật sự (Dashboard/Chatbot/Documents...) được truyền vào từ page component */}
       <main className="app-main">{children}</main>
     </div>
   );

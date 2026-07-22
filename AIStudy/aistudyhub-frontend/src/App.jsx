@@ -12,6 +12,7 @@ import AdminDashboardPage from "./pages/Admin/AdminDashboardPage";
 import PrivateRoute from "./routes/PrivateRoute";
 import VerifyEmailOtpPage from "./pages/Auth/VerifyEmailOtpPage";
 import ForgotPasswordOtpPage from "./pages/Auth/ForgotPasswordOtpPage";
+import PremiumCheckoutPage from "./pages/Premium/PremiumCheckoutPage";
 
 function App() {
   return (
@@ -71,6 +72,15 @@ function App() {
           element={
             <PrivateRoute>
               <PremiumPage />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/premium/checkout"
+          element={
+            <PrivateRoute>
+              <PremiumCheckoutPage />
             </PrivateRoute>
           }
         />
