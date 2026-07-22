@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   getUsers,
   updateUserStatus,
@@ -10,44 +10,92 @@ import { mapUser } from "../shared/mappers";
 
 const USERS_PAGE_SIZE = 10;
 
-// Quản lý danh sách user: khoá/mở khoá, đổi role. Tải hết user (size 9999) rồi tự phân trang
-// ở client bằng AdminPagination — không phân trang thật ở phía backend.
-// Cột "Gói" luôn hiển thị "Miễn phí" — backend chưa có field/API cho gói thành viên (Premium/Free)
-// của từng user, xem MembershipSection trong SettingsPage.jsx (cũng là UI demo, chưa nối API).
+function getRoleLabel(role) {
+  if (role === "MODERATOR") {
+    return "Kiểm duyệt viên";
+  }
+
+  return "Người dùng";
+}
+
+function getRoleToastMessage(newRole, userName) {
+  if (newRole === "MODERATOR") {
+    return `Đã nâng quyền ${userName} lên Kiểm duyệt viên. Email thông báo đã được gửi.`;
+  }
+
+  return `Đã hạ quyền ${userName} về Người dùng. Email thông báo đã được gửi.`;
+}
+
 export default function UsersSection({ onToast }) {
+  const onToastRef = useRef(onToast);
+
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
+
   const [confirm, setConfirm] = useState(null);
   const [page, setPage] = useState(1);
 
   useEffect(() => {
-    getUsers({ size: 9999 })
-      .then((res) => {
-        const list = res?.content || res?.data || res || [];
-        const all = Array.isArray(list)
-          ? list.map((u, i) => mapUser(u, i))
-          : [];
-        // Ẩn tài khoản ADMIN khỏi bảng — tránh admin tự khoá/hạ quyền chính mình hoặc admin khác qua bảng này
-        setUsers(all.filter((u) => u.role !== "ADMIN"));
-      })
-      .catch((err) => console.error("Load users error:", err))
-      .finally(() => setLoading(false));
+    onToastRef.current = onToast;
+  }, [onToast]);
+
+  const loadUsers = useCallback(async () => {
+    setLoading(true);
+
+    try {
+      const res = await getUsers({ size: 9999 });
+
+      const list = res?.content || res?.data?.content || res?.data || res || [];
+
+      const all = Array.isArray(list)
+        ? list.map((user, index) => mapUser(user, index))
+        : [];
+
+      setUsers(
+        all.filter(
+          (user) => user.role !== "ADMIN" && user.role !== "ROLE_ADMIN",
+        ),
+      );
+    } catch (err) {
+      console.error("Load users error:", err);
+
+      onToastRef.current?.(
+        `Lỗi tải người dùng: ${err?.message || "Không thể tải dữ liệu"}`,
+      );
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const filtered = users.filter((u) => {
-    const q = search.toLowerCase();
-    const matchSearch =
-      !q ||
-      u.name.toLowerCase().includes(q) ||
-      u.email.toLowerCase().includes(q);
-    const matchFilter = filter === "all" || u.status === filter;
-    return matchSearch && matchFilter;
-  });
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      loadUsers();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [loadUsers]);
+
+  const filtered = useMemo(() => {
+    return users.filter((user) => {
+      const q = search.toLowerCase().trim();
+
+      const matchSearch =
+        !q ||
+        user.name.toLowerCase().includes(q) ||
+        user.email.toLowerCase().includes(q);
+
+      const matchFilter = filter === "all" || user.status === filter;
+
+      return matchSearch && matchFilter;
+    });
+  }, [users, search, filter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / USERS_PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
+
   const paginated = filtered.slice(
     (currentPage - 1) * USERS_PAGE_SIZE,
     currentPage * USERS_PAGE_SIZE,
@@ -63,66 +111,132 @@ export default function UsersSection({ onToast }) {
     setPage(1);
   }
 
-  // Hàm xử lý chung cho cả 4 loại action (lock/unlock/role/delete) — action nào đang chờ xác nhận
-  // được lưu trong state "confirm", ConfirmModal gọi hàm này khi người dùng bấm "Xác nhận"
   async function doAction() {
+    if (!confirm) {
+      return;
+    }
+
     const { action, user, newRole } = confirm;
+
     try {
       if (action === "lock") {
         await updateUserStatus(user.id, "BANNED");
-        setUsers((us) =>
-          us.map((u) => (u.id === user.id ? { ...u, status: "locked" } : u)),
+
+        setUsers((currentUsers) =>
+          currentUsers.map((item) =>
+            item.id === user.id ? { ...item, status: "locked" } : item,
+          ),
         );
+
+        onToastRef.current?.(`Đã khóa tài khoản ${user.name}`);
       }
+
       if (action === "unlock") {
         await updateUserStatus(user.id, "ACTIVE");
-        setUsers((us) =>
-          us.map((u) => (u.id === user.id ? { ...u, status: "active" } : u)),
+
+        setUsers((currentUsers) =>
+          currentUsers.map((item) =>
+            item.id === user.id ? { ...item, status: "active" } : item,
+          ),
         );
+
+        onToastRef.current?.(`Đã mở khóa tài khoản ${user.name}`);
       }
+
       if (action === "role") {
         await updateUserRole(user.id, newRole);
-        setUsers((us) =>
-          us.map((u) => (u.id === user.id ? { ...u, role: newRole } : u)),
+
+        setUsers((currentUsers) =>
+          currentUsers.map((item) =>
+            item.id === user.id ? { ...item, role: newRole } : item,
+          ),
         );
+
+        onToastRef.current?.(getRoleToastMessage(newRole, user.name));
       }
-      // Lưu ý: action "delete" chỉ xoá khỏi state ở client, KHÔNG gọi API xoá tài khoản nào ở backend
-      if (action === "delete")
-        setUsers((us) => us.filter((u) => u.id !== user.id));
-      onToast(
-        action === "lock"
-          ? `Đã khóa tài khoản ${user.name}`
-          : action === "unlock"
-            ? `Đã mở khóa ${user.name}`
-            : action === "role"
-              ? `Đã đổi vai trò của ${user.name} thành ${newRole === "ADMIN" ? "Admin" : newRole === "MODERATOR" ? "Moderator" : "User"}`
-              : `Đã xóa ${user.name}`,
-      );
+
+      if (action === "delete") {
+        setUsers((currentUsers) =>
+          currentUsers.filter((item) => item.id !== user.id),
+        );
+
+        onToastRef.current?.(`Đã xóa ${user.name} khỏi danh sách hiển thị`);
+      }
     } catch (err) {
-      onToast(`Lỗi: ${err?.message || "Không thể thực hiện thao tác"}`);
+      console.error("User action error:", err);
+
+      onToastRef.current?.(
+        `Lỗi: ${err?.message || "Không thể thực hiện thao tác"}`,
+      );
+    } finally {
+      setConfirm(null);
     }
-    setConfirm(null);
+  }
+
+  function getConfirmTitle() {
+    if (!confirm) {
+      return "";
+    }
+
+    if (confirm.action === "lock") {
+      return "Khóa tài khoản";
+    }
+
+    if (confirm.action === "unlock") {
+      return "Mở khóa tài khoản";
+    }
+
+    if (confirm.action === "role") {
+      return "Đổi quyền người dùng";
+    }
+
+    return "Xóa tài khoản";
+  }
+
+  function getConfirmDescription() {
+    if (!confirm) {
+      return "";
+    }
+
+    if (confirm.action === "role") {
+      return `Đổi quyền của "${confirm.user.name}" thành ${getRoleLabel(
+        confirm.newRole,
+      )}? Hệ thống sẽ gửi email thông báo cho người dùng.`;
+    }
+
+    if (confirm.action === "lock") {
+      return `Bạn có chắc muốn khóa tài khoản "${confirm.user.name}"?`;
+    }
+
+    if (confirm.action === "unlock") {
+      return `Bạn có chắc muốn mở khóa tài khoản "${confirm.user.name}"?`;
+    }
+
+    return `Bạn có chắc muốn xóa "${confirm.user.name}" khỏi danh sách hiển thị?`;
   }
 
   return (
     <div className="admin-section">
       <div className="admin-section-head">
         <h2>Quản lý người dùng</h2>
+
         <p>
           {users.length} tài khoản ·{" "}
-          {users.filter((u) => u.status === "locked").length} bị khóa
+          {users.filter((user) => user.status === "locked").length} bị khóa
         </p>
       </div>
 
       <div className="admin-toolbar">
         <div className="admin-search-wrap">
           <span className="admin-search-icon">🔍</span>
+
           <input
             className="admin-search"
             placeholder="Tìm tên, email..."
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
           />
+
           {search && (
             <button
               className="admin-search-clear"
@@ -132,18 +246,21 @@ export default function UsersSection({ onToast }) {
             </button>
           )}
         </div>
+
         <div className="filter-tabs">
           {[
             ["all", "Tất cả"],
             ["active", "Đang hoạt động"],
             ["locked", "Đã khóa"],
-          ].map(([v, l]) => (
+          ].map(([value, label]) => (
             <button
-              key={v}
-              className={`filter-tab${filter === v ? " filter-tab--active" : ""}`}
-              onClick={() => handleFilterChange(v)}
+              key={value}
+              className={`filter-tab${
+                filter === value ? " filter-tab--active" : ""
+              }`}
+              onClick={() => handleFilterChange(value)}
             >
-              {l}
+              {label}
             </button>
           ))}
         </div>
@@ -161,64 +278,73 @@ export default function UsersSection({ onToast }) {
               <th>Thao tác</th>
             </tr>
           </thead>
+
           <tbody>
-            {paginated.map((u, idx) => (
-              <tr key={u.id ?? idx}>
+            {paginated.map((user, index) => (
+              <tr key={user.id ?? index}>
                 <td>
                   <div className="td-user">
                     <div className="td-avatar">
-                      {u.name
+                      {user.name
                         .split(" ")
-                        .map((w) => w[0])
+                        .filter(Boolean)
+                        .map((word) => word[0])
                         .slice(-2)
-                        .join("")}
+                        .join("")
+                        .toUpperCase() || "U"}
                     </div>
+
                     <div>
-                      <p className="td-name">{u.name}</p>
-                      <p className="td-email">{u.email}</p>
+                      <p className="td-name">{user.name}</p>
+                      <p className="td-email">{user.email}</p>
                     </div>
                   </div>
                 </td>
+
                 <td className="td-secondary">
-                  {u.joined
-                    ? new Date(u.joined).toLocaleDateString("vi-VN")
+                  {user.joined
+                    ? new Date(user.joined).toLocaleDateString("vi-VN")
                     : "—"}
                 </td>
+
                 <td>
                   <select
                     className={`admin-select role-select ${
-                      u.role === "ADMIN"
-                        ? "role-admin"
-                        : u.role === "MODERATOR"
-                          ? "role-mod"
-                          : "role-user"
+                      user.role === "MODERATOR" ? "role-mod" : "role-user"
                     }`}
-                    value={u.role}
+                    value={user.role}
                     onChange={(e) =>
                       setConfirm({
                         action: "role",
-                        user: u,
+                        user,
                         newRole: e.target.value,
                       })
                     }
                   >
                     <option value="CUSTOMER">👤 User</option>
                     <option value="MODERATOR">🛡️ Moderator</option>
-                    <option value="ADMIN">👑 Admin</option>
                   </select>
                 </td>
+
                 <td className="td-secondary">Miễn phí</td>
+
                 <td>
-                  <span className={`status-badge status-${u.status}`}>
-                    {u.status === "active" ? "● Hoạt động" : "● Đã khóa"}
+                  <span className={`status-badge status-${user.status}`}>
+                    {user.status === "active" ? "● Hoạt động" : "● Đã khóa"}
                   </span>
                 </td>
+
                 <td>
                   <div className="td-actions">
-                    {u.status === "active" ? (
+                    {user.status === "active" ? (
                       <button
                         className="ta-btn ta-lock"
-                        onClick={() => setConfirm({ action: "lock", user: u })}
+                        onClick={() =>
+                          setConfirm({
+                            action: "lock",
+                            user,
+                          })
+                        }
                       >
                         🔒 Khóa
                       </button>
@@ -226,15 +352,24 @@ export default function UsersSection({ onToast }) {
                       <button
                         className="ta-btn ta-unlock"
                         onClick={() =>
-                          setConfirm({ action: "unlock", user: u })
+                          setConfirm({
+                            action: "unlock",
+                            user,
+                          })
                         }
                       >
                         🔓 Mở
                       </button>
                     )}
+
                     <button
                       className="ta-btn ta-delete"
-                      onClick={() => setConfirm({ action: "delete", user: u })}
+                      onClick={() =>
+                        setConfirm({
+                          action: "delete",
+                          user,
+                        })
+                      }
                     >
                       🗑️
                     </button>
@@ -244,7 +379,9 @@ export default function UsersSection({ onToast }) {
             ))}
           </tbody>
         </table>
+
         {loading && <div className="table-empty">Đang tải...</div>}
+
         {!loading && filtered.length === 0 && (
           <div className="table-empty">Không tìm thấy người dùng</div>
         )}
@@ -260,21 +397,9 @@ export default function UsersSection({ onToast }) {
 
       {confirm && (
         <ConfirmModal
-          title={
-            confirm.action === "lock"
-              ? "Khóa tài khoản"
-              : confirm.action === "unlock"
-                ? "Mở khóa tài khoản"
-                : confirm.action === "role"
-                  ? "Đổi vai trò"
-                  : "Xóa tài khoản"
-          }
-          desc={
-            confirm.action === "role"
-              ? `Đổi vai trò của "${confirm.user.name}" thành ${confirm.newRole === "ADMIN" ? "Admin" : confirm.newRole === "MODERATOR" ? "Moderator" : "User"}?`
-              : `Bạn có chắc muốn ${confirm.action === "lock" ? "khóa" : confirm.action === "unlock" ? "mở khóa" : "xóa vĩnh viễn"} tài khoản "${confirm.user.name}"?`
-          }
-          danger={confirm.action === "delete"}
+          title={getConfirmTitle()}
+          desc={getConfirmDescription()}
+          danger={confirm.action === "delete" || confirm.action === "lock"}
           onConfirm={doAction}
           onClose={() => setConfirm(null)}
         />
