@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { clearAuthStorage } from "../../apis/api";
+import { clearAuthTokens } from "../../apis/api";
 import { getDocuments } from "../../apis/documentApi";
 import "./AppLayout.css";
 
@@ -71,7 +71,7 @@ export default function AppLayout({ children }) {
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
-      clearAuthStorage();
+      clearAuthTokens();
       navigate("/login", { replace: true });
     }
   };
