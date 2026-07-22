@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { forgotPassword, resetPassword } from "../../apis/authApi";
@@ -8,13 +8,11 @@ const OTP_LENGTH = 6;
 
 export default function ForgotPasswordOtpPage() {
   const navigate = useNavigate();
+  const otpInputRef = useRef(null);
 
   const [step, setStep] = useState(1);
   const [email, setEmail] = useState("");
-
-  const [otpValues, setOtpValues] = useState(
-    Array.from({ length: OTP_LENGTH }, () => ""),
-  );
+  const [otp, setOtp] = useState("");
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -23,47 +21,60 @@ export default function ForgotPasswordOtpPage() {
   const [resetting, setResetting] = useState(false);
   const [error, setError] = useState("");
 
-  const otp = useMemo(() => otpValues.join(""), [otpValues]);
-
-  const handleOtpChange = (index, value) => {
-    const digit = value.replace(/\D/g, "").slice(-1);
-
-    setOtpValues((prev) => {
-      const next = [...prev];
-      next[index] = digit;
-      return next;
+  const showToast = ({ icon = "success", title, text }) => {
+    Swal.fire({
+      toast: true,
+      position: "top-end",
+      icon,
+      title,
+      text,
+      showConfirmButton: false,
+      timer: 2200,
+      timerProgressBar: true,
     });
-
-    if (digit && index < OTP_LENGTH - 1) {
-      const nextInput = document.getElementById(`reset-otp-${index + 1}`);
-      nextInput?.focus();
-    }
   };
 
-  const handleOtpKeyDown = (index, e) => {
-    if (e.key === "Backspace" && !otpValues[index] && index > 0) {
-      const prevInput = document.getElementById(`reset-otp-${index - 1}`);
-      prevInput?.focus();
-    }
+  const focusOtpInput = () => {
+    window.setTimeout(() => {
+      const input = otpInputRef.current;
+
+      if (!input) {
+        return;
+      }
+
+      input.focus();
+
+      const length = input.value.length;
+      input.setSelectionRange(length, length);
+    }, 0);
+  };
+
+  const handleOtpInputChange = (e) => {
+    const value = e.target.value.replace(/\D/g, "").slice(0, OTP_LENGTH);
+    setOtp(value);
+    setError("");
   };
 
   const handleOtpPaste = (e) => {
     e.preventDefault();
 
-    const pasted = e.clipboardData
+    const pastedOtp = e.clipboardData
       .getData("text")
       .replace(/\D/g, "")
       .slice(0, OTP_LENGTH);
 
-    if (!pasted) return;
+    if (!pastedOtp) {
+      return;
+    }
 
-    setOtpValues(
-      Array.from({ length: OTP_LENGTH }, (_, index) => pasted[index] || ""),
-    );
+    setOtp(pastedOtp);
+    setError("");
+    focusOtpInput();
+  };
 
-    const lastIndex = Math.min(pasted.length, OTP_LENGTH) - 1;
-    const targetInput = document.getElementById(`reset-otp-${lastIndex}`);
-    targetInput?.focus();
+  const clearOtp = () => {
+    setOtp("");
+    focusOtpInput();
   };
 
   const handleSendOtp = async (e) => {
@@ -82,20 +93,18 @@ export default function ForgotPasswordOtpPage() {
     try {
       await forgotPassword(cleanEmail);
 
-      await Swal.fire({
+      showToast({
+        icon: "success",
         title: "Đã gửi OTP",
         text: "Vui lòng kiểm tra email để lấy mã đặt lại mật khẩu.",
-        icon: "success",
-        confirmButtonText: "Tiếp tục",
-        confirmButtonColor: "#2563eb",
       });
 
       setStep(2);
-      setOtpValues(Array.from({ length: OTP_LENGTH }, () => ""));
+      setOtp("");
 
-      setTimeout(() => {
-        document.getElementById("reset-otp-0")?.focus();
-      }, 100);
+      window.setTimeout(() => {
+        focusOtpInput();
+      }, 150);
     } catch (err) {
       setError(
         err?.message ||
@@ -112,8 +121,16 @@ export default function ForgotPasswordOtpPage() {
     e.preventDefault();
     setError("");
 
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!cleanEmail) {
+      setError("Vui lòng nhập email.");
+      return;
+    }
+
     if (otp.length !== OTP_LENGTH) {
       setError("Vui lòng nhập đủ 6 số OTP.");
+      focusOtpInput();
       return;
     }
 
@@ -131,19 +148,20 @@ export default function ForgotPasswordOtpPage() {
 
     try {
       await resetPassword({
+        email: cleanEmail,
         token: otp,
         newPassword,
       });
 
-      await Swal.fire({
+      showToast({
+        icon: "success",
         title: "Đổi mật khẩu thành công",
         text: "Bạn có thể đăng nhập bằng mật khẩu mới.",
-        icon: "success",
-        confirmButtonText: "Đăng nhập",
-        confirmButtonColor: "#2563eb",
       });
 
-      navigate("/login");
+      setTimeout(() => {
+        navigate("/login");
+      }, 900);
     } catch (err) {
       setError(
         err?.message ||
@@ -151,6 +169,8 @@ export default function ForgotPasswordOtpPage() {
           err?.data?.message ||
           "OTP không hợp lệ hoặc đã hết hạn.",
       );
+
+      clearOtp();
     } finally {
       setResetting(false);
     }
@@ -190,11 +210,14 @@ export default function ForgotPasswordOtpPage() {
                     fill="none"
                     stroke="currentColor"
                     strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                   >
                     <rect width="18" height="11" x="3" y="11" rx="2" />
                     <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                   </svg>
                 </div>
+
                 <div className="feature-text">
                   <h4>Bảo mật tài khoản</h4>
                   <p>Mã OTP giúp xác nhận đúng chủ sở hữu email</p>
@@ -208,6 +231,8 @@ export default function ForgotPasswordOtpPage() {
                     fill="none"
                     stroke="currentColor"
                     strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                   >
                     <path d="M21 2v6h-6" />
                     <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
@@ -215,9 +240,31 @@ export default function ForgotPasswordOtpPage() {
                     <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
                   </svg>
                 </div>
+
                 <div className="feature-text">
                   <h4>Khôi phục nhanh</h4>
                   <p>Đổi mật khẩu mới sau khi xác nhận OTP thành công</p>
+                </div>
+              </div>
+
+              <div className="feature-item">
+                <div className="feature-icon">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    <path d="m9 12 2 2 4-4" />
+                  </svg>
+                </div>
+
+                <div className="feature-text">
+                  <h4>Xác thực OTP</h4>
+                  <p>Mã đặt lại mật khẩu có hiệu lực trong thời gian ngắn</p>
                 </div>
               </div>
             </div>
@@ -233,6 +280,8 @@ export default function ForgotPasswordOtpPage() {
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                 >
                   <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
                   <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
@@ -249,8 +298,8 @@ export default function ForgotPasswordOtpPage() {
               <h2>{step === 1 ? "Quên mật khẩu" : "Nhập mã OTP"}</h2>
               <p>
                 {step === 1
-                  ? "Nhập email tài khoản để nhận mã OTP."
-                  : "Nhập OTP và tạo mật khẩu mới cho tài khoản."}
+                  ? "Nhập email tài khoản để nhận mã OTP đặt lại mật khẩu."
+                  : "Nhập OTP trong email và tạo mật khẩu mới."}
               </p>
             </div>
 
@@ -258,6 +307,7 @@ export default function ForgotPasswordOtpPage() {
               <form onSubmit={handleSendOtp} className="auth-form">
                 <div className="form-group">
                   <label>Email</label>
+
                   <div className="input-with-icon">
                     <span className="input-icon">
                       <svg
@@ -265,11 +315,14 @@ export default function ForgotPasswordOtpPage() {
                         fill="none"
                         stroke="currentColor"
                         strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
                       >
                         <rect width="20" height="16" x="2" y="4" rx="2" />
                         <path d="m22 7-10 6L2 7" />
                       </svg>
                     </span>
+
                     <input
                       type="email"
                       value={email}
@@ -282,6 +335,19 @@ export default function ForgotPasswordOtpPage() {
 
                 {error && (
                   <div className="error-message">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="15" y1="9" x2="9" y2="15" />
+                      <line x1="9" y1="9" x2="15" y2="15" />
+                    </svg>
+
                     <span>{error}</span>
                   </div>
                 )}
@@ -306,6 +372,8 @@ export default function ForgotPasswordOtpPage() {
                           fill="none"
                           stroke="currentColor"
                           strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
                         >
                           <path d="M22 2 11 13" />
                           <path d="m22 2-7 20-4-9-9-4Z" />
@@ -337,25 +405,43 @@ export default function ForgotPasswordOtpPage() {
 
                 <div className="form-group">
                   <label>Mã OTP</label>
-                  <div className="otp-box-group" onPaste={handleOtpPaste}>
-                    {otpValues.map((value, index) => (
-                      <input
-                        key={index}
-                        id={`reset-otp-${index}`}
-                        className="otp-box"
-                        type="text"
-                        inputMode="numeric"
-                        maxLength={1}
-                        value={value}
-                        onChange={(e) => handleOtpChange(index, e.target.value)}
-                        onKeyDown={(e) => handleOtpKeyDown(index, e)}
-                      />
-                    ))}
+
+                  <div className="otp-visual-wrapper" onClick={focusOtpInput}>
+                    <input
+                      ref={otpInputRef}
+                      className="otp-hidden-input"
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      maxLength={OTP_LENGTH}
+                      value={otp}
+                      onChange={handleOtpInputChange}
+                      onPaste={handleOtpPaste}
+                      onFocus={focusOtpInput}
+                    />
+
+                    <div className="otp-box-group">
+                      {Array.from({ length: OTP_LENGTH }, (_, index) => (
+                        <div
+                          key={index}
+                          className={`otp-box ${
+                            otp.length === index ||
+                            (otp.length === OTP_LENGTH &&
+                              index === OTP_LENGTH - 1)
+                              ? "otp-box-active"
+                              : ""
+                          }`}
+                        >
+                          {otp[index] || ""}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
                 <div className="form-group">
                   <label>Mật khẩu mới</label>
+
                   <div className="password-input-wrapper has-icon">
                     <span className="input-icon">
                       <svg
@@ -363,11 +449,14 @@ export default function ForgotPasswordOtpPage() {
                         fill="none"
                         stroke="currentColor"
                         strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
                       >
                         <rect width="18" height="11" x="3" y="11" rx="2" />
                         <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                       </svg>
                     </span>
+
                     <input
                       type="password"
                       value={newPassword}
@@ -380,6 +469,7 @@ export default function ForgotPasswordOtpPage() {
 
                 <div className="form-group">
                   <label>Xác nhận mật khẩu</label>
+
                   <div className="password-input-wrapper has-icon">
                     <span className="input-icon">
                       <svg
@@ -387,10 +477,13 @@ export default function ForgotPasswordOtpPage() {
                         fill="none"
                         stroke="currentColor"
                         strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
                       >
                         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                       </svg>
                     </span>
+
                     <input
                       type="password"
                       value={confirmPassword}
@@ -403,6 +496,19 @@ export default function ForgotPasswordOtpPage() {
 
                 {error && (
                   <div className="error-message">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="15" y1="9" x2="9" y2="15" />
+                      <line x1="9" y1="9" x2="15" y2="15" />
+                    </svg>
+
                     <span>{error}</span>
                   </div>
                 )}
@@ -427,6 +533,8 @@ export default function ForgotPasswordOtpPage() {
                           fill="none"
                           stroke="currentColor"
                           strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
                         >
                           <path d="M20 6 9 17l-5-5" />
                         </svg>

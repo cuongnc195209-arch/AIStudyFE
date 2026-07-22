@@ -206,9 +206,13 @@ export async function forgotPassword(input) {
 }
 
 // POST /auth/reset-password
-export async function resetPassword({ token, newPassword }) {
+export async function resetPassword({ email, token, newPassword }) {
+  if (!email) {
+    throw new Error("Thiếu email để đặt lại mật khẩu");
+  }
+
   if (!token) {
-    throw new Error("Thiếu token đặt lại mật khẩu");
+    throw new Error("Thiếu OTP đặt lại mật khẩu");
   }
 
   if (!newPassword) {
@@ -216,6 +220,7 @@ export async function resetPassword({ token, newPassword }) {
   }
 
   return api.post("/auth/reset-password", {
+    email,
     token,
     newPassword,
   });

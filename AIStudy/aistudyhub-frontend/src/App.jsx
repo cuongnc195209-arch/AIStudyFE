@@ -2,7 +2,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import HomePage from "./pages/Home/HomePage";
 import LoginPage from "./pages/Auth/LoginPage";
 import RegisterPage from "./pages/Auth/RegisterPage";
-import ForgotPasswordPage from "./pages/Auth/ForgotPasswordPage";
 import DashboardPage from "./pages/Dashboard/DashboardPage";
 import ChatbotPage from "./pages/Chatbot/ChatbotPage";
 import ForumPage from "./pages/Forum/ForumPage";
@@ -23,7 +22,7 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordOtpPage />} />
 
         {/* ── Route riêng tư — bọc PrivateRoute để bắt buộc đăng nhập (và đúng role nếu có truyền allowedRoles) ── */}
         <Route
