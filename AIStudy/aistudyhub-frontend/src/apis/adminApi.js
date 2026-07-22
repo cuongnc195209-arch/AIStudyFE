@@ -89,10 +89,9 @@ export async function reviewDocument(documentId, decision) {
     throw new Error("Decision không hợp lệ. Chỉ dùng ACCEPT hoặc DENY.");
   }
 
-  return api.put(`/v1/documents/${documentId}/review`, null, {
-    queryParams: {
-      decision: cleanDecision,
-    },
+  return api.put("/admin/approve/documents/check", {
+    documentId,
+    rqd: cleanDecision,
   });
 }
 
