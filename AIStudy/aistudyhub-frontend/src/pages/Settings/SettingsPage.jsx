@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import AppLayout from '../../components/layout/AppLayout'
 import { updateProfile, changePassword } from '../../apis/authApi'
 import './SettingsPage.css'
@@ -18,9 +18,8 @@ function Toast({ message, onDone }) {
   )
 }
 
-/* ── Section: Profile ── Sửa thông tin cá nhân, đổi avatar (chỉ preview local, chưa upload lên server) */
+/* ── Section: Profile ── Sửa thông tin cá nhân */
 function ProfileSection({ onSave }) {
-  const fileRef = useRef()
   const storedUser = JSON.parse(localStorage.getItem('user') || '{}')
   const [form, setForm] = useState({
     name: storedUser.fullName || '',
@@ -29,9 +28,7 @@ function ProfileSection({ onSave }) {
     schoolName: storedUser.schoolName || '',
     department: storedUser.department || '',
     assignedSubject: storedUser.assignedSubject || '',
-    avatar: null,
   })
-  const [preview, setPreview] = useState(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [copied, setCopied] = useState(false)
@@ -43,15 +40,6 @@ function ProfileSection({ onSave }) {
     navigator.clipboard.writeText(userId)
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
-  }
-
-  // Chỉ tạo Object URL để xem trước ảnh — chưa có bước upload file avatar lên backend
-  function handleAvatarChange(e) {
-    const file = e.target.files[0]
-    if (!file) return
-    const url = URL.createObjectURL(file)
-    setPreview(url)
-    set('avatar', file)
   }
 
   async function handleSave() {
@@ -90,17 +78,11 @@ function ProfileSection({ onSave }) {
       {/* Avatar */}
       <div className="avatar-row">
         <div className="avatar-preview">
-          {preview
-            ? <img src={preview} alt="avatar" className="avatar-img" />
-            : <div className="avatar-initials">{initials}</div>
-          }
-          <button className="avatar-edit-btn" onClick={() => fileRef.current.click()} title="Đổi ảnh">📷</button>
+          <div className="avatar-initials">{initials}</div>
         </div>
         <div className="avatar-info">
           <p className="avatar-name">{form.name || form.email}</p>
           <p className="avatar-email">{form.email}</p>
-          <button className="btn-outline" onClick={() => fileRef.current.click()}>Đổi ảnh đại diện</button>
-          <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarChange} />
         </div>
       </div>
 
