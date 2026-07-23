@@ -95,12 +95,6 @@ export default function OverviewSection() {
       color: "orange",
     },
     {
-      icon: "💰",
-      label: "Doanh thu tháng",
-      value: "—",
-      color: "green",
-    },
-    {
       icon: "💬",
       label: "Câu hỏi AI",
       value: loading ? "..." : totalAiMessages.toLocaleString(),
