@@ -59,6 +59,49 @@ function deduplicateUsers(list) {
   return Array.from(map.values());
 }
 
+function normalizeRole(user) {
+  const rawRole =
+    user?.role ||
+    user?.userRole ||
+    user?.accountRole ||
+    user?.roleName ||
+    user?.authority ||
+    user?.authorities?.[0]?.authority ||
+    "";
+
+  return String(rawRole)
+    .trim()
+    .toUpperCase()
+    .replace(/^ROLE_/, "");
+}
+
+function isAdminUser(user) {
+  const role = normalizeRole(user);
+
+  if (role === "ADMIN") {
+    return true;
+  }
+
+  /*
+   * Fallback nếu BE không trả role nhưng trả field riêng của admin profile.
+   */
+  if (
+    user?.adminId ||
+    user?.admin_id ||
+    user?.adminName ||
+    user?.adminFullName ||
+    (user?.accessLevel !== null && user?.accessLevel !== undefined)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+function filterNonAdminUsers(list) {
+  return list.filter((user) => !isAdminUser(user));
+}
+
 function getCreatedAt(item) {
   return item.createdAt || item.created_at || item.date || item.joinedAt || "";
 }
@@ -391,43 +434,42 @@ export default function StatsSection() {
     async function loadStatsData() {
       setLoading(true);
 
-      try {
-        const [userRes, docRes] = await Promise.all([
-          getAdminUsers({
-            page: 0,
-            size: 9999,
-          }),
-          getAdminDocuments({
-            page: 0,
-            size: 9999,
-          }),
-        ]);
+      const [userRes, docRes] = await Promise.all([
+        getAdminUsers({
+          page: 0,
+          size: 9999,
+        }),
+        getAdminDocuments({
+          page: 0,
+          size: 9999,
+        }),
+      ]);
 
-        if (cancelled) {
-          return;
-        }
-
-        const rawUsers = getListFromResponse(userRes);
-        const uniqueUsers = deduplicateUsers(rawUsers);
-
-        const rawDocuments = getListFromResponse(docRes);
-
-        console.log("Raw admin users:", rawUsers.length, rawUsers);
-        console.log("Unique admin users:", uniqueUsers.length, uniqueUsers);
-
-        setUsers(uniqueUsers);
-        setDocuments(rawDocuments);
-      } catch (error) {
-        if (!cancelled) {
-          console.error("Load admin stats error:", error);
-          setUsers([]);
-          setDocuments([]);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+      if (cancelled) {
+        return;
       }
+
+      const rawUsers = getListFromResponse(userRes);
+      const uniqueUsers = deduplicateUsers(rawUsers);
+      const nonAdminUsers = filterNonAdminUsers(uniqueUsers);
+
+      const rawDocuments = getListFromResponse(docRes);
+
+      console.log("Raw admin users:", rawUsers.length, rawUsers);
+      console.log(
+        "Unique users:",
+        uniqueUsers.length,
+        uniqueUsers.map((user) => ({
+          email: user.email,
+          role: normalizeRole(user),
+          accessLevel: user.accessLevel,
+          isAdmin: isAdminUser(user),
+        })),
+      );
+      console.log("Users without admin:", nonAdminUsers.length, nonAdminUsers);
+
+      setUsers(nonAdminUsers);
+      setDocuments(rawDocuments);
     }
 
     loadStatsData();
