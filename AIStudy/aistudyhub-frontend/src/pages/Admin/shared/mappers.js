@@ -28,6 +28,14 @@ export function mapUser(u, index = 0) {
       : null) ||
     "CUSTOMER";
   const role = rawRole.replace(/^ROLE_/, "").toUpperCase();
+
+  const rawPlan = String(
+    u.membership || u.plan || u.subscriptionPlan || u.memberType || "",
+  ).toUpperCase();
+  const isPremium = Boolean(
+    u.isPremium || u.memberId || rawPlan === "PREMIUM" || rawPlan.includes("PREMIUM"),
+  );
+
   return {
     id,
     name: fullName,
@@ -35,5 +43,6 @@ export function mapUser(u, index = 0) {
     joined: u.createdAt ? u.createdAt.slice(0, 10) : "",
     role,
     status,
+    plan: isPremium ? "Premium" : "Miễn phí",
   };
 }

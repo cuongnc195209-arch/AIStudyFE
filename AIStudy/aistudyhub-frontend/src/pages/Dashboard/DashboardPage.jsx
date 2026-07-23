@@ -65,20 +65,23 @@ function getListFromResponse(result) {
   return [];
 }
 
-function getChatSessionCount() {
-  try {
-    const sessions = JSON.parse(localStorage.getItem("chatSessions")) || [];
-    return Array.isArray(sessions) ? sessions.length : 0;
-  } catch {
-    return 0;
-  }
-}
-
 function getStoredUser() {
   try {
     return JSON.parse(localStorage.getItem("user") || "{}");
   } catch {
     return {};
+  }
+}
+
+function getChatSessionCount() {
+  try {
+    const user = getStoredUser();
+    const userKey = user?.id || user?.userId || user?.email || "guest";
+    const sessions =
+      JSON.parse(localStorage.getItem(`chatSessions_${userKey}`)) || [];
+    return Array.isArray(sessions) ? sessions.length : 0;
+  } catch {
+    return 0;
   }
 }
 
