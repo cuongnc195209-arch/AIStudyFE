@@ -133,7 +133,7 @@ function ProfileSection({ onSave }) {
   )
 }
 
-/* ── Section: Security ── Đổi mật khẩu (gọi API thật) + danh sách phiên đăng nhập (SESSIONS chỉ là dữ liệu giả, không có API) */
+/* ── Section: Security ── Đổi mật khẩu (gọi API thật) */
 function SecuritySection({ onSave }) {
   const [form, setForm] = useState({ current: '', newPw: '', confirm: '' })
   const [show, setShow] = useState({ current: false, newPw: false, confirm: false })
@@ -141,11 +141,6 @@ function SecuritySection({ onSave }) {
   const [saving, setSaving] = useState(false)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
   const toggleShow = (k) => setShow(s => ({ ...s, [k]: !s[k] }))
-
-  const SESSIONS = [
-    { id: 1, device: 'Chrome · Windows 11', location: 'Hà Nội, VN', time: 'Đang hoạt động', current: true },
-    { id: 2, device: 'Safari · iPhone', location: 'TP. HCM, VN', time: '2 giờ trước', current: false },
-  ]
 
   async function handleSubmit(e) {
     e.preventDefault()
