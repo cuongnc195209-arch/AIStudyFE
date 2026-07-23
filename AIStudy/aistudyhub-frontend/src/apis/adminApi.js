@@ -112,6 +112,14 @@ export async function updatePremiumConfig(payload) {
   return api.put("/admin/config-member", payload);
 }
 
+export async function getSystemConfig() {
+  return api.get("/admin/all/system-config");
+}
+
+export async function getSubscriptionConfig() {
+  return api.get("/admin/all/subscription-config");
+}
+
 export async function getAdminUsers({ page = 0, size = 9999, key = "" } = {}) {
   return api.get("/admin/account", {
     params: {
@@ -162,6 +170,8 @@ const adminApi = {
 
   updateAdminConfig,
   updatePremiumConfig,
+  getSystemConfig,
+  getSubscriptionConfig,
 };
 
 export default adminApi;

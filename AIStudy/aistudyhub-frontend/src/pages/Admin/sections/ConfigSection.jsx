@@ -1,13 +1,27 @@
 //cấu hình hệ thống
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   updateAdminConfig,
   updatePremiumConfig,
+  getSystemConfig,
+  getSubscriptionConfig,
 } from "../../../apis/adminApi";
 
-// Form cấu hình hệ thống. Lưu ý: state config luôn khởi tạo giá trị rỗng/0 — không có useEffect nào
-// gọi API để load cấu hình HIỆN TẠI từ backend, nên mỗi lần vào trang admin sẽ thấy form trống,
-// dù trước đó đã lưu cấu hình khác.
+function parseAllowedFileTypes(value) {
+  if (Array.isArray(value)) {
+    return value.map((v) => String(v).toUpperCase());
+  }
+
+  if (typeof value === "string") {
+    return value
+      .split(",")
+      .map((v) => v.trim().toUpperCase())
+      .filter(Boolean);
+  }
+
+  return [];
+}
+
 export default function ConfigSection({ onToast }) {
   const [config, setConfig] = useState({
     maxDailyChatTokens: 20000,
@@ -16,6 +30,7 @@ export default function ConfigSection({ onToast }) {
     allowedFileTypes: [],
   });
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const [premiumConfig, setPremiumConfig] = useState({
     storageQuotaGb: 10,
@@ -34,6 +49,64 @@ export default function ConfigSection({ onToast }) {
     "ZIP",
     "TXT",
   ];
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadConfigs() {
+      try {
+        const [systemRes, subscriptionRes] = await Promise.all([
+          getSystemConfig(),
+          getSubscriptionConfig(),
+        ]);
+
+        if (cancelled) return;
+
+        if (systemRes) {
+          setConfig((c) => ({
+            ...c,
+            maxDailyChatTokens:
+              systemRes.maxDailyChatTokens ?? c.maxDailyChatTokens,
+            totalStorageQuotaGb:
+              systemRes.totalStorageQuotaGb ?? c.totalStorageQuotaGb,
+            maxFileSizeMb: systemRes.maxFileSizeMb ?? c.maxFileSizeMb,
+            allowedFileTypes:
+              systemRes.allowedFileTypes !== undefined
+                ? parseAllowedFileTypes(systemRes.allowedFileTypes)
+                : c.allowedFileTypes,
+          }));
+        }
+
+        if (subscriptionRes) {
+          setPremiumConfig((c) => ({
+            ...c,
+            storageQuotaGb:
+              subscriptionRes.totalStorageQuotaGb ??
+              subscriptionRes.storageQuotaGb ??
+              c.storageQuotaGb,
+            maxFileSizeMb: subscriptionRes.maxFileSizeMb ?? c.maxFileSizeMb,
+            maxDailyChatTokens:
+              subscriptionRes.maxDailyChatTokens ?? c.maxDailyChatTokens,
+          }));
+        }
+      } catch (err) {
+        if (!cancelled) {
+          onToast(`Lỗi khi tải cấu hình: ${err?.message || err}`);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadConfigs();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function toggleFormat(fmt) {
     setConfig((c) => ({
@@ -222,7 +295,7 @@ export default function ConfigSection({ onToast }) {
       <div className="config-save-row">
         <button
           className="abtn-primary abtn-lg"
-          disabled={saving}
+          disabled={saving || loading}
           onClick={saveConfig}
         >
           {saving ? "Đang lưu..." : "💾 Lưu cấu hình"}
