@@ -40,6 +40,25 @@ function getListFromResponse(res) {
   return [];
 }
 
+function deduplicateUsers(list) {
+  const map = new Map();
+
+  list.forEach((user) => {
+    const key =
+      user.id ||
+      user.userId ||
+      user.user_id ||
+      user.email ||
+      JSON.stringify(user);
+
+    if (!map.has(key)) {
+      map.set(key, user);
+    }
+  });
+
+  return Array.from(map.values());
+}
+
 function getCreatedAt(item) {
   return item.createdAt || item.created_at || item.date || item.joinedAt || "";
 }
@@ -388,8 +407,16 @@ export default function StatsSection() {
           return;
         }
 
-        setUsers(getListFromResponse(userRes));
-        setDocuments(getListFromResponse(docRes));
+        const rawUsers = getListFromResponse(userRes);
+        const uniqueUsers = deduplicateUsers(rawUsers);
+
+        const rawDocuments = getListFromResponse(docRes);
+
+        console.log("Raw admin users:", rawUsers.length, rawUsers);
+        console.log("Unique admin users:", uniqueUsers.length, uniqueUsers);
+
+        setUsers(uniqueUsers);
+        setDocuments(rawDocuments);
       } catch (error) {
         if (!cancelled) {
           console.error("Load admin stats error:", error);
@@ -414,14 +441,28 @@ export default function StatsSection() {
     const monthly = Array(12).fill(0);
 
     users.forEach((user) => {
+      const monthIndex = getMonthIndex(getCreatedAt(user));
+
+      if (monthIndex !== null) {
+        monthly[monthIndex] += 1;
+      }
+    });
+
+    return MONTHS.map((month) => ({
+      label: month.label,
+      value: monthly[month.index],
+      shortLabel: monthly[month.index],
+    }));
+  }, [users]);
+
+  const revenueMonthlyData = useMemo(() => {
+    const monthly = Array(12).fill(0);
+
+    users.forEach((user) => {
       if (normalizePlan(user) !== "PREMIUM") {
         return;
       }
 
-      /*
-       * Ưu tiên ngày mua Premium nếu BE có trả.
-       * Nếu BE chưa trả memberStartDate thì tạm dùng createdAt của user.
-       */
       const paymentDate =
         user.memberStartDate ||
         user.subscriptionStartDate ||
@@ -438,28 +479,9 @@ export default function StatsSection() {
     return MONTHS.map((month) => ({
       label: month.label,
       value: monthly[month.index],
-      shortLabel: monthly[month.index],
-    }));
-  }, [users]);
-
-  const revenueMonthlyData = useMemo(() => {
-    const monthly = Array(12).fill(0);
-
-    users.forEach((user) => {
-      const monthIndex = getMonthIndex(getCreatedAt(user));
-
-      if (monthIndex !== null) {
-        monthly[monthIndex] += resolveRevenueAmount(user);
-      }
-    });
-
-    return MONTHS.map((month) => ({
-      label: month.label,
-      value: monthly[month.index],
       shortLabel: formatRevenue(monthly[month.index]),
     }));
   }, [users]);
-
   const totalUsersThisYear = userMonthlyData.reduce(
     (sum, item) => sum + item.value,
     0,
