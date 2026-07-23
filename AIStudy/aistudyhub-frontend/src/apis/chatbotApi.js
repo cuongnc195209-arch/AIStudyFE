@@ -34,15 +34,18 @@ function extractSessionId(response) {
  * BE:
  * POST /api/chat/start
  *
- * Body optional:
- * {
- *   sessionTitle,
- *   documentIds
- * }
+ * Body: raw UUID của tài liệu muốn ghim sẵn (có thể null nếu tạo session trống)
+ * — cùng kiểu @RequestBody UUID như /chat/session/{id}/documents, KHÔNG bọc
+ *   trong { documentIds: [...] }. Gửi object (kể cả mảng rỗng) sẽ bị lỗi
+ *   "Cannot deserialize value of type `java.util.UUID` from Object value".
  */
 // createChatSession/startChatSession bên dưới chỉ là alias gọi lại hàm này
 export async function startChat(payload = {}) {
-  const response = await api.post("/chat/start", payload || {});
+  const documentIds = payload?.documentIds;
+  const ids = Array.isArray(documentIds) ? documentIds : [documentIds].filter(Boolean);
+  const documentId = ids[0] || null;
+
+  const response = await api.post("/chat/start", documentId);
 
   return {
     raw: response,
@@ -59,20 +62,20 @@ export async function startChatSession(payload = {}) {
 }
 
 /**
- * Update document list cho session.
+ * Update document được ghim cho session (DocPicker hiện chỉ cho chọn 1 tài liệu).
  *
  * BE:
  * PUT /api/chat/session/{sessionId}/documents
  *
- * Body:
- * {
- *   documentIds: [...]
- * }
+ * Body: raw UUID của tài liệu (vd: "3fa85f64-...")
+ * — KHÔNG bọc trong { documentIds: [...] }, vì @RequestBody phía BE nhận thẳng
+ *   kiểu UUID. Gửi object sẽ bị lỗi "Cannot deserialize value of type
+ *   `java.util.UUID` from Object value".
  */
 export async function updateSessionDocuments(sessionId, documentIds = []) {
-  return api.put(`/chat/session/${sessionId}/documents`, {
-    documentIds,
-  });
+  const ids = Array.isArray(documentIds) ? documentIds : [documentIds];
+  const documentId = ids[0] || null;
+  return api.put(`/chat/session/${sessionId}/documents`, documentId);
 }
 
 export async function updateChatSessionDocuments(sessionId, documentIds = []) {
