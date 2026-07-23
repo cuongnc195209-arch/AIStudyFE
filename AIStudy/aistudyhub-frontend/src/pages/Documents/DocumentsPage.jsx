@@ -558,7 +558,6 @@ function EditModal({ doc, onClose, onSave }) {
 // Modal chia sẻ tài liệu cho user khác — người chia sẻ phải dán đúng User ID (không có tìm kiếm theo email/tên)
 function ShareModal({ doc, onClose, onSubmit }) {
   const [targetUserId, setTargetUserId] = useState("");
-  const [permissionType, setPermissionType] = useState("view");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -568,7 +567,7 @@ function ShareModal({ doc, onClose, onSubmit }) {
     setSubmitting(true);
 
     try {
-      await onSubmit(doc.id, targetUserId.trim(), permissionType);
+      await onSubmit(doc.id, targetUserId.trim(), "view");
     } catch (err) {
       setError(err?.message || "Chia sẻ thất bại. Vui lòng thử lại.");
     } finally {
@@ -605,17 +604,6 @@ function ShareModal({ doc, onClose, onSubmit }) {
                 placeholder="Dán User ID người nhận"
                 required
               />
-            </div>
-
-            <div className="fg-full">
-              <label>Quyền truy cập</label>
-              <select
-                value={permissionType}
-                onChange={(e) => setPermissionType(e.target.value)}
-              >
-                <option value="view">👁️ Chỉ xem</option>
-                <option value="edit">✏️ Chỉnh sửa</option>
-              </select>
             </div>
           </div>
 
