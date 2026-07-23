@@ -30,7 +30,7 @@ const PLAN_COLOR = {
  * Ví dụ giá Premium 49.000đ thì để 49.
  * Chưa có giá thì để 0.
  */
-const PREMIUM_PRICE_THOUSAND_VND = 0;
+const PREMIUM_PRICE_THOUSAND_VND = 99;
 
 function getListFromResponse(res) {
   if (Array.isArray(res)) return res;
@@ -108,6 +108,25 @@ function normalizeFileType(doc) {
 }
 
 function normalizePlan(user) {
+  if (!user) {
+    return "FREE";
+  }
+
+  /*
+   * BE đang trả memberId trong /api/admin/account.
+   * Có memberId nghĩa là user đã có gói thành viên/Premium.
+   */
+  if (
+    user.memberId ||
+    user.member_id ||
+    user.memId ||
+    user.subscriptionId ||
+    user.userMemberSubscriptionId ||
+    user.isPremium === true
+  ) {
+    return "PREMIUM";
+  }
+
   const raw = String(
     user.plan ||
       user.subscriptionPlan ||
@@ -116,14 +135,18 @@ function normalizePlan(user) {
       user.memberType ||
       user.packageName ||
       user.planName ||
+      user.memberStatus ||
       "",
-  ).toUpperCase();
+  )
+    .trim()
+    .toUpperCase();
 
   if (
     raw.includes("PREMIUM") ||
     raw.includes("PRO") ||
     raw.includes("PAID") ||
-    raw.includes("VIP")
+    raw.includes("VIP") ||
+    raw.includes("ACTIVE")
   ) {
     return "PREMIUM";
   }
@@ -137,6 +160,7 @@ function resolveRevenueAmount(user) {
     user.amountPaid ||
     user.revenue ||
     user.planPrice ||
+    user.memberPrice ||
     user.price ||
     user.subscriptionPrice ||
     null;
@@ -146,14 +170,13 @@ function resolveRevenueAmount(user) {
   if (Number.isFinite(amount) && amount > 0) {
     /*
      * Nếu BE trả VND, đổi sang nghìn đồng.
-     * Nếu BE đã trả nghìn đồng, số nhỏ vẫn giữ nguyên.
+     * Nếu BE trả 99000 => 99.
+     * Nếu BE trả 99 => giữ nguyên.
      */
     return amount > 1000 ? amount / 1000 : amount;
   }
 
-  const plan = normalizePlan(user);
-
-  if (plan === "PREMIUM") {
+  if (normalizePlan(user) === "PREMIUM") {
     return PREMIUM_PRICE_THOUSAND_VND;
   }
 
@@ -391,10 +414,24 @@ export default function StatsSection() {
     const monthly = Array(12).fill(0);
 
     users.forEach((user) => {
-      const monthIndex = getMonthIndex(getCreatedAt(user));
+      if (normalizePlan(user) !== "PREMIUM") {
+        return;
+      }
+
+      /*
+       * Ưu tiên ngày mua Premium nếu BE có trả.
+       * Nếu BE chưa trả memberStartDate thì tạm dùng createdAt của user.
+       */
+      const paymentDate =
+        user.memberStartDate ||
+        user.subscriptionStartDate ||
+        user.startDate ||
+        getCreatedAt(user);
+
+      const monthIndex = getMonthIndex(paymentDate);
 
       if (monthIndex !== null) {
-        monthly[monthIndex] += 1;
+        monthly[monthIndex] += resolveRevenueAmount(user);
       }
     });
 
