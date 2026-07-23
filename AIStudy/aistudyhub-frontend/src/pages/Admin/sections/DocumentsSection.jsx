@@ -88,27 +88,11 @@ function getStatusMeta(status) {
 }
 
 function getPrivacyMeta(doc) {
-  if (doc.status === "PENDING") {
-    return {
-      label: "Chờ duyệt",
-      icon: "⏳",
-      className: "admin-doc-privacy-pending",
-    };
-  }
-
-  if (doc.status === "SUCCESS" || doc.privacy === "public") {
+  if (doc.privacy === "public") {
     return {
       label: "Công khai",
       icon: "🌐",
       className: "admin-doc-privacy-public",
-    };
-  }
-
-  if (doc.status === "DENY") {
-    return {
-      label: "Từ chối",
-      icon: "❌",
-      className: "admin-doc-privacy-deny",
     };
   }
 
@@ -699,7 +683,7 @@ export default function DocumentsSection({ onToast }) {
       </div>
 
       <div className="admin-docs-stat-grid">
-        <div className="admin-doc-stat">
+        <div className="admin-doc-stat admin-doc-stat-total">
           <span>📚</span>
           <div>
             <strong>{docs.length}</strong>
@@ -707,7 +691,7 @@ export default function DocumentsSection({ onToast }) {
           </div>
         </div>
 
-        <div className="admin-doc-stat">
+        <div className="admin-doc-stat admin-doc-stat-pending">
           <span>⏳</span>
           <div>
             <strong>{pendingCount}</strong>
@@ -715,7 +699,7 @@ export default function DocumentsSection({ onToast }) {
           </div>
         </div>
 
-        <div className="admin-doc-stat">
+        <div className="admin-doc-stat admin-doc-stat-public">
           <span>🌐</span>
           <div>
             <strong>{publicCount}</strong>
@@ -723,7 +707,7 @@ export default function DocumentsSection({ onToast }) {
           </div>
         </div>
 
-        <div className="admin-doc-stat">
+        <div className="admin-doc-stat admin-doc-stat-deny">
           <span>❌</span>
           <div>
             <strong>{denyCount}</strong>
@@ -793,7 +777,10 @@ export default function DocumentsSection({ onToast }) {
             const privacyMeta = getPrivacyMeta(doc);
 
             return (
-              <article key={doc.id} className="admin-doc-card">
+              <article
+                key={doc.id}
+                className={`admin-doc-card admin-doc-card--${doc.status.toLowerCase()}`}
+              >
                 <div className="admin-doc-main">
                   <div
                     className="admin-doc-ext"

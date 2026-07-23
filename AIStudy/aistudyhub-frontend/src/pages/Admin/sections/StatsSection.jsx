@@ -186,8 +186,8 @@ function StatBarChart({ title, rightText, data, color }) {
   const maxValue = Math.max(...data.map((item) => item.value), 1);
 
   return (
-    <div className="admin-stat-card">
-      <div className="admin-stat-card-head">
+    <div className="stats-chart-card">
+      <div className="stats-chart-card-head">
         <h3>{title}</h3>
         <span>{rightText}</span>
       </div>
@@ -240,8 +240,8 @@ function PlanDistribution({ freeCount, premiumCount }) {
   ];
 
   return (
-    <div className="admin-stat-card">
-      <div className="admin-stat-card-head">
+    <div className="stats-chart-card">
+      <div className="stats-chart-card-head">
         <h3>Phân bổ gói thành viên</h3>
         <span>{formatNumber(total)} người dùng</span>
       </div>
@@ -296,8 +296,8 @@ function FileTypeDistribution({ docs }) {
   });
 
   return (
-    <div className="admin-stat-card">
-      <div className="admin-stat-card-head">
+    <div className="stats-chart-card">
+      <div className="stats-chart-card-head">
         <h3>Loại tài liệu phổ biến</h3>
         <span>{formatNumber(total)} tài liệu</span>
       </div>
@@ -454,7 +454,7 @@ export default function StatsSection() {
         </div>
       </div>
 
-      <div className="admin-stats-grid">
+      <div className="stats-charts-grid">
         <StatBarChart
           title="Người dùng mới theo tháng"
           rightText={`Tổng ${formatNumber(totalUsersThisYear)} người dùng`}

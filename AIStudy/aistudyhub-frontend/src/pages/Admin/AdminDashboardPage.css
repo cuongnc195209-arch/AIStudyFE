@@ -1252,6 +1252,22 @@
   font-size: 22px;
 }
 
+.admin-doc-stat-total > span {
+  background: #eff6ff;
+}
+
+.admin-doc-stat-pending > span {
+  background: #fff7ed;
+}
+
+.admin-doc-stat-public > span {
+  background: #ecfdf5;
+}
+
+.admin-doc-stat-deny > span {
+  background: #fff1f2;
+}
+
 .admin-doc-stat strong {
   display: block;
   font-size: 24px;
@@ -1286,6 +1302,7 @@
 .admin-doc-card {
   background: #ffffff;
   border: 1px solid #e5e7eb;
+  border-left: 4px solid #cbd5e1;
   border-radius: 18px;
   padding: 16px;
   display: grid;
@@ -1301,8 +1318,26 @@
 
 .admin-doc-card:hover {
   transform: translateY(-1px);
-  border-color: #bfdbfe;
+  border-top-color: #bfdbfe;
+  border-right-color: #bfdbfe;
+  border-bottom-color: #bfdbfe;
   box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+}
+
+.admin-doc-card--pending {
+  border-left-color: #f97316;
+}
+
+.admin-doc-card--success {
+  border-left-color: #059669;
+}
+
+.admin-doc-card--deny {
+  border-left-color: #e11d48;
+}
+
+.admin-doc-card--default {
+  border-left-color: #94a3b8;
 }
 
 .admin-doc-main {
@@ -1710,13 +1745,13 @@
   gap: 22px;
 }
 
-.admin-stats-grid {
+.stats-charts-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 22px;
 }
 
-.admin-stat-card {
+.stats-chart-card {
   background: #ffffff;
   border: 1px solid #dbe3ef;
   border-radius: 18px;
@@ -1725,7 +1760,7 @@
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
 }
 
-.admin-stat-card-head {
+.stats-chart-card-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1733,14 +1768,14 @@
   margin-bottom: 24px;
 }
 
-.admin-stat-card-head h3 {
+.stats-chart-card-head h3 {
   margin: 0;
   font-size: 18px;
   color: #0f172a;
   font-weight: 800;
 }
 
-.admin-stat-card-head span {
+.stats-chart-card-head span {
   color: #64748b;
   font-size: 14px;
   font-weight: 600;
@@ -1844,13 +1879,13 @@
 }
 
 @media (max-width: 1100px) {
-  .admin-stats-grid {
+  .stats-charts-grid {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 700px) {
-  .admin-stat-card {
+  .stats-chart-card {
     padding: 18px;
   }
 
