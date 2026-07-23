@@ -326,7 +326,7 @@ export default function UsersSection({ onToast }) {
                   </select>
                 </td>
 
-                <td className="td-secondary">Miễn phí</td>
+                <td className="td-secondary">{user.plan}</td>
 
                 <td>
                   <span className={`status-badge status-${user.status}`}>
