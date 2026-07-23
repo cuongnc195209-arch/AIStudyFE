@@ -7,10 +7,14 @@ import { getTotalQuota } from "../../apis/storageApi";
 import { DocumentsSection } from "../Documents/DocumentsPage";
 import "./DashboardPage.css";
 
+const GB = 1073741824;
+const DEFAULT_FREE_QUOTA = 5 * GB;
+const DEFAULT_PREMIUM_QUOTA = 10 * GB;
+
 function formatSize(bytes) {
   const size = Number(bytes || 0);
 
-  if (size >= 1073741824) return `${(size / 1073741824).toFixed(1)} GB`;
+  if (size >= GB) return `${(size / GB).toFixed(1)} GB`;
   if (size >= 1048576) return `${(size / 1048576).toFixed(1)} MB`;
   if (size >= 1024) return `${(size / 1024).toFixed(0)} KB`;
 
@@ -21,7 +25,7 @@ function normalizeQuotaToBytes(value) {
   const quota = Number(value || 0);
 
   if (!Number.isFinite(quota) || quota <= 0) {
-    return 5 * 1073741824;
+    return DEFAULT_FREE_QUOTA;
   }
 
   /*
@@ -29,7 +33,7 @@ function normalizeQuotaToBytes(value) {
    * Nếu BE trả số lớn như 5368709120 thì hiểu là bytes.
    */
   if (quota <= 1000) {
-    return quota * 1073741824;
+    return quota * GB;
   }
 
   return quota;
@@ -119,7 +123,9 @@ function checkPremium(user) {
       user?.subscriptionPlan ||
       user?.memberType ||
       "",
-  ).toUpperCase();
+  )
+    .trim()
+    .toUpperCase();
 
   return Boolean(
     user?.isPremium ||
@@ -135,18 +141,38 @@ export default function DashboardPage() {
 
   const [nowTime] = useState(() => Date.now());
   const [currentHour] = useState(() => new Date().getHours());
-  const [storedUser] = useState(() => getStoredUser());
+  const [storedUser, setStoredUser] = useState(() => getStoredUser());
   const [chatCount] = useState(() => getChatSessionCount());
 
   const [docCount, setDocCount] = useState(0);
   const [docsThisWeek, setDocsThisWeek] = useState(0);
   const [totalBytes, setTotalBytes] = useState(0);
-  const [quotaBytes, setQuotaBytes] = useState(5 * 1073741824);
+  const [quotaBytes, setQuotaBytes] = useState(DEFAULT_FREE_QUOTA);
+
+  useEffect(() => {
+    function refreshStoredUser() {
+      window.setTimeout(() => {
+        setStoredUser(getStoredUser());
+      }, 0);
+    }
+
+    window.addEventListener("storage", refreshStoredUser);
+    window.addEventListener("auth:user-updated", refreshStoredUser);
+
+    return () => {
+      window.removeEventListener("storage", refreshStoredUser);
+      window.removeEventListener("auth:user-updated", refreshStoredUser);
+    };
+  }, []);
 
   useEffect(() => {
     if (!location.state?.paymentSuccess) {
       return;
     }
+
+    window.setTimeout(() => {
+      setStoredUser(getStoredUser());
+    }, 0);
 
     Swal.fire({
       toast: true,
@@ -214,12 +240,36 @@ export default function DashboardPage() {
         const total = await getTotalQuota();
 
         if (!cancelled) {
-          setQuotaBytes(normalizeQuotaToBytes(total));
+          const normalizedQuota = normalizeQuotaToBytes(total);
+          setQuotaBytes(normalizedQuota);
+
+          /*
+           * Nếu BE đã trả quota 10GB thì cập nhật localStorage user thành Premium.
+           * Điều này giúp ô bên phải đổi từ Miễn phí sang Premium.
+           */
+          if (normalizedQuota >= DEFAULT_PREMIUM_QUOTA) {
+            const currentUser = getStoredUser();
+
+            const premiumUser = {
+              ...currentUser,
+              membership: "PREMIUM",
+              plan: "PREMIUM",
+              subscriptionPlan: "PREMIUM",
+              isPremium: true,
+            };
+
+            localStorage.setItem("user", JSON.stringify(premiumUser));
+            setStoredUser(premiumUser);
+          }
         }
       } catch (err) {
         if (!cancelled) {
           console.error("Dashboard load total quota error:", err);
-          setQuotaBytes(5 * 1073741824);
+          setQuotaBytes(
+            checkPremium(storedUser)
+              ? DEFAULT_PREMIUM_QUOTA
+              : DEFAULT_FREE_QUOTA,
+          );
         }
       }
     }
@@ -229,7 +279,10 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [storedUser]);
+
+  const isPremium =
+    checkPremium(storedUser) || quotaBytes >= DEFAULT_PREMIUM_QUOTA;
 
   const stats = useMemo(
     () => [
@@ -269,7 +322,6 @@ export default function DashboardPage() {
 
   const displayName = getDisplayName(storedUser);
   const initials = getInitials(displayName);
-  const isPremium = checkPremium(storedUser);
 
   return (
     <AppLayout>

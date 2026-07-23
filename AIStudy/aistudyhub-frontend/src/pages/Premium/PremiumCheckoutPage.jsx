@@ -81,6 +81,16 @@ export default function PremiumCheckoutPage() {
       };
 
       localStorage.setItem("user", JSON.stringify(newUser));
+      localStorage.setItem(
+        "role",
+        newUser.role || currentUser.role || "CUSTOMER",
+      );
+
+      /*
+       * Báo cho Dashboard/AppLayout biết user đã đổi gói.
+       * Nhờ dòng này, ô bên phải sẽ đổi từ Miễn phí sang Premium.
+       */
+      window.dispatchEvent(new Event("auth:user-updated"));
 
       await Swal.fire({
         icon: "success",
