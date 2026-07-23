@@ -30,7 +30,9 @@ function timeAgo(iso) {
 // Modal chọn tài liệu để "ghim" vào phiên chat — AI sẽ trả lời dựa trên nội dung các tài liệu này
 function DocPicker({ allDocs, selected, onClose, onConfirm }) {
   const [search, setSearch] = useState("");
-  const [picked, setPicked] = useState(selected.map((d) => d.id));
+  const [picked, setPicked] = useState(
+    selected.length > 0 ? [selected[0].id] : []
+  );
 
   const filtered = allDocs.filter(
     (d) =>
@@ -39,9 +41,7 @@ function DocPicker({ allDocs, selected, onClose, onConfirm }) {
   );
 
   function toggle(id) {
-    setPicked((p) =>
-      p.includes(id) ? p.filter((x) => x !== id) : [...p, id]
-    );
+    setPicked((p) => (p.includes(id) ? [] : [id]));
   }
 
   return (
@@ -76,7 +76,8 @@ function DocPicker({ allDocs, selected, onClose, onConfirm }) {
                 className={`picker-item${picked.includes(doc.id) ? " picked" : ""}`}
               >
                 <input
-                  type="checkbox"
+                  type="radio"
+                  name="doc-picker"
                   checked={picked.includes(doc.id)}
                   onChange={() => toggle(doc.id)}
                 />
@@ -99,9 +100,7 @@ function DocPicker({ allDocs, selected, onClose, onConfirm }) {
             ))}
           </div>
           {picked.length > 0 && (
-            <p className="picker-selected-count">
-              Đã chọn {picked.length} tài liệu
-            </p>
+            <p className="picker-selected-count">Đã chọn 1 tài liệu</p>
           )}
         </div>
         <div className="modal-footer">
