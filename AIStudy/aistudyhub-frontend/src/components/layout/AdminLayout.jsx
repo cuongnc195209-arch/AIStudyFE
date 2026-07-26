@@ -21,7 +21,7 @@ export default function AdminLayout({ activeSection, onNavigate, children }) {
   const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
 
-  // Giống hệt logic đăng xuất ở AppLayout — chỉ xoá localStorage, chưa gọi API logout thật
+  // Giống hệt logic đăng xuất ở AppLayout 
   const handleLogout = async () => {
     try {
       // Nếu có gọi API logout thì gọi ở đây
