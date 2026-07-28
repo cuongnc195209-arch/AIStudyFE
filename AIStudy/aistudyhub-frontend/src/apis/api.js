@@ -1,9 +1,10 @@
 import Swal from "sweetalert2";
 
-const API_BASE_URL =
+const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL ||
   import.meta.env.VITE_API_URL ||
-  "http://localhost:8080/api";
+  (import.meta.env.DEV ? "http://localhost:8080/api" : "/api")
+).replace(/\/+$/, "");
 
 const ACCESS_TOKEN_KEY = "accessToken";
 const REFRESH_TOKEN_KEY = "refreshToken";
@@ -14,10 +15,13 @@ const PUBLIC_PATHS = [
   "/auth/register",
   "/auth/forgot-password",
   "/auth/reset-password",
+  "/auth/refresh",
+  "/auth/logout",
   "/auth/verify-email",
   "/auth/resend-verification",
   "/v1/documents/public",
   "/email/test",
+  "/reports/reasons",
 ];
 
 let isRedirectingToLogin = false;
@@ -46,7 +50,6 @@ export function clearAuthTokens() {
   localStorage.removeItem(USER_KEY);
 }
 
-// Giữ lại tên cũ để các component như AppLayout.jsx không bị lỗi import
 export function clearAuthStorage() {
   clearAuthTokens();
 }
@@ -72,15 +75,19 @@ export function getCurrentUser() {
 }
 
 function isPublicPath(endpoint) {
-  return PUBLIC_PATHS.some((path) => endpoint.startsWith(path));
+  const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+  return PUBLIC_PATHS.some((path) => cleanEndpoint.startsWith(path));
+}
+
+function normalizeQueryParams(options = {}) {
+  return options.queryParams || options.params || undefined;
 }
 
 function buildUrl(endpoint, queryParams) {
-  const cleanBaseUrl = API_BASE_URL.replace(/\/$/, "");
   const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
 
   const url = new URL(
-    `${cleanBaseUrl}${cleanEndpoint}`,
+    `${API_BASE_URL}${cleanEndpoint}`,
     window.location.origin,
   );
 
@@ -162,7 +169,6 @@ async function parseResponse(response) {
     try {
       return JSON.parse(text);
     } catch {
-      // Backend đôi khi khai báo Content-Type: application/json nhưng trả về text thô
       return text;
     }
   }
@@ -192,11 +198,11 @@ export async function rawRequest(endpoint, options = {}) {
     method = "GET",
     body,
     headers = {},
-    queryParams,
     skipAuth = false,
     unwrap = false,
   } = options;
 
+  const queryParams = normalizeQueryParams(options);
   const url = buildUrl(endpoint, queryParams);
   const token = getAccessToken();
 
@@ -255,6 +261,7 @@ const api = {
   get(endpoint, queryParamsOrOptions = {}) {
     const hasOptions =
       queryParamsOrOptions.queryParams ||
+      queryParamsOrOptions.params ||
       queryParamsOrOptions.headers ||
       queryParamsOrOptions.skipAuth;
 

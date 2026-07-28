@@ -1,12 +1,18 @@
 import api from "./api";
 
-// Các hàm trong file này chỉ dành cho khu vực /admin — gọi tới nhóm endpoint /admin/*
-
 export async function getUsers({ key = "", page = 0, size = 10 } = {}) {
   return api.get("/admin/account", {
-    key,
     page,
     size,
+    key,
+  });
+}
+
+export async function getAdminUsers({ page = 0, size = 9999, key = "" } = {}) {
+  return api.get("/admin/account", {
+    page,
+    size,
+    key,
   });
 }
 
@@ -47,6 +53,23 @@ export async function updateUserRole(userId, role) {
   });
 }
 
+export async function getAdminDocuments({
+  page = 0,
+  size = 9999,
+  status,
+} = {}) {
+  const params = {
+    page,
+    size,
+  };
+
+  if (status) {
+    params.status = status;
+  }
+
+  return api.get("/admin/document", params);
+}
+
 export async function getPendingPublicDocuments({ page = 0, size = 10 } = {}) {
   return getAdminDocuments({
     page,
@@ -68,9 +91,10 @@ export async function reviewDocument(documentId, decision) {
     throw new Error("Decision không hợp lệ. Chỉ dùng ACCEPT hoặc DENY.");
   }
 
-  return api.put("/admin/approve/documents/check", {
-    documentId,
-    rqd: cleanDecision,
+  return api.put(`/v1/documents/${documentId}/review`, null, {
+    queryParams: {
+      decision: cleanDecision,
+    },
   });
 }
 
@@ -118,35 +142,6 @@ export async function getSystemConfig() {
 
 export async function getSubscriptionConfig() {
   return api.get("/admin/all/subscription-config");
-}
-
-export async function getAdminUsers({ page = 0, size = 9999, key = "" } = {}) {
-  return api.get("/admin/account", {
-    params: {
-      page,
-      size,
-      key,
-    },
-  });
-}
-
-export async function getAdminDocuments({
-  page = 0,
-  size = 9999,
-  status,
-} = {}) {
-  const params = {
-    page,
-    size,
-  };
-
-  if (status) {
-    params.status = status;
-  }
-
-  return api.get("/admin/document", {
-    params,
-  });
 }
 
 const adminApi = {
