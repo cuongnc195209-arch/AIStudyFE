@@ -35,15 +35,9 @@ export function getSubjectLabel(subjectCode) {
 
 // Chuẩn hoá mã môn nhập vào — nếu không khớp mã nào trong SUBJECT_OPTIONS thì gán "OTHER"
 function normalizeSubjectCode(subjectCode) {
-  if (!subjectCode) {
-    return "";
-  }
-
-  const value = String(subjectCode).trim().toUpperCase();
-
-  const exists = SUBJECT_OPTIONS.some((item) => item.value === value);
-
-  return exists ? value : "OTHER";
+  return String(subjectCode || "")
+    .trim()
+    .toUpperCase();
 }
 
 // Tách tên file gốc từ header Content-Disposition mà backend trả về khi tải file
@@ -81,7 +75,7 @@ export async function createDocument(payload = {}) {
   }
 
   if (!subjectCode) {
-    throw new Error("Vui lòng chọn môn học");
+    throw new Error("Vui lòng nhập môn học");
   }
 
   const formData = new FormData();
@@ -93,11 +87,35 @@ export async function createDocument(payload = {}) {
   return api.post("/v1/documents", formData);
 }
 
+export async function updateDocumentInfo(documentId, payload = {}) {
+  if (!documentId) {
+    throw new Error("Thiếu mã tài liệu");
+  }
+
+  const documentName = String(
+    payload.documentName || payload.name || "",
+  ).trim();
+  const description = String(payload.description || "").trim();
+  const subjectCode = normalizeSubjectCode(payload.subjectCode);
+
+  if (!documentName) {
+    throw new Error("Vui lòng nhập tên tài liệu");
+  }
+
+  if (!subjectCode) {
+    throw new Error("Vui lòng nhập môn học");
+  }
+
+  return api.put(`/v1/documents/${documentId}`, {
+    documentName,
+    description,
+    subjectCode,
+  });
+}
+
 export async function updateDocumentName(documentId, newName) {
-  return api.put(`/v1/documents/${documentId}`, null, {
-    queryParams: {
-      newName,
-    },
+  return updateDocumentInfo(documentId, {
+    documentName: newName,
   });
 }
 

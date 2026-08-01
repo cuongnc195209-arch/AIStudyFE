@@ -7,7 +7,7 @@ import {
   getSubjectLabel,
   getDocuments,
   createDocument,
-  updateDocumentName,
+  updateDocumentInfo,
   toggleDocumentPublicStatus,
   deleteDocument,
   downloadDocumentFile,
@@ -76,8 +76,8 @@ function mapDoc(d) {
     id: d.id || d.documentId || d.document_id,
     name: d.documentName || d.name || "Untitled Document",
     ext: normalizeExt(d),
-    subjectCode: d.subjectCode || "",
-    subject: getSubjectLabel(d.subjectCode),
+    subjectCode: d.subjectCode || d.subjectName || "",
+    subject: d.subjectName || getSubjectLabel(d.subjectCode),
     sizeMB: d.fileSize ? Number((Number(d.fileSize) / 1048576).toFixed(2)) : 0,
     fileSize: d.fileSize || 0,
     date: d.createdAt
@@ -231,8 +231,8 @@ function UploadModal({ onClose, onSuccess }) {
       return;
     }
 
-    if (!meta.subjectCode) {
-      setError("Vui lòng chọn môn học.");
+    if (!meta.subjectCode.trim()) {
+      setError("Vui lòng nhập môn học.");
       return;
     }
 
@@ -262,14 +262,14 @@ function UploadModal({ onClose, onSuccess }) {
       const result = await createDocument({
         file: file.raw,
         description,
-        subjectCode: meta.subjectCode,
+        subjectCode: meta.subjectCode.trim(),
       });
 
       const saved = result?.data || result || {};
       const savedId = saved.id || saved.documentId || saved.document_id;
 
       if (!savedId) {
-        throw new Error("Backend chưa trả về documentId sau khi tạo tài liệu.");
+        throw new Error("Không thể lưu tài liệu. Vui lòng thử lại.");
       }
 
       let savedForUi = saved;
@@ -379,18 +379,22 @@ function UploadModal({ onClose, onSuccess }) {
                 <label>
                   Môn học <span className="required">*</span>
                 </label>
-                <select
+                <input
+                  list="upload-subject-options"
                   value={meta.subjectCode}
                   onChange={(e) =>
                     setMeta((m) => ({ ...m, subjectCode: e.target.value }))
                   }
-                >
+                  placeholder="Ví dụ: SWP391, PRJ301, English"
+                  required
+                />
+                <datalist id="upload-subject-options">
                   {SUBJECT_OPTIONS.map((subject) => (
                     <option key={subject.value} value={subject.value}>
                       {subject.label}
                     </option>
                   ))}
-                </select>
+                </datalist>
               </div>
 
               <div>
@@ -465,6 +469,8 @@ function UploadModal({ onClose, onSuccess }) {
 function EditModal({ doc, onClose, onSave }) {
   const [meta, setMeta] = useState({
     name: doc.name,
+    description: doc.description || "",
+    subjectCode: doc.subjectCode || doc.subject || "",
     tags: doc.tags.join(", "),
     privacy: doc.privacy,
   });
@@ -472,9 +478,19 @@ function EditModal({ doc, onClose, onSave }) {
   function handleSubmit(e) {
     e.preventDefault();
 
+    const name = meta.name.trim();
+    const subjectCode = meta.subjectCode.trim();
+
+    if (!name || !subjectCode) {
+      return;
+    }
+
     onSave({
       ...doc,
-      name: meta.name.trim(),
+      name,
+      description: meta.description.trim(),
+      subjectCode,
+      subject: subjectCode,
       tags: meta.tags
         .split(",")
         .map((t) => t.trim())
@@ -511,6 +527,40 @@ function EditModal({ doc, onClose, onSave }) {
               />
             </div>
 
+            <div className="fg-full">
+              <label>
+                Môn học <span className="required">*</span>
+              </label>
+              <input
+                list="edit-subject-options"
+                value={meta.subjectCode}
+                onChange={(e) =>
+                  setMeta((m) => ({ ...m, subjectCode: e.target.value }))
+                }
+                placeholder="Ví dụ: SWP391, PRJ301, English"
+                required
+              />
+              <datalist id="edit-subject-options">
+                {SUBJECT_OPTIONS.map((subject) => (
+                  <option key={subject.value} value={subject.value}>
+                    {subject.label}
+                  </option>
+                ))}
+              </datalist>
+            </div>
+
+            <div className="fg-full">
+              <label>Mô tả</label>
+              <textarea
+                value={meta.description}
+                onChange={(e) =>
+                  setMeta((m) => ({ ...m, description: e.target.value }))
+                }
+                placeholder="Mô tả ngắn về tài liệu..."
+                rows={3}
+              />
+            </div>
+
             <div>
               <label>Quyền riêng tư</label>
               <select
@@ -535,11 +585,6 @@ function EditModal({ doc, onClose, onSave }) {
               />
             </div>
           </div>
-
-          <p className="upload-error" style={{ color: "#6b7280" }}>
-            Môn học hiện tại lấy theo subjectCode từ BE. Trang này chỉ cho sửa
-            tên và trạng thái công khai.
-          </p>
 
           <div className="modal-footer">
             <button type="button" className="btn-cancel" onClick={onClose}>
@@ -1042,7 +1087,6 @@ export function DocumentsSection() {
   useEffect(() => {
     if (!ENABLE_SHARED_TAB || loadingDocs) return;
 
-    // Backend không có endpoint riêng "tài liệu được chia sẻ với tôi" — nên gọi searchDocuments("")
     // (trả về mọi tài liệu user có quyền truy cập) rồi tự lọc ra những cái KHÔNG public và KHÔNG phải của mình
     async function loadSharedDocuments() {
       try {
@@ -1106,7 +1150,12 @@ export function DocumentsSection() {
     try {
       const oldDoc = docs.find((doc) => doc.id === updated.id);
 
-      const result = await updateDocumentName(updated.id, updated.name);
+      const result = await updateDocumentInfo(updated.id, {
+        documentName: updated.name,
+        description: updated.description,
+        subjectCode: updated.subjectCode,
+      });
+
       let data = result?.data || result || updated;
 
       if (oldDoc && oldDoc.privacy !== updated.privacy) {
@@ -1130,6 +1179,10 @@ export function DocumentsSection() {
             ? {
                 ...doc,
                 ...mapped,
+                name: updated.name,
+                description: updated.description,
+                subjectCode: updated.subjectCode,
+                subject: updated.subjectCode,
                 tags: updated.tags,
                 privacy: updated.privacy,
                 isPublic: updated.privacy === "public",
