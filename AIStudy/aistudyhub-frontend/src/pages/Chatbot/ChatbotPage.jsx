@@ -399,10 +399,17 @@ export default function ChatbotPage() {
       );
     } catch (err) {
       console.error("Send message error:", err);
+      const backendMessage = err?.message;
+      const isTokenLimitError =
+        typeof backendMessage === "string" &&
+        /giới hạn token|hết token/i.test(backendMessage);
       const errMsg = {
         id: Date.now() + 1,
         role: "ai",
-        content: "Xin lỗi, đã xảy ra lỗi. Vui lòng thử lại.",
+        content: isTokenLimitError
+          ? `⚠️ ${backendMessage}`
+          : backendMessage ||
+            "Xin lỗi, đã xảy ra lỗi. Vui lòng thử lại.",
       };
       setSessions((prev) =>
         prev.map((s) =>
