@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import {
   updateAdminConfig,
   updatePremiumConfig,
+  updatePremiumPrice,
   getSystemConfig,
   getSubscriptionConfig,
 } from "../../../apis/adminApi";
@@ -36,6 +37,7 @@ export default function ConfigSection({ onToast }) {
     storageQuotaGb: 10,
     maxFileSizeMb: 100,
     maxDailyChatTokens: 50000,
+    price: 99000,
   });
   const ALL_FORMATS = [
     "PDF",
@@ -87,6 +89,7 @@ export default function ConfigSection({ onToast }) {
             maxFileSizeMb: subscriptionRes.maxFileSizeMb ?? c.maxFileSizeMb,
             maxDailyChatTokens:
               subscriptionRes.maxDailyChatTokens ?? c.maxDailyChatTokens,
+            price: subscriptionRes.price ?? c.price,
           }));
         }
       } catch (err) {
@@ -132,6 +135,8 @@ export default function ConfigSection({ onToast }) {
         totalStorageQuotaGb: Number(premiumConfig.storageQuotaGb),
         maxFileSizeMb: Number(premiumConfig.maxFileSizeMb),
       });
+
+      await updatePremiumPrice(premiumConfig.price);
 
       onToast("Cấu hình đã được lưu và áp dụng!");
     } catch (err) {
@@ -237,6 +242,23 @@ export default function ConfigSection({ onToast }) {
       <div className="config-section">
         <h3 className="config-section-title">Cấu hình gói Premium</h3>
         <div className="config-grid">
+          <div className="config-item">
+            <label>Giá gói Premium</label>
+            <div className="config-input-row">
+              <input
+                type="number"
+                min={0}
+                value={premiumConfig.price}
+                onChange={(e) =>
+                  setPremiumConfig((c) => ({
+                    ...c,
+                    price: +e.target.value,
+                  }))
+                }
+              />
+              <span className="config-unit">₫/tháng</span>
+            </div>
+          </div>
           <div className="config-item">
             <label>Dung lượng lưu trữ Premium</label>
             <div className="config-input-row">

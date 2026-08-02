@@ -136,6 +136,10 @@ export async function updatePremiumConfig(payload) {
   return api.put("/admin/config-member", payload);
 }
 
+export async function updatePremiumPrice(price) {
+  return api.put("/admin/config-member/price", Number(price));
+}
+
 export async function getSystemConfig() {
   return api.get("/admin/all/system-config");
 }
@@ -165,6 +169,7 @@ const adminApi = {
 
   updateAdminConfig,
   updatePremiumConfig,
+  updatePremiumPrice,
   getSystemConfig,
   getSubscriptionConfig,
 };
