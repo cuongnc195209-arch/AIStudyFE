@@ -245,6 +245,7 @@ export async function rawRequest(endpoint, options = {}) {
       data?.message ||
       data?.error ||
       data?.detail ||
+      (typeof data === "string" && data.trim() ? data.trim() : "") ||
       `Request failed with status ${response.status}`;
 
     const error = new Error(message);

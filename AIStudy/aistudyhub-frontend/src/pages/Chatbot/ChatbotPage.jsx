@@ -399,7 +399,10 @@ export default function ChatbotPage() {
       );
     } catch (err) {
       console.error("Send message error:", err);
-      const backendMessage = err?.message;
+      const backendMessage =
+        typeof err?.message === "string"
+          ? err.message.replace(/^Chat Process Error:\s*/i, "")
+          : err?.message;
       const isTokenLimitError =
         typeof backendMessage === "string" &&
         /giới hạn token|hết token/i.test(backendMessage);
