@@ -187,10 +187,6 @@ export default function AdminDashboardPage() {
           </div>
 
           <div className="admin-topbar-right">
-            <button className="admin-notif-btn" title="Thông báo">
-              🔔<span className="admin-notif-badge">3</span>
-            </button>
-
             <div className="admin-user-chip">
               <div className="admin-user-avatar">{initials}</div>
 
