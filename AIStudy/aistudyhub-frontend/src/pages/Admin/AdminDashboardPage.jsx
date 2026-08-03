@@ -9,6 +9,7 @@ import DocumentsSection from "./sections/DocumentsSection";
 import ChatSection from "./sections/ChatSection";
 import StatsSection from "./sections/StatsSection";
 import ConfigSection from "./sections/ConfigSection";
+import SubjectSection from "./sections/SubjectSection";
 import "./AdminDashboardPage.css";
 import ReportsSection from "./sections/ReportsSection";
 
@@ -159,6 +160,7 @@ export default function AdminDashboardPage() {
     reports: <ReportsSection onToast={showToast} />,
     chat: <ChatSection />,
     stats: <StatsSection />,
+    subjects: <SubjectSection onToast={showToast} />,
     config: <ConfigSection onToast={showToast} />,
   };
 
@@ -177,6 +179,7 @@ export default function AdminDashboardPage() {
                   reports: "Báo cáo",
                   chat: "Chat AI",
                   stats: "Thống kê",
+                  subjects: "Môn học",
                   config: "Cấu hình",
                 }[section]
               }

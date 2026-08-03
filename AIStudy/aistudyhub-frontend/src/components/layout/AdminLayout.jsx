@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { id: "reports", icon: "🚩", label: "Báo cáo" },
   { id: "chat", icon: "💬", label: "Chat AI" },
   { id: "stats", icon: "📈", label: "Thống kê" },
+  { id: "subjects", icon: "📚", label: "Môn học" },
   { id: "config", icon: "⚙️", label: "Cấu hình hệ thống" },
 ];
 
