@@ -309,7 +309,6 @@ export default function ConfigSection({ onToast }) {
               />
               <span className="config-unit">token/ngày</span>
             </div>
-            <p className="config-hint">0 = không giới hạn</p>
           </div>
         </div>
       </div>
