@@ -55,8 +55,10 @@ function normalizeStatus(status, isPublic) {
   return "DEFAULT";
 }
 
-function getStatusMeta(status) {
-  if (status === "PENDING") {
+// 1 tài liệu chỉ hiện 1 badge duy nhất — trước đây hiện cả status lẫn privacy nên
+// tài liệu riêng tư/chưa duyệt bị lặp "🔒 Riêng tư" hai lần
+function getDocBadge(doc) {
+  if (doc.status === "PENDING") {
     return {
       label: "Chờ duyệt",
       icon: "⏳",
@@ -64,15 +66,7 @@ function getStatusMeta(status) {
     };
   }
 
-  if (status === "SUCCESS") {
-    return {
-      label: "Đã duyệt",
-      icon: "✅",
-      className: "admin-doc-status-success",
-    };
-  }
-
-  if (status === "DENY") {
+  if (doc.status === "DENY") {
     return {
       label: "Từ chối",
       icon: "❌",
@@ -80,26 +74,18 @@ function getStatusMeta(status) {
     };
   }
 
-  return {
-    label: "Riêng tư",
-    icon: "🔒",
-    className: "admin-doc-status-default",
-  };
-}
-
-function getPrivacyMeta(doc) {
-  if (doc.privacy === "public") {
+  if (doc.status === "SUCCESS" || doc.privacy === "public") {
     return {
       label: "Công khai",
       icon: "🌐",
-      className: "admin-doc-privacy-public",
+      className: "admin-doc-status-success",
     };
   }
 
   return {
     label: "Riêng tư",
     icon: "🔒",
-    className: "admin-doc-privacy-private",
+    className: "admin-doc-status-default",
   };
 }
 
@@ -413,26 +399,6 @@ export default function DocumentsSection({ onToast }) {
       }
     };
   }, [previewUrl]);
-  async function loadDocuments() {
-    setLoading(true);
-
-    try {
-      const res = await getAdminDocuments({
-        size: 9999,
-        status: statusFilter || undefined,
-      });
-
-      const data = getListFromResponse(res);
-
-      setDocs(data.map((document, index) => mapDocAdmin(document, index)));
-    } catch (err) {
-      console.error("Load admin docs error:", err);
-      onToast?.(`Lỗi tải tài liệu: ${err?.message || "Không thể tải dữ liệu"}`);
-    } finally {
-      setLoading(false);
-    }
-  }
-
   useEffect(() => {
     let cancelled = false;
 
@@ -671,15 +637,6 @@ export default function DocumentsSection({ onToast }) {
             duyệt · {denyCount} từ chối
           </p>
         </div>
-
-        <button
-          className="admin-light-btn"
-          type="button"
-          onClick={loadDocuments}
-          disabled={loading}
-        >
-          🔄 Tải lại
-        </button>
       </div>
 
       <div className="admin-docs-stat-grid">
@@ -773,8 +730,7 @@ export default function DocumentsSection({ onToast }) {
           </div>
         ) : (
           paginated.map((doc) => {
-            const statusMeta = getStatusMeta(doc.status);
-            const privacyMeta = getPrivacyMeta(doc);
+            const badge = getDocBadge(doc);
 
             return (
               <article
@@ -802,14 +758,8 @@ export default function DocumentsSection({ onToast }) {
                 </div>
 
                 <div className="admin-doc-tags">
-                  <span className={`admin-doc-status ${statusMeta.className}`}>
-                    {statusMeta.icon} {statusMeta.label}
-                  </span>
-
-                  <span
-                    className={`admin-doc-privacy ${privacyMeta.className}`}
-                  >
-                    {privacyMeta.icon} {privacyMeta.label}
+                  <span className={`admin-doc-status ${badge.className}`}>
+                    {badge.icon} {badge.label}
                   </span>
                 </div>
 

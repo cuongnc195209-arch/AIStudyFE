@@ -1357,23 +1357,24 @@ select.admin-form-input {
 .admin-doc-stat {
   background: #ffffff;
   border: 1px solid #e5e7eb;
-  border-radius: 18px;
-  padding: 16px;
+  border-radius: 14px;
+  padding: 14px;
   display: flex;
   align-items: center;
-  gap: 14px;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
+  gap: 12px;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04);
 }
 
 .admin-doc-stat > span {
-  width: 46px;
-  height: 46px;
-  border-radius: 14px;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
   background: #eff6ff;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
+  font-size: 17px;
+  flex-shrink: 0;
 }
 
 .admin-doc-stat-total > span {
@@ -1394,16 +1395,16 @@ select.admin-form-input {
 
 .admin-doc-stat strong {
   display: block;
-  font-size: 24px;
+  font-size: 19px;
   color: #0f172a;
   line-height: 1;
 }
 
 .admin-doc-stat p {
-  margin: 5px 0 0;
+  margin: 4px 0 0;
   color: #64748b;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .admin-docs-toolbar {
@@ -1426,14 +1427,14 @@ select.admin-form-input {
 .admin-doc-card {
   background: #ffffff;
   border: 1px solid #e5e7eb;
-  border-left: 4px solid #cbd5e1;
-  border-radius: 18px;
-  padding: 16px;
+  border-left: 3px solid #cbd5e1;
+  border-radius: 14px;
+  padding: 12px 16px;
   display: grid;
-  grid-template-columns: minmax(360px, 1fr) 230px auto;
-  gap: 18px;
+  grid-template-columns: minmax(280px, 1fr) auto auto;
+  gap: 16px;
   align-items: center;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.03);
   transition:
     transform 0.18s ease,
     box-shadow 0.18s ease,
@@ -1472,12 +1473,12 @@ select.admin-form-input {
 }
 
 .admin-doc-ext {
-  width: 48px;
-  height: 48px;
-  border-radius: 13px;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
   color: #ffffff;
-  font-weight: 900;
-  font-size: 13px;
+  font-weight: 700;
+  font-size: 10px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1489,10 +1490,10 @@ select.admin-form-input {
 }
 
 .admin-doc-info h3 {
-  margin: 0 0 8px;
+  margin: 0 0 4px;
   color: #0f172a;
-  font-size: 16px;
-  font-weight: 800;
+  font-size: 13.5px;
+  font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1501,50 +1502,46 @@ select.admin-form-input {
 .admin-doc-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 14px;
+  gap: 6px 12px;
   color: #64748b;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .admin-doc-tags {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   align-items: flex-start;
 }
 
-.admin-doc-status,
-.admin-doc-privacy {
-  padding: 7px 10px;
+.admin-doc-status {
+  padding: 3px 9px;
   border-radius: 999px;
-  font-size: 13px;
-  font-weight: 800;
+  font-size: 11.5px;
+  font-weight: 700;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
+  white-space: nowrap;
 }
 
-.admin-doc-status-pending,
-.admin-doc-privacy-pending {
+.admin-doc-status-pending {
   background: #fff7ed;
   color: #ea580c;
 }
 
-.admin-doc-status-success,
-.admin-doc-privacy-public {
+.admin-doc-status-success {
   background: #ecfdf5;
   color: #059669;
 }
 
-.admin-doc-status-deny,
-.admin-doc-privacy-deny {
+.admin-doc-status-deny {
   background: #fff1f2;
   color: #e11d48;
 }
 
-.admin-doc-status-default,
-.admin-doc-privacy-private {
+.admin-doc-status-default {
   background: #f1f5f9;
   color: #475569;
 }
@@ -1562,9 +1559,10 @@ select.admin-form-input {
 .admin-ok-btn,
 .admin-danger-btn {
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 9px 12px;
-  font-weight: 800;
+  border-radius: 9px;
+  padding: 6px 10px;
+  font-size: 12.5px;
+  font-weight: 700;
   cursor: pointer;
   background: #ffffff;
   color: #334155;

@@ -155,13 +155,6 @@ export default function UsersSection({ onToast }) {
         onToastRef.current?.(getRoleToastMessage(newRole, user.name));
       }
 
-      if (action === "delete") {
-        setUsers((currentUsers) =>
-          currentUsers.filter((item) => item.id !== user.id),
-        );
-
-        onToastRef.current?.(`Đã xóa ${user.name} khỏi danh sách hiển thị`);
-      }
     } catch (err) {
       console.error("User action error:", err);
 
@@ -186,11 +179,7 @@ export default function UsersSection({ onToast }) {
       return "Mở khóa tài khoản";
     }
 
-    if (confirm.action === "role") {
-      return "Đổi quyền người dùng";
-    }
-
-    return "Xóa tài khoản";
+    return "Đổi quyền người dùng";
   }
 
   function getConfirmDescription() {
@@ -208,11 +197,7 @@ export default function UsersSection({ onToast }) {
       return `Bạn có chắc muốn khóa tài khoản "${confirm.user.name}"?`;
     }
 
-    if (confirm.action === "unlock") {
-      return `Bạn có chắc muốn mở khóa tài khoản "${confirm.user.name}"?`;
-    }
-
-    return `Bạn có chắc muốn xóa "${confirm.user.name}" khỏi danh sách hiển thị?`;
+    return `Bạn có chắc muốn mở khóa tài khoản "${confirm.user.name}"?`;
   }
 
   return (
@@ -361,18 +346,6 @@ export default function UsersSection({ onToast }) {
                         🔓 Mở
                       </button>
                     )}
-
-                    <button
-                      className="ta-btn ta-delete"
-                      onClick={() =>
-                        setConfirm({
-                          action: "delete",
-                          user,
-                        })
-                      }
-                    >
-                      🗑️
-                    </button>
                   </div>
                 </td>
               </tr>
@@ -399,7 +372,7 @@ export default function UsersSection({ onToast }) {
         <ConfirmModal
           title={getConfirmTitle()}
           desc={getConfirmDescription()}
-          danger={confirm.action === "delete" || confirm.action === "lock"}
+          danger={confirm.action === "lock"}
           onConfirm={doAction}
           onClose={() => setConfirm(null)}
         />
