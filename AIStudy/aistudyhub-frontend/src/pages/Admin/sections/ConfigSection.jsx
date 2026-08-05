@@ -242,23 +242,7 @@ export default function ConfigSection({ onToast }) {
       <div className="config-section">
         <h3 className="config-section-title">Cấu hình gói Premium</h3>
         <div className="config-grid">
-          <div className="config-item">
-            <label>Giá gói Premium</label>
-            <div className="config-input-row">
-              <input
-                type="number"
-                min={0}
-                value={premiumConfig.price}
-                onChange={(e) =>
-                  setPremiumConfig((c) => ({
-                    ...c,
-                    price: +e.target.value,
-                  }))
-                }
-              />
-              <span className="config-unit">₫/tháng</span>
-            </div>
-          </div>
+          {/* Tạm ẩn "Giá gói Premium" — vẫn giữ premiumConfig.price và logic lưu, chỉ ẩn UI */}
           <div className="config-item">
             <label>Dung lượng lưu trữ Premium</label>
             <div className="config-input-row">
