@@ -7,9 +7,7 @@ import {
   deleteDocumentCategory,
 } from "../../../apis/documentCategoryApi";
 
-// Backend đôi khi trả nguyên exception kỹ thuật (VD: "org.postgresql.util.PSQLException:
-// No results were returned by the query.") thay vì thông báo thân thiện khi xóa thất bại
-// vì category vẫn còn tài liệu gắn vào — che lại để người dùng hiểu được vì sao.
+
 function friendlyDeleteError(err) {
   const message = String(err?.message || "");
 
@@ -20,10 +18,7 @@ function friendlyDeleteError(err) {
   return message || "Vui lòng thử lại";
 }
 
-// Backend không có bảng "semester" riêng và category_type không phải cờ
-// SEMESTER/SUBJECT — dữ liệu thật dùng category_type như 1 ô "Mã" tự do
-// (VD: PRF192, S1, HK1...). Kì học vs môn học được phân biệt hoàn toàn
-// dựa vào parentId: parentId rỗng = kì học (gốc), có parentId = môn thuộc kì đó.
+
 export default function SubjectSection({ onToast }) {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -221,8 +216,6 @@ export default function SubjectSection({ onToast }) {
     setConfirm({ type: "semester", target: sem, subjectCount: subjectsOf(sem.id).length });
   }
 
-  // Xóa kì kèm theo xóa luôn các môn bên trong — backend không tự cascade
-  // (xóa cha chỉ SET NULL parentId của con), nên phải xóa từng môn con trước.
   async function deleteSemesterCascade(sem) {
     const children = subjectsOf(sem.id);
 
