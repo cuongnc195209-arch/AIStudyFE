@@ -975,13 +975,15 @@ function DocCard({
           👁️ Xem
         </button>
 
-        <button
-          className="card-action-btn"
-          title="Tải xuống"
-          onClick={() => onDownload(doc)}
-        >
-          ⬇️
-        </button>
+        {(!readOnly || doc.permissionType === "edit") && (
+          <button
+            className="card-action-btn"
+            title="Tải xuống"
+            onClick={() => onDownload(doc)}
+          >
+            ⬇️
+          </button>
+        )}
 
         {!readOnly && (
           <>
@@ -1071,13 +1073,15 @@ function DocRow({
           👁️
         </button>
 
-        <button
-          className="row-action-btn"
-          title="Tải xuống"
-          onClick={() => onDownload(doc)}
-        >
-          ⬇️
-        </button>
+        {(!readOnly || doc.permissionType === "edit") && (
+          <button
+            className="row-action-btn"
+            title="Tải xuống"
+            onClick={() => onDownload(doc)}
+          >
+            ⬇️
+          </button>
+        )}
 
         {!readOnly && (
           <>
