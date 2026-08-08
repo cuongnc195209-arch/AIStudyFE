@@ -5,6 +5,7 @@ import Swal from "sweetalert2";
 import {
   getDocuments,
   createDocument,
+  replaceDocumentFile,
   updateDocumentInfo,
   toggleDocumentPublicStatus,
   deleteDocument,
@@ -200,7 +201,7 @@ function UploadModal({
   const [progress, setProgress] = useState(0);
 
   const [meta, setMeta] = useState({
-    categoryName: categories?.[0]?.label || categories?.[0]?.categoryName || "",
+    categoryName: "",
     description: "",
     privacy: "private",
   });
@@ -419,7 +420,7 @@ function UploadModal({
                 </label>
 
                 <input
-                  list="upload-category-options"
+                  autoComplete="off"
                   value={meta.categoryName}
                   onChange={(e) =>
                     setMeta((m) => ({
@@ -430,15 +431,6 @@ function UploadModal({
                   placeholder="Ví dụ: ERD123, SWP391, English"
                   required
                 />
-
-                <datalist id="upload-category-options">
-                  {categories.map((category) => (
-                    <option
-                      key={category.id}
-                      value={category.label || category.categoryName}
-                    />
-                  ))}
-                </datalist>
               </div>
 
               <div>
@@ -539,6 +531,21 @@ function EditModal({
     privacy: doc.privacy,
   });
 
+  const [newFile, setNewFile] = useState(null);
+  const fileInputRef = useRef();
+
+  function handleFilePick(f) {
+    if (!f) return;
+
+    const ext = ALLOWED_TYPES[f.type];
+
+    if (!ext) {
+      return;
+    }
+
+    setNewFile(f);
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
 
@@ -570,14 +577,12 @@ function EditModal({
         .map((t) => t.trim())
         .filter(Boolean),
       privacy: meta.privacy,
+      file: newFile,
     });
   }
 
   return (
-    <div
-      className="modal-overlay"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
+    <div className="modal-overlay">
       <div className="modal">
         <div className="modal-header">
           <h2>Chỉnh sửa tài liệu</h2>
@@ -587,6 +592,44 @@ function EditModal({
         </div>
 
         <form className="modal-body" onSubmit={handleSubmit}>
+          <div className="selected-file">
+            <div
+              className="doc-ext"
+              style={{
+                background:
+                  EXT_COLOR[newFile ? ALLOWED_TYPES[newFile.type] : doc.ext] ||
+                  "#6b7280",
+              }}
+            >
+              {newFile ? ALLOWED_TYPES[newFile.type] : doc.ext}
+            </div>
+
+            <div>
+              <p className="sf-name">{newFile ? newFile.name : doc.name}</p>
+              <p className="sf-size">
+                {newFile
+                  ? `${Number((newFile.size / 1048576).toFixed(1))} MB`
+                  : sizeLabel(doc.sizeMB)}
+              </p>
+            </div>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png"
+              style={{ display: "none" }}
+              onChange={(e) => handleFilePick(e.target.files[0])}
+            />
+
+            <button
+              type="button"
+              className="sf-change"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {newFile ? "Đổi file khác" : "Đổi file"}
+            </button>
+          </div>
+
           <div className="form-grid">
             <div className="fg-full">
               <label>
@@ -607,7 +650,7 @@ function EditModal({
               </label>
 
               <input
-                list="edit-category-options"
+                autoComplete="off"
                 value={meta.categoryName}
                 onChange={(e) =>
                   setMeta((m) => ({ ...m, categoryName: e.target.value }))
@@ -615,15 +658,6 @@ function EditModal({
                 placeholder="Ví dụ: ERD123, SWP391, English"
                 required
               />
-
-              <datalist id="edit-category-options">
-                {categories.map((category) => (
-                  <option
-                    key={category.id}
-                    value={category.label || category.categoryName}
-                  />
-                ))}
-              </datalist>
             </div>
 
             <div className="fg-full">
@@ -663,8 +697,8 @@ function EditModal({
             </div>
           </div>
 
-          <div className="modal-actions">
-            <button type="button" className="btn-secondary" onClick={onClose}>
+          <div className="modal-footer">
+            <button type="button" className="btn-cancel" onClick={onClose}>
               Hủy
             </button>
             <button type="submit" className="btn-primary">
@@ -1264,6 +1298,10 @@ export function DocumentsSection() {
   async function handleEditSave(updated) {
     try {
       const oldDoc = docs.find((doc) => doc.id === updated.id);
+
+      if (updated.file) {
+        await replaceDocumentFile(updated.id, updated.file);
+      }
 
       const result = await updateDocumentInfo(updated.id, {
         documentName: updated.name,

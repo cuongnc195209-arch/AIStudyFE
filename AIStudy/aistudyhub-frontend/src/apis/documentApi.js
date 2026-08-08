@@ -70,6 +70,21 @@ export async function updateDocumentInfo(documentId, payload = {}) {
   });
 }
 
+export async function replaceDocumentFile(documentId, file) {
+  if (!documentId) {
+    throw new Error("Thiếu mã tài liệu");
+  }
+
+  if (!file) {
+    throw new Error("Vui lòng chọn file để thay thế");
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  return api.put(`/v1/documents/${documentId}/file`, formData);
+}
+
 export async function updateDocumentName(documentId, newName) {
   if (!documentId) {
     throw new Error("Thiếu mã tài liệu");
@@ -198,6 +213,7 @@ const documentApi = {
   searchDocuments,
   getDocumentById,
   createDocument,
+  replaceDocumentFile,
   updateDocumentInfo,
   updateDocumentName,
   deleteDocument,
