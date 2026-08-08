@@ -6,6 +6,7 @@ import { Toast } from "./shared/Toast";
 import OverviewSection from "./sections/OverviewSection";
 import UsersSection from "./sections/UsersSection";
 import DocumentsSection from "./sections/DocumentsSection";
+import SubjectSection from "./sections/SubjectSection";
 import ChatSection from "./sections/ChatSection";
 import StatsSection from "./sections/StatsSection";
 import ConfigSection from "./sections/ConfigSection";
@@ -157,6 +158,7 @@ export default function AdminDashboardPage() {
     overview: <OverviewSection />,
     users: <UsersSection onToast={showToast} />,
     documents: <DocumentsSection onToast={showToast} />,
+    subjects: <SubjectSection onToast={showToast} />,
     reports: <ReportsSection onToast={showToast} />,
     chat: <ChatSection />,
     stats: <StatsSection />,
@@ -176,6 +178,7 @@ export default function AdminDashboardPage() {
                   overview: "Tổng quan",
                   users: "Người dùng",
                   documents: "Tài liệu",
+                  subjects: "Môn học",
                   reports: "Báo cáo",
                   chat: "Chat AI",
                   stats: "Thống kê",

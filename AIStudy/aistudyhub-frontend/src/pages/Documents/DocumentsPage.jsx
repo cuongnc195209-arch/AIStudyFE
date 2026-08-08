@@ -206,6 +206,10 @@ function UploadModal({
     privacy: "private",
   });
 
+  // Chỉ category có parentId (thuộc 1 kì học) mới là môn học thật —
+  // category không có parentId là kì học (container), không phải môn để chọn.
+  const subjectOptions = categories.filter((category) => category.parentId);
+
   const inputRef = useRef();
 
   function handleFilePick(f) {
@@ -419,18 +423,42 @@ function UploadModal({
                   Môn học <span className="required">*</span>
                 </label>
 
-                <input
-                  autoComplete="off"
-                  value={meta.categoryName}
-                  onChange={(e) =>
-                    setMeta((m) => ({
-                      ...m,
-                      categoryName: e.target.value,
-                    }))
-                  }
-                  placeholder="Ví dụ: ERD123, SWP391, English"
-                  required
-                />
+                {subjectOptions.length === 0 ? (
+                  <input
+                    autoComplete="off"
+                    value={meta.categoryName}
+                    onChange={(e) =>
+                      setMeta((m) => ({
+                        ...m,
+                        categoryName: e.target.value,
+                      }))
+                    }
+                    placeholder="Ví dụ: ERD123, SWP391, English"
+                    required
+                  />
+                ) : (
+                  <select
+                    value={meta.categoryName}
+                    onChange={(e) =>
+                      setMeta((m) => ({ ...m, categoryName: e.target.value }))
+                    }
+                    required
+                  >
+                    <option value="" disabled>
+                      -- Chọn môn học --
+                    </option>
+
+                    {subjectOptions.map((category) => (
+                      <option key={category.id} value={category.label}>
+                        {category.categoryType
+                          ? `${category.categoryType} - ${category.label}`
+                          : category.label}
+                      </option>
+                    ))}
+
+                    <option value="Khác">Khác...</option>
+                  </select>
+                )}
               </div>
 
               <div>
@@ -530,6 +558,16 @@ function EditModal({
     tags: doc.tags.join(", "),
     privacy: doc.privacy,
   });
+
+  // Chỉ category có parentId (thuộc 1 kì học) mới là môn học thật —
+  // category không có parentId là kì học (container), không phải môn để chọn.
+  const subjectOptions = categories.filter((category) => category.parentId);
+
+  // Môn hiện tại của tài liệu có thể không nằm trong subjectOptions (VD: category
+  // cũ không có parentId) — vẫn phải hiện được trong select để không mất giá trị.
+  const currentCategoryMissing =
+    Boolean(meta.categoryName) &&
+    !subjectOptions.some((category) => category.label === meta.categoryName);
 
   const [newFile, setNewFile] = useState(null);
   const fileInputRef = useRef();
@@ -649,15 +687,45 @@ function EditModal({
                 Môn học <span className="required">*</span>
               </label>
 
-              <input
-                autoComplete="off"
-                value={meta.categoryName}
-                onChange={(e) =>
-                  setMeta((m) => ({ ...m, categoryName: e.target.value }))
-                }
-                placeholder="Ví dụ: ERD123, SWP391, English"
-                required
-              />
+              {subjectOptions.length === 0 ? (
+                <input
+                  autoComplete="off"
+                  value={meta.categoryName}
+                  onChange={(e) =>
+                    setMeta((m) => ({ ...m, categoryName: e.target.value }))
+                  }
+                  placeholder="Ví dụ: ERD123, SWP391, English"
+                  required
+                />
+              ) : (
+                <select
+                  value={meta.categoryName}
+                  onChange={(e) =>
+                    setMeta((m) => ({ ...m, categoryName: e.target.value }))
+                  }
+                  required
+                >
+                  <option value="" disabled>
+                    -- Chọn môn học --
+                  </option>
+
+                  {currentCategoryMissing && (
+                    <option value={meta.categoryName}>
+                      {meta.categoryName} (hiện tại)
+                    </option>
+                  )}
+
+                  {subjectOptions.map((category) => (
+                    <option key={category.id} value={category.label}>
+                      {category.categoryType
+                        ? `${category.categoryType} - ${category.label}`
+                        : category.label}
+                    </option>
+                  ))}
+
+                  <option value="Khác">Khác...</option>
+                </select>
+              )}
             </div>
 
             <div className="fg-full">
@@ -942,9 +1010,24 @@ function PreviewModal({ doc, previewUrl, previewBlob, previewError, onClose }) {
   );
 }
 
+// Ghép "Mã - Tên môn" để hiển thị, dựa vào categories (chỉ hiển thị, không đổi doc.subject gốc
+// vì doc.subject còn dùng để filter/search và làm giá trị mặc định khi mở modal Sửa)
+function getSubjectDisplay(doc, categories) {
+  const match =
+    categories.find((c) => c.id === doc.categoryId) ||
+    categories.find((c) => c.label === doc.subject);
+
+  if (match?.categoryType) {
+    return `${match.categoryType} - ${doc.subject}`;
+  }
+
+  return doc.subject;
+}
+
 // Thẻ tài liệu dạng lưới (view "grid"). readOnly=true khi ở tab "được chia sẻ" => ẩn nút sửa/chia sẻ/xoá
 function DocCard({
   doc,
+  subjectLabel,
   readOnly,
   onEdit,
   onDelete,
@@ -976,7 +1059,7 @@ function DocCard({
       </div>
 
       <p className="doc-card-name">{doc.name}</p>
-      <p className="doc-card-subject">{doc.subject}</p>
+      <p className="doc-card-subject">{subjectLabel ?? doc.subject}</p>
 
       <div className="doc-card-tags">
         {doc.tags.slice(0, 2).map((tag) => (
@@ -1054,6 +1137,7 @@ function DocCard({
 // Hàng tài liệu dạng danh sách (view "list") — cùng logic với DocCard, chỉ khác layout hiển thị
 function DocRow({
   doc,
+  subjectLabel,
   readOnly,
   onEdit,
   onDelete,
@@ -1072,7 +1156,7 @@ function DocRow({
 
       <div className="doc-list-info">
         <p className="doc-list-name">{doc.name}</p>
-        <p className="doc-list-sub">{doc.subject}</p>
+        <p className="doc-list-sub">{subjectLabel ?? doc.subject}</p>
       </div>
 
       <div className="doc-list-tags">
@@ -1617,6 +1701,7 @@ export function DocumentsSection() {
                     <DocCard
                       key={doc.id}
                       doc={doc}
+                      subjectLabel={getSubjectDisplay(doc, categories)}
                       readOnly={activeTab === "shared"}
                       onEdit={setEditDoc}
                       onDelete={setDeleteDoc}
@@ -1641,6 +1726,7 @@ export function DocumentsSection() {
                     <DocRow
                       key={doc.id}
                       doc={doc}
+                      subjectLabel={getSubjectDisplay(doc, categories)}
                       readOnly={activeTab === "shared"}
                       onEdit={setEditDoc}
                       onDelete={setDeleteDoc}
