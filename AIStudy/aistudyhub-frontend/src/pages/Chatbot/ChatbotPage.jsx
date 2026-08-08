@@ -5,6 +5,7 @@ import {
   sendChatMessage,
   getChatHistory,
   updateSessionDocuments,
+  deleteChatSession,
 } from "../../apis/chatbotApi";
 import { getDocuments } from "../../apis/documentApi";
 import { getCurrentUser } from "../../apis/api";
@@ -433,7 +434,32 @@ export default function ChatbotPage() {
     }
   }
 
-  function handleDeleteSession(id) {
+  async function handleDeleteSession(id) {
+    setSessionError("");
+
+    try {
+      await deleteChatSession(id);
+    } catch (err) {
+      console.error("Delete session error:", err);
+
+      // Backend hiện có bug: /chat/delete/{id} không dùng đúng id truyền vào, mà tự
+      // tìm phiên chat "của user hiện tại" — nếu không còn phiên nào khớp (VD: đã bị
+      // xóa thẳng trong DB) thì trả lỗi "Entity must not be null" thay vì 404 sạch sẽ.
+      // Coi các lỗi dạng "không tìm thấy" này là phiên đã không còn ở server, dọn khỏi
+      // danh sách local để không bị kẹt mãi — còn lỗi khác thì vẫn giữ lại và báo.
+      const message = String(err?.message || "");
+      const looksAlreadyGone = /entity must not be null|not found|404/i.test(
+        message
+      );
+
+      if (!looksAlreadyGone) {
+        setSessionError(
+          "Không thể xóa phiên chat trong hệ thống. Vui lòng thử lại."
+        );
+        return;
+      }
+    }
+
     const remaining = sessions.filter((s) => s.id !== id);
     setSessions(remaining);
     if (activeId === id) setActiveId(remaining[0]?.id ?? null);

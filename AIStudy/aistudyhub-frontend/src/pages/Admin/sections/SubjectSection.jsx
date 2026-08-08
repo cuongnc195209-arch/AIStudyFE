@@ -7,6 +7,19 @@ import {
   deleteDocumentCategory,
 } from "../../../apis/documentCategoryApi";
 
+// Backend đôi khi trả nguyên exception kỹ thuật (VD: "org.postgresql.util.PSQLException:
+// No results were returned by the query.") thay vì thông báo thân thiện khi xóa thất bại
+// vì category vẫn còn tài liệu gắn vào — che lại để người dùng hiểu được vì sao.
+function friendlyDeleteError(err) {
+  const message = String(err?.message || "");
+
+  if (/PSQLException|SQLException|No results were returned/i.test(message)) {
+    return "Danh mục này đang có tài liệu bên trong nên không xóa được. Hãy xóa hoặc chuyển tài liệu đó sang môn khác trước.";
+  }
+
+  return message || "Vui lòng thử lại";
+}
+
 // Backend không có bảng "semester" riêng và category_type không phải cờ
 // SEMESTER/SUBJECT — dữ liệu thật dùng category_type như 1 ô "Mã" tự do
 // (VD: PRF192, S1, HK1...). Kì học vs môn học được phân biệt hoàn toàn
@@ -205,35 +218,42 @@ export default function SubjectSection({ onToast }) {
 
   // ── Xóa ──
   function requestDeleteSemester(sem) {
-    if (subjectsOf(sem.id).length > 0) {
-      onToast?.(
-        `Kì "${sem.label}" vẫn còn môn học bên trong. Hãy chuyển hoặc xóa các môn đó trước.`,
-      );
-      return;
+    setConfirm({ type: "semester", target: sem, subjectCount: subjectsOf(sem.id).length });
+  }
+
+  // Xóa kì kèm theo xóa luôn các môn bên trong — backend không tự cascade
+  // (xóa cha chỉ SET NULL parentId của con), nên phải xóa từng môn con trước.
+  async function deleteSemesterCascade(sem) {
+    const children = subjectsOf(sem.id);
+
+    for (const child of children) {
+      await deleteDocumentCategory(child.id);
+      setCategories((cur) => cur.filter((c) => c.id !== child.id));
     }
 
-    setConfirm({ type: "semester", target: sem });
+    await deleteDocumentCategory(sem.id);
+    setCategories((cur) => cur.filter((c) => c.id !== sem.id));
   }
 
   async function doDelete() {
     if (!confirm) return;
 
     try {
-      await deleteDocumentCategory(confirm.target.id);
+      if (confirm.type === "semester") {
+        await deleteSemesterCascade(confirm.target);
+        onToast?.(`Đã xóa kì "${confirm.target.label}" cùng các môn bên trong`);
 
-      setCategories((cur) => cur.filter((c) => c.id !== confirm.target.id));
-      onToast?.(
-        confirm.type === "semester"
-          ? `Đã xóa kì "${confirm.target.label}"`
-          : `Đã xóa môn "${confirm.target.label}"`,
-      );
-
-      if (confirm.type === "semester" && expandedId === confirm.target.id) {
-        setExpandedId(null);
+        if (expandedId === confirm.target.id) {
+          setExpandedId(null);
+        }
+      } else {
+        await deleteDocumentCategory(confirm.target.id);
+        setCategories((cur) => cur.filter((c) => c.id !== confirm.target.id));
+        onToast?.(`Đã xóa môn "${confirm.target.label}"`);
       }
     } catch (err) {
       console.error("Delete category error:", err);
-      onToast?.(`Xóa thất bại: ${err?.message || "Vui lòng thử lại"}`);
+      onToast?.(`Xóa thất bại: ${friendlyDeleteError(err)}`);
     } finally {
       setConfirm(null);
     }
@@ -509,7 +529,9 @@ export default function SubjectSection({ onToast }) {
           title={confirm.type === "semester" ? "Xóa kì học" : "Xóa môn học"}
           desc={
             confirm.type === "semester"
-              ? `Bạn có chắc muốn xóa kì "${confirm.target.label}"?`
+              ? confirm.subjectCount > 0
+                ? `Kì "${confirm.target.label}" đang có ${confirm.subjectCount} môn học bên trong. Xóa kì sẽ xóa luôn tất cả các môn đó. Bạn có chắc chắn?`
+                : `Bạn có chắc muốn xóa kì "${confirm.target.label}"?`
               : `Bạn có chắc muốn xóa môn "${confirm.target.label}"?`
           }
           danger

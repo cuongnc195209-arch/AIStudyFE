@@ -141,6 +141,20 @@ export async function getSessionHistory(sessionId, params = {}) {
   return getChatHistory(sessionId, params);
 }
 
+/**
+ * Xóa phiên chat (kèm tin nhắn) khỏi DB.
+ *
+ * BE:
+ * DELETE /api/chat/delete/{id}
+ */
+export async function deleteChatSession(sessionId) {
+  if (!sessionId) {
+    throw new Error("Thiếu sessionId");
+  }
+
+  return api.delete(`/chat/delete/${sessionId}`);
+}
+
 const chatApi = {
   startChat,
   createChatSession,
@@ -152,6 +166,7 @@ const chatApi = {
   askAI,
   getChatHistory,
   getSessionHistory,
+  deleteChatSession,
 };
 
 export default chatApi;

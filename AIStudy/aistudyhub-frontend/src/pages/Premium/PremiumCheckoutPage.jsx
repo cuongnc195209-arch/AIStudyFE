@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import AppLayout from "../../components/layout/AppLayout";
@@ -58,42 +58,40 @@ export default function PremiumCheckoutPage() {
 
   const user = getCurrentUser();
 
-  useEffect(() => {
-    let cancelled = false;
+  // StrictMode (dev) chạy useEffect 2 lần liên tiếp trên cùng 1 lần mount để dò
+  // side-effect không an toàn — nếu không chặn, createPremiumPayment() bị gọi 2 lần
+  // gần như đồng thời, backend không kịp thấy đơn PENDING vừa tạo ở lần đầu nên tạo
+  // luôn 2 đơn hàng khác nhau (1 đơn bị bỏ quên mãi ở trạng thái "Chờ xác nhận").
+  const hasRequestedRef = useRef(false);
 
+  useEffect(() => {
+    if (hasRequestedRef.current) {
+      return;
+    }
+    hasRequestedRef.current = true;
+
+    // Không dùng cờ "cancelled" theo cleanup ở đây — StrictMode chạy cleanup của
+    // lần mount đầu tiên ngay cả khi hasRequestedRef đã chặn lần gọi API thứ 2, nên
+    // nếu poison bằng "cancelled" thì kết quả của lần gọi API thật (duy nhất) cũng
+    // bị vứt bỏ theo, khiến trang kẹt mãi ở trạng thái loading.
     async function loadPayment() {
       setLoading(true);
       setError("");
 
       try {
         const result = await createPremiumPayment();
-
-        if (cancelled) {
-          return;
-        }
-
         setPayment(result);
       } catch (err) {
-        if (!cancelled) {
-          console.error("Create premium transaction error:", err);
-          setError(
-            err?.message ||
-              err?.data?.message ||
-              "Không thể tạo mã QR Premium.",
-          );
-        }
+        console.error("Create premium transaction error:", err);
+        setError(
+          err?.message || err?.data?.message || "Không thể tạo mã QR Premium.",
+        );
       } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+        setLoading(false);
       }
     }
 
     loadPayment();
-
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
   async function handleConfirmTransaction() {
