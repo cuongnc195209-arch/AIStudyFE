@@ -1,47 +1,5 @@
 import api from "./api";
 
-// Danh sách môn học cố định (mã môn theo chương trình FPT) dùng cho dropdown chọn môn khi upload
-export const SUBJECT_OPTIONS = [
-  { value: "PRF192", label: "PRF192" },
-  { value: "MAE101", label: "MAE101" },
-  { value: "CSI104", label: "CSI104" },
-  { value: "CEA201", label: "CEA201" },
-  { value: "PRO192", label: "PRO192" },
-  { value: "MAD101", label: "MAD101" },
-  { value: "OSG202", label: "OSG202" },
-  { value: "CSD201", label: "CSD201" },
-  { value: "DBI202", label: "DBI202" },
-  { value: "LAB211", label: "LAB211" },
-  { value: "PRJ301", label: "PRJ301" },
-  { value: "MAS291", label: "MAS291" },
-  { value: "SWR302", label: "SWR302" },
-  { value: "SWT301", label: "SWT301" },
-  { value: "PRN212", label: "PRN212" },
-  { value: "OTHER", label: "OTHER" },
-];
-
-const SUBJECT_LABEL_BY_CODE = SUBJECT_OPTIONS.reduce((map, item) => {
-  map[item.value] = item.label;
-  return map;
-}, {});
-
-export function getSubjectLabel(subjectCode) {
-  if (!subjectCode) {
-    return "Chưa phân loại";
-  }
-
-  return SUBJECT_LABEL_BY_CODE[subjectCode] || subjectCode;
-}
-
-// Chuẩn hoá mã môn nhập vào — nếu không khớp mã nào trong SUBJECT_OPTIONS thì gán "OTHER"
-function normalizeSubjectCode(subjectCode) {
-  return String(subjectCode || "")
-    .trim()
-    .toUpperCase();
-}
-
-// Tách tên file gốc từ header Content-Disposition mà backend trả về khi tải file
-
 export async function getDocuments() {
   return api.get("/v1/documents/all");
 }
@@ -60,11 +18,10 @@ export async function getDocumentById(documentId) {
   return api.get(`/v1/documents/${documentId}`);
 }
 
-// Upload tài liệu mới — validate ở client trước khi gửi FormData lên backend
 export async function createDocument(payload = {}) {
   const file = payload.file;
   const description = String(payload.description || "").trim();
-  const subjectCode = normalizeSubjectCode(payload.subjectCode);
+  const categoryId = String(payload.categoryId || "").trim();
 
   if (!file) {
     throw new Error("Vui lòng chọn file để upload");
@@ -74,15 +31,15 @@ export async function createDocument(payload = {}) {
     throw new Error("Vui lòng nhập mô tả tài liệu");
   }
 
-  if (!subjectCode) {
-    throw new Error("Vui lòng nhập môn học");
+  if (!categoryId) {
+    throw new Error("Vui lòng chọn môn học");
   }
 
   const formData = new FormData();
 
   formData.append("file", file);
   formData.append("description", description);
-  formData.append("subjectCode", subjectCode);
+  formData.append("categoryId", categoryId);
 
   return api.post("/v1/documents", formData);
 }
@@ -96,26 +53,38 @@ export async function updateDocumentInfo(documentId, payload = {}) {
     payload.documentName || payload.name || "",
   ).trim();
   const description = String(payload.description || "").trim();
-  const subjectCode = normalizeSubjectCode(payload.subjectCode);
+  const categoryId = String(payload.categoryId || "").trim();
 
   if (!documentName) {
     throw new Error("Vui lòng nhập tên tài liệu");
   }
 
-  if (!subjectCode) {
-    throw new Error("Vui lòng nhập môn học");
+  if (!categoryId) {
+    throw new Error("Vui lòng chọn môn học");
   }
 
   return api.put(`/v1/documents/${documentId}`, {
     documentName,
     description,
-    subjectCode,
+    categoryId,
   });
 }
 
 export async function updateDocumentName(documentId, newName) {
-  return updateDocumentInfo(documentId, {
-    documentName: newName,
+  if (!documentId) {
+    throw new Error("Thiếu mã tài liệu");
+  }
+
+  const cleanName = String(newName || "").trim();
+
+  if (!cleanName) {
+    throw new Error("Vui lòng nhập tên tài liệu");
+  }
+
+  return api.put(`/v1/documents/${documentId}`, null, {
+    queryParams: {
+      newName: cleanName,
+    },
   });
 }
 
@@ -129,14 +98,13 @@ export async function toggleDocumentPublicStatus(documentId, isPublic) {
   });
 }
 
-// Admin/Moderator duyệt tài liệu công khai — decision chỉ nhận ACCEPT hoặc DENY
 export async function reviewDocument(documentId, decision) {
   const cleanDecision = String(decision || "")
     .trim()
     .toUpperCase();
 
   if (cleanDecision !== "ACCEPT" && cleanDecision !== "DENY") {
-    throw new Error("Decision không hợp lệ. Chỉ dùng ACCEPT hoặc DENY.");
+    throw new Error("Quyết định không hợp lệ");
   }
 
   return api.put(`/v1/documents/${documentId}/review`, null, {
@@ -148,7 +116,7 @@ export async function reviewDocument(documentId, decision) {
 
 export async function previewDocumentFile(documentId) {
   if (!documentId) {
-    throw new Error("Thiếu documentId");
+    throw new Error("Thiếu mã tài liệu");
   }
 
   const blob = await api.blob(`/v1/documents/${documentId}/preview-file`);
@@ -161,7 +129,7 @@ export async function previewDocumentFile(documentId) {
 
 export async function downloadDocumentFile(documentId) {
   if (!documentId) {
-    throw new Error("Thiếu documentId");
+    throw new Error("Thiếu mã tài liệu");
   }
 
   const blob = await api.blob(`/v1/documents/${documentId}/download`);
@@ -172,7 +140,6 @@ export async function downloadDocumentFile(documentId) {
   };
 }
 
-// Tải file về máy: tạo thẻ <a download> ẩn, click giả lập rồi dọn dẹp Object URL
 export async function downloadDocumentToDevice(documentId) {
   const result = await downloadDocumentFile(documentId);
 
@@ -217,7 +184,6 @@ export async function updateDocumentSharePermission(
   });
 }
 
-// Dùng bởi ModerationPage — cùng endpoint /admin/document nhưng luôn lọc status=PENDING
 export async function getPendingPublicDocuments({ page = 0, size = 10 } = {}) {
   return api.get("/admin/document", {
     status: "PENDING",
@@ -227,14 +193,12 @@ export async function getPendingPublicDocuments({ page = 0, size = 10 } = {}) {
 }
 
 const documentApi = {
-  SUBJECT_OPTIONS,
-  getSubjectLabel,
-
   getDocuments,
   getPublicDocuments,
   searchDocuments,
   getDocumentById,
   createDocument,
+  updateDocumentInfo,
   updateDocumentName,
   deleteDocument,
   toggleDocumentPublicStatus,

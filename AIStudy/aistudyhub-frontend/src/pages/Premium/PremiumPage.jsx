@@ -1,23 +1,95 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { getMemberDetail, isActiveMemberDetail } from "../../apis/memberApi";
 import AppLayout from "../../components/layout/AppLayout";
 import "../Settings/SettingsPage.css";
+
+function getStoredUser() {
+  try {
+    return JSON.parse(localStorage.getItem("user") || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function checkPremiumFromUser(user) {
+  const plan = String(
+    user?.membership ||
+      user?.plan ||
+      user?.subscriptionPlan ||
+      user?.memberType ||
+      "",
+  ).toUpperCase();
+
+  return Boolean(
+    user?.isPremium ||
+    user?.memberId ||
+    user?.memberStatus === "ACTIVE" ||
+    plan === "PREMIUM" ||
+    plan.includes("PREMIUM"),
+  );
+}
+
+function savePremiumLocalUser() {
+  const currentUser = getStoredUser();
+
+  const premiumUser = {
+    ...currentUser,
+    membership: "PREMIUM",
+    plan: "PREMIUM",
+    subscriptionPlan: "PREMIUM",
+    memberStatus: "ACTIVE",
+    isPremium: true,
+  };
+
+  localStorage.setItem("user", JSON.stringify(premiumUser));
+  window.dispatchEvent(new Event("auth:user-updated"));
+}
 
 export default function PremiumPage() {
   const navigate = useNavigate();
 
-  const currentUser = (() => {
-    try {
-      return JSON.parse(localStorage.getItem("user") || "{}");
-    } catch {
-      return {};
+  const [storedUser, setStoredUser] = useState(() => getStoredUser());
+  const [memberDetail, setMemberDetail] = useState(null);
+  const [loadingMember, setLoadingMember] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadMemberDetail() {
+      setLoadingMember(true);
+
+      try {
+        const detail = await getMemberDetail();
+
+        if (cancelled) {
+          return;
+        }
+
+        setMemberDetail(detail || null);
+
+        if (isActiveMemberDetail(detail)) {
+          savePremiumLocalUser();
+          setStoredUser(getStoredUser());
+        }
+      } catch (err) {
+        console.error("Load member detail error:", err);
+      } finally {
+        if (!cancelled) {
+          setLoadingMember(false);
+        }
+      }
     }
-  })();
+
+    loadMemberDetail();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const isPremium =
-    currentUser.memberId ||
-    currentUser.membership === "PREMIUM" ||
-    currentUser.plan === "PREMIUM" ||
-    currentUser.subscriptionPlan === "PREMIUM";
+    checkPremiumFromUser(storedUser) || isActiveMemberDetail(memberDetail);
 
   return (
     <AppLayout>
@@ -44,6 +116,7 @@ export default function PremiumPage() {
               <div className="plan-card plan-card--current">
                 <div className="plan-top">
                   <h3 className="plan-name">Miễn phí</h3>
+
                   <div className="plan-price">
                     <span className="plan-amount" style={{ color: "#6b7280" }}>
                       0₫
@@ -60,8 +133,9 @@ export default function PremiumPage() {
                     >
                       ✓
                     </span>
-                    5 GB lưu trữ
+                    Dung lượng lưu trữ cơ bản
                   </li>
+
                   <li className="feature-item feature-item--ok">
                     <span
                       className="feature-check"
@@ -69,8 +143,9 @@ export default function PremiumPage() {
                     >
                       ✓
                     </span>
-                    20.000 token AI/ngày
+                    Giới hạn AI cơ bản
                   </li>
+
                   <li className="feature-item feature-item--ok">
                     <span
                       className="feature-check"
@@ -78,7 +153,7 @@ export default function PremiumPage() {
                     >
                       ✓
                     </span>
-                    Upload tối đa 10 MB/file
+                    Upload tài liệu học tập
                   </li>
                 </ul>
 
@@ -96,6 +171,7 @@ export default function PremiumPage() {
 
                 <div className="plan-top">
                   <h3 className="plan-name">Premium</h3>
+
                   <div className="plan-price">
                     <span className="plan-amount" style={{ color: "#0066ff" }}>
                       99.000₫
@@ -112,8 +188,9 @@ export default function PremiumPage() {
                     >
                       ✓
                     </span>
-                    10 GB lưu trữ
+                    Dung lượng lưu trữ Premium
                   </li>
+
                   <li className="feature-item feature-item--ok">
                     <span
                       className="feature-check"
@@ -121,8 +198,9 @@ export default function PremiumPage() {
                     >
                       ✓
                     </span>
-                    50.000 token AI/ngày
+                    Giới hạn AI cao hơn
                   </li>
+
                   <li className="feature-item feature-item--ok">
                     <span
                       className="feature-check"
@@ -130,7 +208,7 @@ export default function PremiumPage() {
                     >
                       ✓
                     </span>
-                    Upload tối đa 100 MB/file
+                    Upload file lớn hơn
                   </li>
                 </ul>
 
@@ -143,8 +221,9 @@ export default function PremiumPage() {
                     className="plan-cta"
                     style={{ background: "#0066ff" }}
                     onClick={() => navigate("/premium/checkout")}
+                    disabled={loadingMember}
                   >
-                    Nâng cấp Premium
+                    {loadingMember ? "Đang kiểm tra..." : "Nâng cấp Premium"}
                   </button>
                 )}
               </div>

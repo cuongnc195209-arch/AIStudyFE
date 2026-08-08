@@ -39,6 +39,7 @@ export default function ConfigSection({ onToast }) {
     maxDailyChatTokens: 50000,
     price: 99000,
   });
+
   const ALL_FORMATS = [
     "PDF",
     "DOCX",
@@ -122,6 +123,7 @@ export default function ConfigSection({ onToast }) {
 
   async function saveConfig() {
     setSaving(true);
+
     try {
       await updateAdminConfig({
         maxDailyChatTokens: Number(config.maxDailyChatTokens),
@@ -153,16 +155,18 @@ export default function ConfigSection({ onToast }) {
         <p>Thay đổi sẽ áp dụng ngay lập tức</p>
       </div>
 
-      {/* Upload limits */}
       <div className="config-section">
         <h3 className="config-section-title">Giới hạn Upload & Lưu trữ</h3>
+
         <div className="config-grid">
           <div className="config-item">
             <label>Dung lượng tối đa mỗi file (MB)</label>
+
             <div className="config-input-row">
               <input
                 type="number"
-                min={1}
+                min={0.1}
+                step={0.1}
                 max={500}
                 value={config.maxFileSizeMb}
                 onChange={(e) =>
@@ -172,18 +176,21 @@ export default function ConfigSection({ onToast }) {
                   }))
                 }
               />
+
               <span className="config-unit">MB</span>
             </div>
-            <p className="config-hint">
-              Áp dụng cho người dùng gói Free
-            </p>
+
+            <p className="config-hint">Áp dụng cho người dùng gói Free</p>
           </div>
+
           <div className="config-item">
             <label>Tổng dung lượng lưu trữ (GB)</label>
+
             <div className="config-input-row">
               <input
                 type="number"
-                min={1}
+                min={0.1}
+                step={0.1}
                 max={100}
                 value={config.totalStorageQuotaGb}
                 onChange={(e) =>
@@ -193,11 +200,14 @@ export default function ConfigSection({ onToast }) {
                   }))
                 }
               />
+
               <span className="config-unit">GB</span>
             </div>
           </div>
+
           <div className="config-item">
             <label>Giới hạn token chat AI / ngày</label>
+
             <div className="config-input-row">
               <input
                 type="number"
@@ -210,22 +220,27 @@ export default function ConfigSection({ onToast }) {
                   }))
                 }
               />
+
               <span className="config-unit">token/ngày</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Allowed formats */}
       <div className="config-section">
         <h3 className="config-section-title">
           Định dạng file được phép upload
         </h3>
+
         <div className="format-grid">
           {ALL_FORMATS.map((fmt) => (
             <label
               key={fmt}
-              className={`format-checkbox${config.allowedFileTypes.includes(fmt) ? " format-checkbox--checked" : ""}`}
+              className={`format-checkbox${
+                config.allowedFileTypes.includes(fmt)
+                  ? " format-checkbox--checked"
+                  : ""
+              }`}
             >
               <input
                 type="checkbox"
@@ -238,17 +253,18 @@ export default function ConfigSection({ onToast }) {
         </div>
       </div>
 
-      {/* Premium plan config — nối /admin/config-member và /admin/config-member/price */}
       <div className="config-section">
         <h3 className="config-section-title">Cấu hình gói Premium</h3>
+
         <div className="config-grid">
-          {/* Tạm ẩn "Giá gói Premium" — vẫn giữ premiumConfig.price và logic lưu, chỉ ẩn UI */}
           <div className="config-item">
             <label>Dung lượng lưu trữ Premium</label>
+
             <div className="config-input-row">
               <input
                 type="number"
-                min={1}
+                min={0.1}
+                step={0.1}
                 value={premiumConfig.storageQuotaGb}
                 onChange={(e) =>
                   setPremiumConfig((c) => ({
@@ -257,15 +273,19 @@ export default function ConfigSection({ onToast }) {
                   }))
                 }
               />
+
               <span className="config-unit">GB</span>
             </div>
           </div>
+
           <div className="config-item">
             <label>Dung lượng tối đa mỗi file (Premium)</label>
+
             <div className="config-input-row">
               <input
                 type="number"
-                min={1}
+                min={0.1}
+                step={0.1}
                 value={premiumConfig.maxFileSizeMb}
                 onChange={(e) =>
                   setPremiumConfig((c) => ({
@@ -274,11 +294,14 @@ export default function ConfigSection({ onToast }) {
                   }))
                 }
               />
+
               <span className="config-unit">MB</span>
             </div>
           </div>
+
           <div className="config-item">
             <label>Giới hạn token chat AI Premium / ngày</label>
+
             <div className="config-input-row">
               <input
                 type="number"
@@ -291,6 +314,7 @@ export default function ConfigSection({ onToast }) {
                   }))
                 }
               />
+
               <span className="config-unit">token/ngày</span>
             </div>
           </div>

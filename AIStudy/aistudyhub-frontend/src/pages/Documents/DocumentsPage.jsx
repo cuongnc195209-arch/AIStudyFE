@@ -3,8 +3,6 @@ import { renderAsync } from "docx-preview";
 import AppLayout from "../../components/layout/AppLayout";
 import Swal from "sweetalert2";
 import {
-  SUBJECT_OPTIONS,
-  getSubjectLabel,
   getDocuments,
   createDocument,
   updateDocumentInfo,
@@ -16,6 +14,10 @@ import {
   updateDocumentSharePermission,
   searchDocuments,
 } from "../../apis/documentApi";
+import {
+  getDocumentCategories,
+  findOrCreateDocumentCategory,
+} from "../../apis/documentCategoryApi";
 import "./DocumentsPage.css";
 
 // Suy ra loại file hiển thị (PDF/PPT/DOC/IMG) từ mimeType hoặc đuôi tên file —
@@ -72,12 +74,31 @@ function mapDoc(d) {
     d.public === "true" ||
     d.privacy === "public";
 
+  const categoryId =
+    d.categoryId ||
+    d.category_id ||
+    d.category?.id ||
+    d.category?.categoryId ||
+    d.category?.category_id ||
+    "";
+
+  const categoryName =
+    d.categoryName ||
+    d.category_name ||
+    d.category?.categoryName ||
+    d.category?.name ||
+    d.subjectName ||
+    d.subjectCode ||
+    "Chưa phân loại";
+
   return {
     id: d.id || d.documentId || d.document_id,
     name: d.documentName || d.name || "Untitled Document",
     ext: normalizeExt(d),
-    subjectCode: d.subjectCode || d.subjectName || "",
-    subject: d.subjectName || getSubjectLabel(d.subjectCode),
+    categoryId: String(categoryId || ""),
+    categoryName,
+    subjectCode: categoryName,
+    subject: categoryName,
     sizeMB: d.fileSize ? Number((Number(d.fileSize) / 1048576).toFixed(2)) : 0,
     fileSize: d.fileSize || 0,
     date: d.createdAt
@@ -109,11 +130,6 @@ function showToast({ icon = "success", title, text }) {
 }
 
 const ENABLE_SHARED_TAB = true;
-
-const SUBJECT_FILTERS = [
-  "Tất cả",
-  ...SUBJECT_OPTIONS.map((subject) => subject.label),
-];
 
 const FILE_TYPES = ["Tất cả", "PDF", "PPT", "DOC", "IMG"];
 
@@ -171,7 +187,12 @@ function sortDocs(docs, sort) {
 }
 
 // Modal upload tài liệu — có 4 bước (step state): chọn file -> điền form -> đang upload -> xong
-function UploadModal({ onClose, onSuccess }) {
+function UploadModal({
+  onClose,
+  onSuccess,
+  categories = [],
+  onCategoryCreated,
+}) {
   const [step, setStep] = useState("drop");
   const [file, setFile] = useState(null);
   const [error, setError] = useState("");
@@ -179,7 +200,7 @@ function UploadModal({ onClose, onSuccess }) {
   const [progress, setProgress] = useState(0);
 
   const [meta, setMeta] = useState({
-    subjectCode: "PRJ301",
+    categoryName: categories?.[0]?.label || categories?.[0]?.categoryName || "",
     description: "",
     privacy: "private",
   });
@@ -198,12 +219,8 @@ function UploadModal({ onClose, onSuccess }) {
       return;
     }
 
-    if (f.size > 50 * 1024 * 1024) {
-      setError("File vượt quá 50 MB.");
-      return;
-    }
-
     setError("");
+
     setFile({
       raw: f,
       ext,
@@ -219,20 +236,37 @@ function UploadModal({ onClose, onSuccess }) {
     handleFilePick(e.dataTransfer.files[0]);
   }
 
+  async function resolveCategoryId() {
+    const categoryName = meta.categoryName.trim();
+
+    if (!categoryName) {
+      throw new Error("Vui lòng nhập môn học.");
+    }
+
+    const category = await findOrCreateDocumentCategory(
+      categoryName,
+      categories,
+    );
+
+    if (onCategoryCreated) {
+      onCategoryCreated(category);
+    }
+
+    return category.id;
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
 
-    if (!file) return;
+    if (!file?.raw) {
+      setError("Vui lòng chọn file để upload.");
+      return;
+    }
 
     const description = meta.description.trim();
 
     if (!description) {
       setError("Vui lòng nhập mô tả tài liệu trước khi upload.");
-      return;
-    }
-
-    if (!meta.subjectCode.trim()) {
-      setError("Vui lòng nhập môn học.");
       return;
     }
 
@@ -259,10 +293,12 @@ function UploadModal({ onClose, onSuccess }) {
     }, 350);
 
     try {
+      const categoryId = await resolveCategoryId();
+
       const result = await createDocument({
         file: file.raw,
         description,
-        subjectCode: meta.subjectCode.trim(),
+        categoryId,
       });
 
       const saved = result?.data || result || {};
@@ -274,8 +310,6 @@ function UploadModal({ onClose, onSuccess }) {
 
       let savedForUi = saved;
 
-      // Upload luôn tạo tài liệu ở trạng thái riêng tư trước; nếu người dùng chọn "public"
-      // thì gọi thêm API toggle riêng — tài liệu public sẽ ở trạng thái PENDING chờ admin duyệt
       if (meta.privacy === "public") {
         const toggleResult = await toggleDocumentPublicStatus(savedId, true);
 
@@ -296,7 +330,9 @@ function UploadModal({ onClose, onSuccess }) {
       }, 600);
     } catch (err) {
       window.clearInterval(progressTimer);
+
       console.error("Upload failed:", err);
+
       setProgress(0);
       setStep("form");
       setError(err?.message || "Upload thất bại. Vui lòng thử lại.");
@@ -311,6 +347,7 @@ function UploadModal({ onClose, onSuccess }) {
       <div className="modal">
         <div className="modal-header">
           <h2>{step === "done" ? "Upload thành công!" : "Upload Tài liệu"}</h2>
+
           <button className="modal-close" onClick={onClose}>
             ✕
           </button>
@@ -320,7 +357,7 @@ function UploadModal({ onClose, onSuccess }) {
           <div className="modal-body">
             <div
               className={`drop-zone${dragOver ? " drop-zone--over" : ""}`}
-              onClick={() => inputRef.current.click()}
+              onClick={() => inputRef.current?.click()}
               onDragOver={(e) => {
                 e.preventDefault();
                 setDragOver(true);
@@ -329,13 +366,14 @@ function UploadModal({ onClose, onSuccess }) {
               onDrop={handleDrop}
             >
               <div className="drop-icon">📂</div>
+
               <p className="drop-title">Kéo thả file vào đây</p>
+
               <p className="drop-sub">
                 hoặc <span className="drop-link">chọn từ máy tính</span>
               </p>
-              <p className="drop-hint">
-                PDF, DOCX, PPTX, JPG, PNG · Tối đa 50 MB
-              </p>
+
+              <p className="drop-hint">PDF, DOCX, PPTX, JPG, PNG</p>
 
               <input
                 ref={inputRef}
@@ -379,30 +417,40 @@ function UploadModal({ onClose, onSuccess }) {
                 <label>
                   Môn học <span className="required">*</span>
                 </label>
+
                 <input
-                  list="upload-subject-options"
-                  value={meta.subjectCode}
+                  list="upload-category-options"
+                  value={meta.categoryName}
                   onChange={(e) =>
-                    setMeta((m) => ({ ...m, subjectCode: e.target.value }))
+                    setMeta((m) => ({
+                      ...m,
+                      categoryName: e.target.value,
+                    }))
                   }
-                  placeholder="Ví dụ: SWP391, PRJ301, English"
+                  placeholder="Ví dụ: ERD123, SWP391, English"
                   required
                 />
-                <datalist id="upload-subject-options">
-                  {SUBJECT_OPTIONS.map((subject) => (
-                    <option key={subject.value} value={subject.value}>
-                      {subject.label}
-                    </option>
+
+                <datalist id="upload-category-options">
+                  {categories.map((category) => (
+                    <option
+                      key={category.id}
+                      value={category.label || category.categoryName}
+                    />
                   ))}
                 </datalist>
               </div>
 
               <div>
                 <label>Quyền riêng tư</label>
+
                 <select
                   value={meta.privacy}
                   onChange={(e) =>
-                    setMeta((m) => ({ ...m, privacy: e.target.value }))
+                    setMeta((m) => ({
+                      ...m,
+                      privacy: e.target.value,
+                    }))
                   }
                 >
                   <option value="private">🔒 Riêng tư</option>
@@ -414,10 +462,14 @@ function UploadModal({ onClose, onSuccess }) {
                 <label>
                   Mô tả <span className="required">*</span>
                 </label>
+
                 <textarea
                   value={meta.description}
                   onChange={(e) =>
-                    setMeta((m) => ({ ...m, description: e.target.value }))
+                    setMeta((m) => ({
+                      ...m,
+                      description: e.target.value,
+                    }))
                   }
                   placeholder="Mô tả ngắn về tài liệu..."
                   rows={3}
@@ -432,6 +484,7 @@ function UploadModal({ onClose, onSuccess }) {
               <button type="button" className="btn-cancel" onClick={onClose}>
                 Hủy
               </button>
+
               <button type="submit" className="btn-primary">
                 ⬆️ Xác nhận Upload
               </button>
@@ -442,13 +495,16 @@ function UploadModal({ onClose, onSuccess }) {
         {step === "uploading" && (
           <div className="modal-body upload-progress-wrap">
             <div className="upload-progress-icon">📤</div>
+
             <p className="up-title">Đang upload tài liệu...</p>
+
             <div className="upload-progress-track">
               <div
                 className="upload-progress-fill"
                 style={{ width: `${progress}%` }}
               />
             </div>
+
             <p className="upload-progress-percent">{Math.round(progress)}%</p>
           </div>
         )}
@@ -456,7 +512,9 @@ function UploadModal({ onClose, onSuccess }) {
         {step === "done" && (
           <div className="modal-body upload-done-wrap">
             <div className="done-icon">✅</div>
+
             <p className="done-title">Upload thành công!</p>
+
             <p className="done-sub">Tài liệu đã được lưu vào hệ thống.</p>
           </div>
         )}
@@ -465,32 +523,48 @@ function UploadModal({ onClose, onSuccess }) {
   );
 }
 
-// Modal sửa tên tài liệu, tag (chỉ lưu ở client, không có API riêng cho tag) và trạng thái công khai
-function EditModal({ doc, onClose, onSave }) {
+// Modal sửa tên tài liệu, mô tả, môn học và trạng thái công khai
+function EditModal({
+  doc,
+  onClose,
+  onSave,
+  categories = [],
+  onCategoryCreated,
+}) {
   const [meta, setMeta] = useState({
     name: doc.name,
     description: doc.description || "",
-    subjectCode: doc.subjectCode || doc.subject || "",
+    categoryName: doc.categoryName || doc.subject || "",
     tags: doc.tags.join(", "),
     privacy: doc.privacy,
   });
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
 
     const name = meta.name.trim();
-    const subjectCode = meta.subjectCode.trim();
+    const categoryName = meta.categoryName.trim();
 
-    if (!name || !subjectCode) {
+    if (!name || !categoryName) {
       return;
+    }
+
+    const category = await findOrCreateDocumentCategory(
+      categoryName,
+      categories,
+    );
+
+    if (onCategoryCreated) {
+      onCategoryCreated(category);
     }
 
     onSave({
       ...doc,
       name,
       description: meta.description.trim(),
-      subjectCode,
-      subject: subjectCode,
+      categoryId: category.id,
+      categoryName: category.label || category.categoryName,
+      subject: category.label || category.categoryName,
       tags: meta.tags
         .split(",")
         .map((t) => t.trim())
@@ -531,20 +605,23 @@ function EditModal({ doc, onClose, onSave }) {
               <label>
                 Môn học <span className="required">*</span>
               </label>
+
               <input
-                list="edit-subject-options"
-                value={meta.subjectCode}
+                list="edit-category-options"
+                value={meta.categoryName}
                 onChange={(e) =>
-                  setMeta((m) => ({ ...m, subjectCode: e.target.value }))
+                  setMeta((m) => ({ ...m, categoryName: e.target.value }))
                 }
-                placeholder="Ví dụ: SWP391, PRJ301, English"
+                placeholder="Ví dụ: ERD123, SWP391, English"
                 required
               />
-              <datalist id="edit-subject-options">
-                {SUBJECT_OPTIONS.map((subject) => (
-                  <option key={subject.value} value={subject.value}>
-                    {subject.label}
-                  </option>
+
+              <datalist id="edit-category-options">
+                {categories.map((category) => (
+                  <option
+                    key={category.id}
+                    value={category.label || category.categoryName}
+                  />
                 ))}
               </datalist>
             </div>
@@ -574,24 +651,24 @@ function EditModal({ doc, onClose, onSave }) {
               </select>
             </div>
 
-            <div className="fg-full">
-              <label>Tag</label>
+            <div>
+              <label>Tags</label>
               <input
                 value={meta.tags}
                 onChange={(e) =>
                   setMeta((m) => ({ ...m, tags: e.target.value }))
                 }
-                placeholder="tag1, tag2, tag3"
+                placeholder="Nhập tag, cách nhau bằng dấu phẩy"
               />
             </div>
           </div>
 
-          <div className="modal-footer">
-            <button type="button" className="btn-cancel" onClick={onClose}>
+          <div className="modal-actions">
+            <button type="button" className="btn-secondary" onClick={onClose}>
               Hủy
             </button>
             <button type="submit" className="btn-primary">
-              💾 Lưu thay đổi
+              Lưu thay đổi
             </button>
           </div>
         </form>
@@ -600,7 +677,6 @@ function EditModal({ doc, onClose, onSave }) {
   );
 }
 
-// Modal chia sẻ tài liệu cho user khác — người chia sẻ phải dán đúng User ID (không có tìm kiếm theo email/tên)
 function ShareModal({ doc, onClose, onSubmit }) {
   const [targetUserId, setTargetUserId] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -1042,6 +1118,7 @@ export function DocumentsSection() {
   const [docs, setDocs] = useState([]);
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [error, setError] = useState("");
+  const [categories, setCategories] = useState([]);
 
   const [sharedDocs, setSharedDocs] = useState([]);
   const [loadingShared, setLoadingShared] = useState(false);
@@ -1062,6 +1139,28 @@ export function DocumentsSection() {
   const [previewUrl, setPreviewUrl] = useState("");
   const [previewBlob, setPreviewBlob] = useState(null);
   const [previewError, setPreviewError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCategories() {
+      try {
+        const list = await getDocumentCategories({ page: 0, size: 500 });
+
+        if (!cancelled) {
+          setCategories(list);
+        }
+      } catch (err) {
+        console.error("Load categories error:", err);
+      }
+    }
+
+    loadCategories();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     async function loadDocuments() {
@@ -1119,6 +1218,18 @@ export function DocumentsSection() {
   const activeLoading = activeTab === "mine" ? loadingDocs : loadingShared;
   const activeError = activeTab === "mine" ? error : sharedError;
 
+  const subjectFilters = [
+    "Tất cả",
+    ...Array.from(
+      new Set(
+        [
+          ...categories.map((category) => category.label),
+          ...activeDocs.map((doc) => doc.subject),
+        ].filter(Boolean),
+      ),
+    ),
+  ];
+
   const filtered = sortDocs(
     activeDocs.filter((doc) => {
       const q = search.toLowerCase();
@@ -1153,7 +1264,7 @@ export function DocumentsSection() {
       const result = await updateDocumentInfo(updated.id, {
         documentName: updated.name,
         description: updated.description,
-        subjectCode: updated.subjectCode,
+        categoryId: updated.categoryId,
       });
 
       let data = result?.data || result || updated;
@@ -1181,8 +1292,8 @@ export function DocumentsSection() {
                 ...mapped,
                 name: updated.name,
                 description: updated.description,
-                subjectCode: updated.subjectCode,
-                subject: updated.subjectCode,
+                categoryId: updated.categoryId,
+                subject: updated.subject,
                 tags: updated.tags,
                 privacy: updated.privacy,
                 isPublic: updated.privacy === "public",
@@ -1388,7 +1499,7 @@ export function DocumentsSection() {
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
                 >
-                  {SUBJECT_FILTERS.map((item) => (
+                  {subjectFilters.map((item) => (
                     <option key={item}>{item}</option>
                   ))}
                 </select>
@@ -1532,16 +1643,30 @@ export function DocumentsSection() {
 
       {showUpload && (
         <UploadModal
+          categories={categories}
           onClose={() => setShowUpload(false)}
           onSuccess={handleUploadSuccess}
+          onCategoryCreated={(category) => {
+            setCategories((prev) => {
+              const existed = prev.some((item) => item.id === category.id);
+              return existed ? prev : [...prev, category];
+            });
+          }}
         />
       )}
 
       {editDoc && (
         <EditModal
           doc={editDoc}
+          categories={categories}
           onClose={() => setEditDoc(null)}
           onSave={handleEditSave}
+          onCategoryCreated={(category) => {
+            setCategories((prev) => {
+              const existed = prev.some((item) => item.id === category.id);
+              return existed ? prev : [...prev, category];
+            });
+          }}
         />
       )}
 

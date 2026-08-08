@@ -35,12 +35,15 @@ function savePremiumUser() {
     membership: "PREMIUM",
     plan: "PREMIUM",
     subscriptionPlan: "PREMIUM",
+    memberStatus: "ACTIVE",
     isPremium: true,
   };
 
   localStorage.setItem("user", JSON.stringify(newUser));
   localStorage.setItem("role", newUser.role || currentUser.role || "CUSTOMER");
+
   window.dispatchEvent(new Event("auth:user-updated"));
+  window.dispatchEvent(new Event("storage"));
 }
 
 export default function PremiumCheckoutPage() {
@@ -71,7 +74,11 @@ export default function PremiumCheckoutPage() {
       } catch (err) {
         if (!cancelled) {
           console.error("Create premium transaction error:", err);
-          setError(err?.message || "Không thể tạo giao dịch Premium.");
+          setError(
+            err?.message ||
+              err?.data?.message ||
+              "Không thể tạo mã QR Premium.",
+          );
         }
       } finally {
         if (!cancelled) {
@@ -104,10 +111,9 @@ export default function PremiumCheckoutPage() {
         ...result,
       }));
 
-      if (
-        result?.isPremium ||
-        String(result?.status || "").toUpperCase() === "MANUAL_CONFIRMED"
-      ) {
+      const status = String(result?.status || "").toUpperCase();
+
+      if (result?.isPremium || status === "MANUAL_CONFIRMED") {
         savePremiumUser();
 
         await Swal.fire({
@@ -123,16 +129,18 @@ export default function PremiumCheckoutPage() {
             paymentSuccess: true,
           },
         });
-      } else {
-        Swal.fire({
-          icon: "info",
-          title: "Chưa thể xác nhận",
-          text:
-            result?.message ||
-            "Vui lòng kiểm tra lại thông tin giao dịch rồi thử lại.",
-          confirmButtonText: "Đóng",
-        });
+
+        return;
       }
+
+      Swal.fire({
+        icon: "info",
+        title: "Chưa thể xác nhận",
+        text:
+          result?.message ||
+          "Vui lòng kiểm tra lại thông tin giao dịch rồi thử lại.",
+        confirmButtonText: "Đóng",
+      });
     } catch (err) {
       console.error("Confirm premium transaction error:", err);
 
@@ -149,6 +157,8 @@ export default function PremiumCheckoutPage() {
       setConfirming(false);
     }
   }
+
+  const qrUrl = payment?.qrCode || payment?.checkoutUrl;
 
   return (
     <AppLayout>
@@ -176,8 +186,8 @@ export default function PremiumCheckoutPage() {
               <h2>Gói Premium 30 ngày</h2>
 
               <p>
-                Mở khóa dung lượng 10GB, tăng giới hạn token AI/ngày và upload
-                file tối đa 100MB.
+                Mở khóa dung lượng Premium, tăng giới hạn token AI/ngày và
+                upload file lớn hơn.
               </p>
 
               <div className="premium-price-box">
@@ -223,8 +233,8 @@ export default function PremiumCheckoutPage() {
 
           <div className="premium-checkout-right">
             <div className="premium-qr-box">
-              {payment?.qrCode ? (
-                <img src={payment.qrCode} alt="Techcombank QR Premium" />
+              {qrUrl ? (
+                <img src={qrUrl} alt="Techcombank QR Premium" />
               ) : (
                 <div className="premium-qr-placeholder">
                   {loading ? "Đang tạo QR..." : "Chưa có QR"}
