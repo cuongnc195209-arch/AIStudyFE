@@ -14,6 +14,7 @@ import {
   shareDocument,
   updateDocumentSharePermission,
   searchDocuments,
+  getAllowedFileTypes,
 } from "../../apis/documentApi";
 import {
   getDocumentCategories,
@@ -151,6 +152,10 @@ const ALLOWED_TYPES = {
     "DOC",
   "image/jpeg": "IMG",
   "image/png": "IMG",
+  "video/mp4": "MP4",
+  "application/zip": "ZIP",
+  "application/x-zip-compressed": "ZIP",
+  "text/plain": "TXT",
 };
 
 const EXT_COLOR = {
@@ -158,7 +163,67 @@ const EXT_COLOR = {
   PPT: "#f97316",
   DOC: "#3b82f6",
   IMG: "#10b981",
+  MP4: "#8b5cf6",
+  ZIP: "#eab308",
+  TXT: "#6b7280",
 };
+
+// Ánh xạ MIME type -> mã định dạng dùng để đối chiếu với danh sách allowedFileTypes
+// admin cấu hình ở backend (khác với ALLOWED_TYPES ở trên, dùng cho hiển thị badge).
+const MIME_TO_FILE_TYPE = {
+  "application/pdf": "pdf",
+  "application/msword": "doc",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+    "docx",
+  "application/vnd.ms-powerpoint": "ppt",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+    "pptx",
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "video/mp4": "mp4",
+  "application/zip": "zip",
+  "application/x-zip-compressed": "zip",
+  "text/plain": "txt",
+};
+
+// Danh sách mặc định dùng khi chưa tải được cấu hình từ backend (GET /v1/documents/file-type)
+const DEFAULT_ALLOWED_FILE_TYPES = [
+  "pdf",
+  "doc",
+  "docx",
+  "ppt",
+  "pptx",
+  "jpg",
+  "png",
+];
+
+function parseAllowedFileTypes(raw) {
+  if (Array.isArray(raw)) {
+    return raw.map((v) => String(v).trim().toLowerCase()).filter(Boolean);
+  }
+
+  if (typeof raw === "string") {
+    return raw
+      .split(",")
+      .map((v) => v.trim().toLowerCase())
+      .filter(Boolean);
+  }
+
+  return [];
+}
+
+// Chuyển danh sách mã định dạng ("pdf","jpg",...) thành chuỗi cho thuộc tính accept của input file
+function buildAcceptAttr(allowedFileTypes) {
+  const codes =
+    allowedFileTypes && allowedFileTypes.length > 0
+      ? allowedFileTypes
+      : DEFAULT_ALLOWED_FILE_TYPES;
+
+  return codes
+    .flatMap((code) => (code === "jpg" ? ["jpg", "jpeg"] : [code]))
+    .map((code) => `.${code}`)
+    .join(",");
+}
 
 function sizeLabel(mb) {
   return mb >= 1 ? `${mb} MB` : `${(mb * 1024).toFixed(0)} KB`;
@@ -193,6 +258,7 @@ function UploadModal({
   onSuccess,
   categories = [],
   onCategoryCreated,
+  allowedFileTypes = DEFAULT_ALLOWED_FILE_TYPES,
 }) {
   const [step, setStep] = useState("drop");
   const [file, setFile] = useState(null);
@@ -211,18 +277,23 @@ function UploadModal({
   const subjectOptions = categories.filter((category) => category.parentId);
 
   const inputRef = useRef();
+  const acceptAttr = buildAcceptAttr(allowedFileTypes);
 
   function handleFilePick(f) {
     if (!f) return;
 
-    const ext = ALLOWED_TYPES[f.type];
+    const fileTypeCode = MIME_TO_FILE_TYPE[f.type];
 
-    if (!ext) {
+    if (!fileTypeCode || !allowedFileTypes.includes(fileTypeCode)) {
       setError(
-        "Định dạng không hỗ trợ. Chỉ chấp nhận PDF, DOCX, PPTX, JPG, PNG.",
+        `Định dạng không hỗ trợ. Chỉ chấp nhận: ${allowedFileTypes
+          .map((code) => code.toUpperCase())
+          .join(", ")}.`,
       );
       return;
     }
+
+    const ext = ALLOWED_TYPES[f.type];
 
     setError("");
 
@@ -378,12 +449,14 @@ function UploadModal({
                 hoặc <span className="drop-link">chọn từ máy tính</span>
               </p>
 
-              <p className="drop-hint">PDF, DOCX, PPTX, JPG, PNG</p>
+              <p className="drop-hint">
+                {allowedFileTypes.map((code) => code.toUpperCase()).join(", ")}
+              </p>
 
               <input
                 ref={inputRef}
                 type="file"
-                accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png"
+                accept={acceptAttr}
                 style={{ display: "none" }}
                 onChange={(e) => handleFilePick(e.target.files[0])}
               />
@@ -550,6 +623,7 @@ function EditModal({
   onSave,
   categories = [],
   onCategoryCreated,
+  allowedFileTypes = DEFAULT_ALLOWED_FILE_TYPES,
 }) {
   const [meta, setMeta] = useState({
     name: doc.name,
@@ -570,17 +644,25 @@ function EditModal({
     !subjectOptions.some((category) => category.label === meta.categoryName);
 
   const [newFile, setNewFile] = useState(null);
+  const [fileError, setFileError] = useState("");
   const fileInputRef = useRef();
+  const acceptAttr = buildAcceptAttr(allowedFileTypes);
 
   function handleFilePick(f) {
     if (!f) return;
 
-    const ext = ALLOWED_TYPES[f.type];
+    const fileTypeCode = MIME_TO_FILE_TYPE[f.type];
 
-    if (!ext) {
+    if (!fileTypeCode || !allowedFileTypes.includes(fileTypeCode)) {
+      setFileError(
+        `Định dạng không hỗ trợ. Chỉ chấp nhận: ${allowedFileTypes
+          .map((code) => code.toUpperCase())
+          .join(", ")}.`,
+      );
       return;
     }
 
+    setFileError("");
     setNewFile(f);
   }
 
@@ -654,7 +736,7 @@ function EditModal({
             <input
               ref={fileInputRef}
               type="file"
-              accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png"
+              accept={acceptAttr}
               style={{ display: "none" }}
               onChange={(e) => handleFilePick(e.target.files[0])}
             />
@@ -667,6 +749,8 @@ function EditModal({
               {newFile ? "Đổi file khác" : "Đổi file"}
             </button>
           </div>
+
+          {fileError && <p className="upload-error">⚠️ {fileError}</p>}
 
           <div className="form-grid">
             <div className="fg-full">
@@ -1241,6 +1325,9 @@ export function DocumentsSection() {
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [error, setError] = useState("");
   const [categories, setCategories] = useState([]);
+  const [allowedFileTypes, setAllowedFileTypes] = useState(
+    DEFAULT_ALLOWED_FILE_TYPES,
+  );
 
   const [sharedDocs, setSharedDocs] = useState([]);
   const [loadingShared, setLoadingShared] = useState(false);
@@ -1278,6 +1365,29 @@ export function DocumentsSection() {
     }
 
     loadCategories();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadAllowedFileTypes() {
+      try {
+        const raw = await getAllowedFileTypes();
+        const parsed = parseAllowedFileTypes(raw?.data ?? raw);
+
+        if (!cancelled && parsed.length > 0) {
+          setAllowedFileTypes(parsed);
+        }
+      } catch (err) {
+        console.error("Load allowed file types error:", err);
+      }
+    }
+
+    loadAllowedFileTypes();
 
     return () => {
       cancelled = true;
@@ -1772,6 +1882,7 @@ export function DocumentsSection() {
       {showUpload && (
         <UploadModal
           categories={categories}
+          allowedFileTypes={allowedFileTypes}
           onClose={() => setShowUpload(false)}
           onSuccess={handleUploadSuccess}
           onCategoryCreated={(category) => {
@@ -1787,6 +1898,7 @@ export function DocumentsSection() {
         <EditModal
           doc={editDoc}
           categories={categories}
+          allowedFileTypes={allowedFileTypes}
           onClose={() => setEditDoc(null)}
           onSave={handleEditSave}
           onCategoryCreated={(category) => {

@@ -8,6 +8,10 @@ export async function getPublicDocuments() {
   return api.get("/v1/documents/public");
 }
 
+export async function getAllowedFileTypes() {
+  return api.get("/v1/documents/file-type");
+}
+
 export async function searchDocuments(searchText = "") {
   return api.get("/v1/documents/search", {
     name: searchText || "",
@@ -210,6 +214,7 @@ export async function getPendingPublicDocuments({ page = 0, size = 10 } = {}) {
 const documentApi = {
   getDocuments,
   getPublicDocuments,
+  getAllowedFileTypes,
   searchDocuments,
   getDocumentById,
   createDocument,
