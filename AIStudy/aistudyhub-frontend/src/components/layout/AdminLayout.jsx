@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { clearAuthStorage } from "../../apis/api";
 import "./AdminLayout.css";
 
-// 6 mục menu admin — mỗi id khớp với 1 key trong SECTION_MAP của AdminDashboardPage.jsx
+// Mục menu admin — mỗi id khớp với 1 key trong SECTION_MAP của AdminDashboardPage.jsx
 // Lưu ý: comment "tạm ẩn" ở mục config đã lỗi thời — mục này thực tế KHÔNG bị ẩn, vẫn hiện bình thường
 const NAV_ITEMS = [
   { id: "overview", icon: "📊", label: "Tổng quan" },
@@ -12,7 +12,7 @@ const NAV_ITEMS = [
   { id: "reports", icon: "🚩", label: "Báo cáo" },
   { id: "chat", icon: "💬", label: "Chat AI" },
   { id: "stats", icon: "📈", label: "Thống kê" },
-  { id: "subjects", icon: "📚", label: "Môn học" },
+  { id: "payments", icon: "💳", label: "Giao dịch" },
   { id: "config", icon: "⚙️", label: "Cấu hình hệ thống" },
 ];
 

@@ -16,8 +16,22 @@ export async function confirmPremiumPayment(orderCode) {
   });
 }
 
+export async function cancelPremiumPayment(orderCode) {
+  if (!orderCode) throw new Error("Thiếu mã giao dịch");
+
+  return api.post("/member/payment/cancel", null, {
+    queryParams: {
+      orderCode,
+    },
+  });
+}
+
 export async function getMemberDetail() {
   return api.get("/member/detail");
+}
+
+export async function getPaymentHistory() {
+  return api.get("/member/payment/history");
 }
 
 export async function upgradeToPremium() {
@@ -51,7 +65,9 @@ export function isActiveMemberDetail(memberDetail) {
 const memberApi = {
   createPremiumPayment,
   confirmPremiumPayment,
+  cancelPremiumPayment,
   getMemberDetail,
+  getPaymentHistory,
   upgradeToPremium,
   isActiveMemberDetail,
 };

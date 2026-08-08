@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import AppLayout from "../../components/layout/AppLayout";
 import {
+  cancelPremiumPayment,
   confirmPremiumPayment,
   createPremiumPayment,
 } from "../../apis/memberApi";
@@ -52,6 +53,7 @@ export default function PremiumCheckoutPage() {
   const [payment, setPayment] = useState(null);
   const [loading, setLoading] = useState(true);
   const [confirming, setConfirming] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [error, setError] = useState("");
 
   const user = getCurrentUser();
@@ -158,6 +160,24 @@ export default function PremiumCheckoutPage() {
     }
   }
 
+  async function handleCancelTransaction() {
+    if (!payment?.orderCode) {
+      navigate("/premium");
+      return;
+    }
+
+    setCancelling(true);
+
+    try {
+      await cancelPremiumPayment(payment.orderCode);
+    } catch (err) {
+      console.error("Cancel premium transaction error:", err);
+    } finally {
+      setCancelling(false);
+      navigate("/premium");
+    }
+  }
+
   const qrUrl = payment?.qrCode || payment?.checkoutUrl;
 
   return (
@@ -261,10 +281,10 @@ export default function PremiumCheckoutPage() {
             <button
               className="premium-cancel-btn"
               type="button"
-              onClick={() => navigate("/premium")}
-              disabled={confirming}
+              onClick={handleCancelTransaction}
+              disabled={confirming || cancelling}
             >
-              Hủy
+              {cancelling ? "Đang hủy..." : "Hủy"}
             </button>
           </div>
         </div>

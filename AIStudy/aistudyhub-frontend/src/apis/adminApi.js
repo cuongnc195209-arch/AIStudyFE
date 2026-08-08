@@ -128,6 +128,19 @@ export async function getAdminStorageUsages({ page = 0, size = 10 } = {}) {
   return getAdminStorage({ page, size });
 }
 
+export async function getAdminPayments({ page = 0, size = 9999, status } = {}) {
+  const params = {
+    page,
+    size,
+  };
+
+  if (status) {
+    params.status = status;
+  }
+
+  return api.get("/admin/payments", params);
+}
+
 export async function updateAdminConfig(payload) {
   return api.put("/admin/config", payload);
 }
@@ -166,6 +179,7 @@ const adminApi = {
   getAdminStorage,
   getAdminStorageUsage,
   getAdminStorageUsages,
+  getAdminPayments,
 
   updateAdminConfig,
   updatePremiumConfig,

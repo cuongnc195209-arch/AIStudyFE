@@ -14,6 +14,7 @@ import VerifyEmailOtpPage from "./pages/Auth/VerifyEmailOtpPage";
 import ForgotPasswordOtpPage from "./pages/Auth/ForgotPasswordOtpPage";
 import PremiumCheckoutPage from "./pages/Premium/PremiumCheckoutPage";
 import ReportsPage from "./pages/Reports/ReportsPage";
+import PaymentHistoryPage from "./pages/Payment/PaymentHistoryPage";
 
 function App() {
   return (
@@ -91,6 +92,15 @@ function App() {
           element={
             <PrivateRoute>
               <PremiumCheckoutPage />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/payment-history"
+          element={
+            <PrivateRoute>
+              <PaymentHistoryPage />
             </PrivateRoute>
           }
         />

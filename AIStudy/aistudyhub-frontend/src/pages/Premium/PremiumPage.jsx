@@ -12,6 +12,20 @@ function getStoredUser() {
   }
 }
 
+function formatExpiryDate(value) {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date.toLocaleDateString("vi-VN");
+}
+
 function checkPremiumFromUser(user) {
   const plan = String(
     user?.membership ||
@@ -90,6 +104,8 @@ export default function PremiumPage() {
 
   const isPremium =
     checkPremiumFromUser(storedUser) || isActiveMemberDetail(memberDetail);
+
+  const expiryDate = formatExpiryDate(memberDetail?.endDate);
 
   return (
     <AppLayout>
@@ -215,6 +231,18 @@ export default function PremiumPage() {
                 {isPremium ? (
                   <div className="plan-current-badge">
                     ✓ Đang sử dụng Premium
+                    {expiryDate && (
+                      <div
+                        style={{
+                          marginTop: 4,
+                          fontSize: "0.78rem",
+                          fontWeight: 500,
+                          color: "#9ca3af",
+                        }}
+                      >
+                        Hết hạn: {expiryDate}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <button

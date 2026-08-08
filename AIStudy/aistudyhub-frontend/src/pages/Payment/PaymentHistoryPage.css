@@ -1,0 +1,139 @@
+/* ── Section head with action button ── */
+.th-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* ── Toolbar ── */
+.th-toolbar {
+  margin-bottom: 16px;
+}
+
+.th-search {
+  width: 100%;
+  max-width: 360px;
+  padding: 9px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 0.87rem;
+  color: #111827;
+  background: #fff;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  box-sizing: border-box;
+}
+
+.th-search::placeholder {
+  color: #9ca3af;
+}
+
+.th-search:focus {
+  border-color: #0066ff;
+  box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.1);
+}
+
+.th-error {
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #dc2626;
+  font-size: 0.85rem;
+}
+
+/* ── Table ── */
+.th-table-wrap {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.th-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+
+.th-table thead {
+  background: #f8fafc;
+}
+
+.th-table th {
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.th-table td {
+  padding: 13px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+
+.th-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.th-table tbody tr:hover {
+  background: #fafbfd;
+}
+
+.th-order-code {
+  font-family: monospace;
+  font-weight: 600;
+  color: #111827;
+}
+
+.th-secondary {
+  color: #6b7280;
+  font-size: 0.83rem;
+}
+
+.th-table-empty {
+  padding: 40px;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 0.9rem;
+}
+
+/* ── Status badge ── */
+.th-status {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.th-status--paid {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.th-status--pending {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.th-status--failed {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+@media (max-width: 600px) {
+  .th-search {
+    max-width: none;
+  }
+}

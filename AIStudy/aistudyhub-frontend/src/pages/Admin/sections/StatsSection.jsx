@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { getAdminDocuments, getAdminUsers } from "../../../apis/adminApi";
+import {
+  getAdminDocuments,
+  getAdminPayments,
+  getAdminUsers,
+} from "../../../apis/adminApi";
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -21,16 +25,6 @@ const PLAN_COLOR = {
   FREE: "#6b7280",
   PREMIUM: "#0066ff",
 };
-
-/*
- * Nếu BE chưa có bảng thanh toán/doanh thu,
- * doanh thu sẽ tính tạm từ số user Premium mới trong tháng.
- * Đơn vị: nghìn đồng.
- *
- * Ví dụ giá Premium 49.000đ thì để 49.
- * Chưa có giá thì để 0.
- */
-const PREMIUM_PRICE_THOUSAND_VND = 99;
 
 function getListFromResponse(res) {
   if (Array.isArray(res)) return res;
@@ -216,35 +210,6 @@ function normalizePlan(user) {
   return "FREE";
 }
 
-function resolveRevenueAmount(user) {
-  const rawAmount =
-    user.paymentAmount ||
-    user.amountPaid ||
-    user.revenue ||
-    user.planPrice ||
-    user.memberPrice ||
-    user.price ||
-    user.subscriptionPrice ||
-    null;
-
-  const amount = Number(rawAmount || 0);
-
-  if (Number.isFinite(amount) && amount > 0) {
-    /*
-     * Nếu BE trả VND, đổi sang nghìn đồng.
-     * Nếu BE trả 99000 => 99.
-     * Nếu BE trả 99 => giữ nguyên.
-     */
-    return amount > 1000 ? amount / 1000 : amount;
-  }
-
-  if (normalizePlan(user) === "PREMIUM") {
-    return PREMIUM_PRICE_THOUSAND_VND;
-  }
-
-  return 0;
-}
-
 function formatNumber(value) {
   return Number(value || 0).toLocaleString("vi-VN");
 }
@@ -426,6 +391,7 @@ function FileTypeDistribution({ docs }) {
 export default function StatsSection() {
   const [users, setUsers] = useState([]);
   const [documents, setDocuments] = useState([]);
+  const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -434,42 +400,44 @@ export default function StatsSection() {
     async function loadStatsData() {
       setLoading(true);
 
-      const [userRes, docRes] = await Promise.all([
-        getAdminUsers({
-          page: 0,
-          size: 9999,
-        }),
-        getAdminDocuments({
-          page: 0,
-          size: 9999,
-        }),
-      ]);
+      try {
+        const [userRes, docRes, paymentRes] = await Promise.all([
+          getAdminUsers({
+            page: 0,
+            size: 9999,
+          }),
+          getAdminDocuments({
+            page: 0,
+            size: 9999,
+          }),
+          getAdminPayments({
+            size: 9999,
+          }),
+        ]);
 
-      if (cancelled) {
-        return;
+        if (cancelled) {
+          return;
+        }
+
+        const rawUsers = getListFromResponse(userRes);
+        const uniqueUsers = deduplicateUsers(rawUsers);
+        const nonAdminUsers = filterNonAdminUsers(uniqueUsers);
+
+        const rawDocuments = getListFromResponse(docRes);
+        const rawPayments = getListFromResponse(paymentRes);
+
+        setUsers(nonAdminUsers);
+        setDocuments(rawDocuments);
+        setPayments(rawPayments);
+      } catch (err) {
+        if (!cancelled) {
+          console.error("Load stats data error:", err);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
-
-      const rawUsers = getListFromResponse(userRes);
-      const uniqueUsers = deduplicateUsers(rawUsers);
-      const nonAdminUsers = filterNonAdminUsers(uniqueUsers);
-
-      const rawDocuments = getListFromResponse(docRes);
-
-      console.log("Raw admin users:", rawUsers.length, rawUsers);
-      console.log(
-        "Unique users:",
-        uniqueUsers.length,
-        uniqueUsers.map((user) => ({
-          email: user.email,
-          role: normalizeRole(user),
-          accessLevel: user.accessLevel,
-          isAdmin: isAdminUser(user),
-        })),
-      );
-      console.log("Users without admin:", nonAdminUsers.length, nonAdminUsers);
-
-      setUsers(nonAdminUsers);
-      setDocuments(rawDocuments);
     }
 
     loadStatsData();
@@ -500,22 +468,24 @@ export default function StatsSection() {
   const revenueMonthlyData = useMemo(() => {
     const monthly = Array(12).fill(0);
 
-    users.forEach((user) => {
-      if (normalizePlan(user) !== "PREMIUM") {
+    payments.forEach((payment) => {
+      const status = String(payment.status || "").toUpperCase();
+
+      if (status !== "MANUAL_CONFIRMED") {
         return;
       }
 
-      const paymentDate =
-        user.memberStartDate ||
-        user.subscriptionStartDate ||
-        user.startDate ||
-        getCreatedAt(user);
+      const paidDate = payment.paidAt || payment.createdAt;
+      const monthIndex = getMonthIndex(paidDate);
 
-      const monthIndex = getMonthIndex(paymentDate);
-
-      if (monthIndex !== null) {
-        monthly[monthIndex] += resolveRevenueAmount(user);
+      if (monthIndex === null) {
+        return;
       }
+
+      const amountVnd = Number(payment.displayPrice ?? payment.amount ?? 0);
+
+      // Đơn vị hiển thị của chart là nghìn đồng.
+      monthly[monthIndex] += amountVnd / 1000;
     });
 
     return MONTHS.map((month) => ({
@@ -523,7 +493,7 @@ export default function StatsSection() {
       value: monthly[month.index],
       shortLabel: formatRevenue(monthly[month.index]),
     }));
-  }, [users]);
+  }, [payments]);
   const totalUsersThisYear = userMonthlyData.reduce(
     (sum, item) => sum + item.value,
     0,

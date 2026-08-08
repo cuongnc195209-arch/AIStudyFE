@@ -17,6 +17,12 @@ const NAV_ITEMS = [
 
 const PREMIUM_ITEM = { to: "/premium", icon: "⚡", label: "Nâng cấp Premium" };
 
+const PAYMENT_HISTORY_ITEM = {
+  to: "/payment-history",
+  icon: "🧾",
+  label: "Lịch sử giao dịch",
+};
+
 const MODERATION_ITEM = {
   to: "/moderation",
   icon: "🛡️",
@@ -258,6 +264,24 @@ export default function AppLayout({ children }) {
 
             {!collapsed && (
               <span className="sidebar-link-label">{PREMIUM_ITEM.label}</span>
+            )}
+          </NavLink>
+
+          <NavLink
+            to={PAYMENT_HISTORY_ITEM.to}
+            className={({ isActive }) =>
+              `sidebar-link${isActive ? " sidebar-link--active" : ""}`
+            }
+            title={collapsed ? PAYMENT_HISTORY_ITEM.label : undefined}
+          >
+            <span className="sidebar-link-icon">
+              {PAYMENT_HISTORY_ITEM.icon}
+            </span>
+
+            {!collapsed && (
+              <span className="sidebar-link-label">
+                {PAYMENT_HISTORY_ITEM.label}
+              </span>
             )}
           </NavLink>
         </nav>
